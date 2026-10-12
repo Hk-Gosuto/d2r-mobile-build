@@ -27,6 +27,15 @@ jobs:
           DIAGNOSTIC_RUN: ${{ inputs.diagnostic_run }}
         run: gh run download "$DIAGNOSTIC_RUN" --pattern 'png-compat-*' --dir sample
       - name: Test official Pillow wheel
+        continue-on-error: true
         run: |
           python -m pip install --only-binary=:all: pillow==12.1.1
           python scripts/png_probe.py sample
+      - name: Build the matching zlib-ng compatibility library
+        run: |
+          curl -fL --retry 3 https://github.com/zlib-ng/zlib-ng/archive/6d9f3dc072369dc719a5fbe71d4e086a96a680bd.tar.gz -o zlib-ng.tar.gz
+          tar -xzf zlib-ng.tar.gz
+          cmake -S zlib-ng-6d9f3dc072369dc719a5fbe71d4e086a96a680bd -B zlib-build -DZLIB_COMPAT=ON -DBUILD_SHARED_LIBS=ON -DZLIB_ENABLE_TESTS=OFF -DWITH_GTEST=OFF -DCMAKE_INSTALL_PREFIX="$PWD/zlib-install" -DCMAKE_BUILD_TYPE=Release
+          cmake --build zlib-build -j2
+          cmake --install zlib-build
+          LD_PRELOAD="$PWD/zlib-install/lib/libz.so.1" python scripts/png_probe.py sample
