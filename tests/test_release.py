@@ -61,3 +61,13 @@ class ReleaseTests(unittest.TestCase):
         draft = {'id': 123, 'tag_name': 'tag', 'draft': True, 'assets': []}
         with patch.object(module.subprocess, 'run', return_value=Result()), patch.object(module, 'gh', return_value=module.json.dumps([[draft]])):
             self.assertEqual(module.release_info('owner/repo', 'tag'), draft)
+
+    def test_publication_requires_confirmed_published_state(self):
+        with patch.object(module, 'gh'), patch.object(module, 'release_info', return_value={'draft': True}):
+            with self.assertRaisesRegex(RuntimeError, 'did not become published'):
+                module.publish_complete('owner/repo', 'tag', 'notes.md')
+
+    def test_publication_returns_final_release_url(self):
+        published = {'draft': False, 'html_url': 'https://github.com/owner/repo/releases/tag/tag'}
+        with patch.object(module, 'gh'), patch.object(module, 'release_info', return_value=published):
+            self.assertEqual(module.publish_complete('owner/repo', 'tag', 'notes.md'), published)

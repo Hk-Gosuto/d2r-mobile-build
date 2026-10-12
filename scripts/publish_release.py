@@ -85,6 +85,14 @@ def release_info(repo, tag):
     raise RuntimeError('Could not inspect release: ' + result.stderr.strip())
 
 
+def publish_complete(repo, tag, notes):
+    gh('release', 'edit', tag, '--repo', repo, '--notes-file', notes, '--draft=false', '--latest')
+    release = release_info(repo, tag)
+    if release is None or release['draft']:
+        raise RuntimeError('Release did not become published')
+    return release
+
+
 def main(mode):
     repo = os.environ['GITHUB_REPOSITORY']
     revision = os.environ['INPUT_REVISION']
@@ -167,7 +175,9 @@ def main(mode):
                 'D2R-Mobile-Resources.zip.003', 'resources-report.json',
                 'Resources-SHA256SUMS.txt', 'Resources-Parts-SHA256SUMS.txt', 'RESOURCE-INSTALL.txt'}
     if required <= remote.keys():
-        gh('release', 'edit', tag, '--repo', repo, '--notes-file', notes, '--draft=false', '--latest')
+        # Refresh after publication: GitHub assigns a temporary untagged URL
+        # to drafts, which must not be used as the final download link.
+        release = publish_complete(repo, tag, notes)
         print('Published complete release:', release['html_url'], flush=True)
         status = 'Published complete Release'
     else:
