@@ -2,6 +2,7 @@
 """Export only the 18 archives used by the matching iOS app."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import zipfile
 
@@ -60,6 +61,7 @@ def export_resources(game=ci.GAME, output=None):
     finally:
         partial.unlink(missing_ok=True)
     report = {'game_version': ci.CONFIG['game_version'],
+              'input_revision': os.environ.get('INPUT_REVISION'),
               'switch_version': ci.CONFIG['switch_version'],
               'upstream_commit': ci.CONFIG['upstream_commit'],
               'archive_count': len(files), 'resource_bytes': sum(f['bytes'] for f in files),

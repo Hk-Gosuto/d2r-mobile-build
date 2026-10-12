@@ -10,7 +10,15 @@ GitHub Actions 在临时云端机器上完成 NO_XCODE 打包，输出未签名 
 
 产物 `D2R-Mobile-Resources.zip` 内含 `D2R Mobile Resources/data/`、逐文件 SHA256 和中文导入说明。资源合计 5,561,224,037 字节，导出后逐个读取 ZIP 中的文件并核对大小和 SHA256。下载解压后，把整个 `D2R Mobile Resources` 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用，打开应用点击重试。正常覆盖安装且应用标识不变时通常保留资源；卸载会删除资源和存档。
 
-资源仅保存到私有 Actions artifact，保留 3 天，请及时下载并自行保管。源码仓库不提交游戏资源，IPA 不包含这 18 个大文件。
+Actions artifact 保留 3 天；成功构建也会自动上传到下述私有 Release，Release 附件不受 artifact 保留期影响。源码仓库不提交游戏资源，IPA 不包含这 18 个大文件。
+
+## 自动发布 Release
+
+IPA 构建和资源导出成功后会自动发布对应附件，不需要另外点发布按钮或填写版本号。Release 标签由游戏版本、上游提交和 `input_revision` 自动生成；同一配套版本的两个工作流更新同一个 Release。第一次只有一种产物时暂存为草稿，IPA 和资源附件齐全后自动发布。`prepare_only` 不发布。
+
+资源 ZIP 自动分成 3 个小于 2GiB 的分卷，并附上 `Resources-Parts-SHA256SUMS.txt`、原始 ZIP 校验值和 `RESOURCE-INSTALL.txt`。下载所有分卷后按说明合并、校验，再解压导入手机。同版本后续构建更新对应附件；如果更换游戏输入，修改 `input_revision`，避免混用资源。发布前校验版本和本地产物 SHA256，上传后核对附件大小及 GitHub 返回的 SHA256（如有）。
+
+引入发布流程的提交会自动从已有成功构建恢复 IPA 和资源包，完成首次发布，不重新下载游戏或编译。源仓库必须保持私有，发布步骤才会运行。
 
 ## 提供远端输入
 

@@ -434,7 +434,7 @@ def verify_ipa():
             raise ValueError('IPA shader library missing')
     digest = sha256(output)
     (output.parent / 'SHA256SUMS.txt').write_text(f'{digest}  {output.name}\n')
-    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'shell_sha256': CONFIG['shell_sha256'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'Recorded bootlist is not shipped in the public upstream source; the host supports no prefetch when absent.'}
+    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'input_revision': os.environ.get('INPUT_REVISION'), 'shell_sha256': CONFIG['shell_sha256'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'Recorded bootlist is not shipped in the public upstream source; the host supports no prefetch when absent.'}
     (output.parent / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print('IPA verified:', output.stat().st_size, 'bytes;', len(shader_files), 'shader libraries')
 

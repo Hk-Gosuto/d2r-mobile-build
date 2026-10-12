@@ -12,7 +12,7 @@ on:
         type: string
         default: game-3.3.94012-v1
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: d2r-private-build
   cancel-in-progress: false
@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 180
     env:
       DM_ROOT: ${{ github.workspace }}/.dm-work
+      INPUT_REVISION: ${{ inputs.input_revision }}
       D2RM_NO_METAL: '1'
       PYTHONUTF8: '1'
       J: '2'
@@ -198,6 +199,11 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+      - name: Automatically publish IPA to the matching private Release
+        if: ${{ !inputs.prepare_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -u scripts/publish_release.py ipa
       - name: Collect sanitized failure diagnostics
         if: failure()
         run: python scripts/ci.py diagnostics

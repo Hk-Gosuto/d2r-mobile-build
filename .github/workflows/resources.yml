@@ -7,7 +7,7 @@ on:
         type: string
         default: game-3.3.94012-v1
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: d2r-private-build
   cancel-in-progress: false
@@ -17,6 +17,7 @@ jobs:
     timeout-minutes: 90
     env:
       DM_ROOT: ${{ github.workspace }}/.dm-work
+      INPUT_REVISION: ${{ inputs.input_revision }}
       PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -76,6 +77,10 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+      - name: Automatically publish resources to the matching private Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -u scripts/publish_release.py resources
       - name: Report export
         run: |
           python - <<'PY'

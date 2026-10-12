@@ -1,0 +1,51 @@
+name: Publish existing verified builds automatically
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-existing.yml
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: d2r-private-build
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      INPUT_REVISION: game-3.3.94012-v1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Validate publisher
+        run: python -m unittest discover -s tests -v
+      - name: Make room for existing resource artifacts
+        run: sudo rm -rf /usr/local/lib/android /usr/share/swift /usr/local/.ghcup /opt/ghc
+      - name: Download existing successful build artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          repo = os.environ['GITHUB_REPOSITORY']
+          for workflow, prefix in [('pack.yml', 'D2RMobile-unsigned-'), ('resources.yml', 'D2R-Mobile-Resources-')]:
+              runs = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/actions/workflows/{workflow}/runs?status=success&branch=main&per_page=30']))['workflow_runs']
+              for run in runs:
+                  artifacts = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/actions/runs/{run["id"]}/artifacts']))['artifacts']
+                  matches = [item for item in artifacts if not item['expired'] and item['name'].startswith(prefix)]
+                  if matches:
+                      subprocess.run(['gh', 'run', 'download', str(run['id']), '--repo', repo, '--name', matches[0]['name'], '--dir', 'outputs'], check=True)
+                      print('Restored successful artifact:', run['id'], matches[0]['name'], flush=True)
+                      break
+              else:
+                  raise SystemExit('No unexpired successful artifact for ' + workflow)
+          PY
+      - name: Automatically publish matching IPA and resources
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -u scripts/publish_release.py ipa
+          python -u scripts/publish_release.py resources
