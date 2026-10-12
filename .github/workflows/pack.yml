@@ -1,0 +1,155 @@
+name: Build D2R Mobile IPA
+run-name: "${{ inputs.prepare_only && 'Verify toolchain and prime caches' || 'Build unsigned IPA' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      prepare_only:
+        description: Verify toolchain and prime caches without building a game IPA
+        type: boolean
+        default: false
+      input_revision:
+        description: Game input cache revision (change when replacing source files)
+        type: string
+        default: game-3.3.94012-v1
+permissions:
+  contents: read
+concurrency:
+  group: d2r-private-build
+  cancel-in-progress: false
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      DM_ROOT: ${{ github.workspace }}/.dm-work
+      D2RM_NO_METAL: '1'
+      PYTHONUTF8: '1'
+      J: '2'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate repository and cache inputs
+        env:
+          IS_PRIVATE: ${{ github.event.repository.private }}
+          INPUT_REVISION: ${{ inputs.input_revision }}
+        run: |
+          test "$IS_PRIVATE" = true || { echo '::error::Game builds require a private repository'; exit 1; }
+          [[ "$INPUT_REVISION" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || exit 1
+          python -m unittest discover -s tests -v
+      - name: Checkout matching upstream release
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jhaizhou-ops/d2r-mobile
+          ref: 46578a2b5d302de5d01b5d50b68e2a077e5da0ad
+          path: upstream
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install compiler and archive tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang cmake ninja-build p7zip-full fonts-dejavu-core
+          python -m pip install -r requirements.txt
+          df -h "$GITHUB_WORKSPACE"
+      - name: Restore build tools
+        id: tools
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'scripts/tools.sh') }}
+      - name: Restore generated build cache
+        id: generated
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            .dm-work/build/cache
+            .dm-work/build/gfx
+            .dm-work/build/ios
+            upstream/dm/ios/Gen/assets
+            upstream/dm/ios/Sources/TouchArt
+          key: generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'requirements.txt', 'scripts/tools.sh') }}-${{ inputs.input_revision }}-${{ inputs.prepare_only && 'tools' || 'full' }}
+          restore-keys: |
+            generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'requirements.txt', 'scripts/tools.sh') }}-${{ inputs.input_revision }}-
+      - name: Build and verify toolchain
+        run: |
+          bash scripts/tools.sh
+          echo "$GITHUB_WORKSPACE/.tools/bin" >> "$GITHUB_PATH"
+      - name: Save verified build tools
+        if: steps.tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tools
+          key: ${{ steps.tools.outputs.cache-primary-key }}
+      - name: Restore verified game files
+        if: ${{ !inputs.prepare_only }}
+        id: game
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .dm-work/data/switch/3.3.94012/Update
+          key: game-${{ runner.os }}-${{ hashFiles('build-config.json') }}-${{ inputs.input_revision }}
+      - name: Download, extract and verify game inputs
+        if: ${{ !inputs.prepare_only }}
+        env:
+          GAME_INPUT_MANIFEST: ${{ secrets.GAME_INPUT_MANIFEST }}
+          PROD_KEYS: ${{ secrets.PROD_KEYS }}
+        run: python scripts/ci.py inputs
+      - name: Cache verified game files before packing
+        if: ${{ !inputs.prepare_only && steps.game.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .dm-work/data/switch/3.3.94012/Update
+          key: ${{ steps.game.outputs.cache-primary-key }}
+      - name: Generate unsigned IPA
+        if: ${{ !inputs.prepare_only }}
+        run: |
+          mkdir -p outputs
+          python -u upstream/dm/tools/d2rm_pack.py \
+            .tools/D2RMobile-shell.ipa \
+            "$DM_ROOT/data/switch/3.3.94012/Update" \
+            outputs/D2RMobile-unsigned.ipa
+          python scripts/ci.py verify-ipa
+      - name: Save generated build cache
+        if: success() && steps.generated.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            .dm-work/build/cache
+            .dm-work/build/gfx
+            .dm-work/build/ios
+            upstream/dm/ios/Gen/assets
+            upstream/dm/ios/Sources/TouchArt
+          key: ${{ steps.generated.outputs.cache-primary-key }}
+      - name: Upload IPA and verification report
+        if: ${{ !inputs.prepare_only }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: D2RMobile-unsigned-${{ github.run_number }}
+          path: outputs/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+      - name: Report result
+        if: success()
+        env:
+          PREPARE_ONLY: ${{ inputs.prepare_only }}
+          GAME_CACHE_HIT: ${{ steps.game.outputs.cache-hit }}
+          GENERATED_CACHE_HIT: ${{ steps.generated.outputs.cache-hit }}
+        run: |
+          python - <<'PY'
+          import os
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              if os.environ['PREPARE_ONLY'] == 'true':
+                  f.write('Toolchain verified and cached. **No game IPA was built in this preparation run.**\n')
+              else:
+                  f.write('Unsigned IPA built and verified; see the artifact and build-report.json.\n')
+                  f.write('Game cache hit: ' + os.environ['GAME_CACHE_HIT'] + '\n\n')
+                  f.write('Generated cache hit: ' + os.environ['GENERATED_CACHE_HIT'] + '\n')
+          PY

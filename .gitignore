@@ -1,0 +1,11 @@
+.tools/
+.dm-work/
+.downloads/
+upstream/
+outputs/
+__pycache__/
+*.keys
+*.nsp
+*.xci
+*.nsz
+*.ipa

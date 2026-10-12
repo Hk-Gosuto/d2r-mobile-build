@@ -1,0 +1,15 @@
+{
+  "upstream_repository": "jhaizhou-ops/d2r-mobile",
+  "upstream_commit": "46578a2b5d302de5d01b5d50b68e2a077e5da0ad",
+  "shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0/D2RMobile-shell.ipa",
+  "shell_sha256": "6c0f76fafc6592c69bff778f498869dbc45d2876ac49138b9a17e2f52cbc0047",
+  "spirv_commit": "6c09849fe88c48eaed08413aa022aaa136a3a057",
+  "hactool_commit": "1d64a83450e025622f3468c28fc4164dad2c5ef6",
+  "game_version": "3.3.94012",
+  "switch_version": "1.0.34.0",
+  "nso_sha256": {
+    "main": "55fd909bb7230b002357e5b0d8499c11f06888f345c49e69eb4734df44a27d0e",
+    "sdk": "1c9f198a91c0bcfee5cf8f5b53fb941895e91334dfb766ce79fc68576797f017",
+    "subsdk0": "67a38fcf89cd13e040a021eb3d157072f38ebf6680a907874c35c7b231b5d4e2"
+  }
+}
