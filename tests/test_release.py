@@ -52,3 +52,12 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(module.subprocess, 'run', return_value=Result()):
             with self.assertRaisesRegex(RuntimeError, '403'):
                 module.release_info('owner/repo', 'tag')
+
+    def test_existing_draft_is_found_when_tag_endpoint_returns_404(self):
+        class Result:
+            returncode = 1
+            stdout = ''
+            stderr = 'HTTP 404 not found'
+        draft = {'id': 123, 'tag_name': 'tag', 'draft': True, 'assets': []}
+        with patch.object(module.subprocess, 'run', return_value=Result()), patch.object(module, 'gh', return_value=module.json.dumps([[draft]])):
+            self.assertEqual(module.release_info('owner/repo', 'tag'), draft)

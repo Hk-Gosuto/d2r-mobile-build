@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/publish-existing.yml
+      - scripts/publish_release.py
 permissions:
   contents: write
   actions: read

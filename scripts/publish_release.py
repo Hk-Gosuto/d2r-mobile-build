@@ -73,6 +73,14 @@ def release_info(repo, tag):
     if result.returncode == 0:
         return json.loads(result.stdout)
     if 'HTTP 404' in result.stderr:
+        # Draft creation may not create the Git tag until publication, so the
+        # tag endpoint can return 404 for an existing draft. Authenticated list
+        # results include drafts and let the two workflows share that draft.
+        pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repo}/releases?per_page=100'))
+        for page in pages:
+            for release in page:
+                if release['tag_name'] == tag:
+                    return release
         return None
     raise RuntimeError('Could not inspect release: ' + result.stderr.strip())
 
@@ -133,6 +141,8 @@ def main(mode):
         gh('release', 'create', tag, '--repo', repo, '--target', os.environ['GITHUB_SHA'],
            '--title', title, '--notes-file', notes, '--draft')
         release = release_info(repo, tag)
+    if release is None:
+        raise RuntimeError('Created release could not be found')
     if release.get('immutable'):
         raise ValueError('Cannot update an immutable release')
     current = {item['name']: item for item in release['assets']}
