@@ -14,6 +14,7 @@ import ci
 PART_BYTES = 1_900_000_000  # Strictly below GitHub's 2 GiB per-asset limit.
 OUT = ci.ROOT / 'outputs'
 STAGE = ci.ROOT / '.release-assets'
+RESOURCE_PART_NAMES = tuple(f'D2R-Mobile-Resources.zip.{i:03d}' for i in range(1, 4))
 
 
 def gh(*args):
@@ -106,6 +107,22 @@ def wait_for_created_release(repo, tag):
     raise RuntimeError('Created release could not be found after retrying')
 
 
+def write_install_guide(destination):
+    path = destination / 'RESOURCE-INSTALL.txt'
+    path.write_text(
+        '下载本 Release 的所有 D2R-Mobile-Resources.zip.00* 分卷及两个 Resources 校验文件。\n\n'
+        'Mac / Linux：在分卷所在目录执行：\n'
+        'shasum -a 256 -c Resources-Parts-SHA256SUMS.txt\n'
+        f"cat {' '.join(RESOURCE_PART_NAMES)} > D2R-Mobile-Resources.zip\n"
+        'shasum -a 256 -c Resources-SHA256SUMS.txt\n\n'
+        'Windows：在分卷所在目录用命令提示符执行：\n'
+        f"copy /b {'+'.join(RESOURCE_PART_NAMES)} D2R-Mobile-Resources.zip\n\n"
+        '解压合并后的 ZIP，将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
+        '打开应用点击重试；首次启动等待着色器编译。IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上。\n'
+        '真机运行验证：iPhone 17 Pro Max，首次着色器编译约 6 分钟；其他机型耗时取决于设备。\n')
+    return path
+
+
 def main(mode):
     repo = os.environ['GITHUB_REPOSITORY']
     revision = os.environ['INPUT_REVISION']
@@ -132,22 +149,13 @@ def main(mode):
         if path.stat().st_size != report['zip_bytes']:
             raise ValueError('Resource ZIP size mismatch')
         assets = split_resources(path, STAGE, report['zip_sha256'])
-        names = ' '.join(path.name for path in assets)
-        (STAGE / 'RESOURCE-INSTALL.txt').write_text(
-            '下载本 Release 的所有 D2R-Mobile-Resources.zip.00* 分卷及两个 Resources 校验文件。\n\n'
-            'Mac / Linux：在分卷所在目录执行：\n'
-            'shasum -a 256 -c Resources-Parts-SHA256SUMS.txt\n'
-            f'cat {names} > D2R-Mobile-Resources.zip\n'
-            'shasum -a 256 -c Resources-SHA256SUMS.txt\n\n'
-            'Windows：在分卷所在目录用命令提示符执行：\n'
-            f"copy /b {'+'.join(path.name for path in assets)} D2R-Mobile-Resources.zip\n\n"
-            '解压合并后的 ZIP，将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
-            '打开应用点击重试；首次启动等待着色器编译。IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上。\n'
-            '真机运行验证：iPhone 17 Pro Max，首次着色器编译约 6 分钟；其他机型耗时取决于设备。\n')
-        assets += [STAGE / 'Resources-Parts-SHA256SUMS.txt', STAGE / 'RESOURCE-INSTALL.txt',
+        if tuple(path.name for path in assets) != RESOURCE_PART_NAMES:
+            raise ValueError('Unexpected number of resource volumes')
+        assets += [STAGE / 'Resources-Parts-SHA256SUMS.txt',
                    OUT / 'resources-report.json', OUT / 'Resources-SHA256SUMS.txt']
     else:
         raise ValueError('Expected ipa or resources')
+    assets.append(write_install_guide(STAGE))
 
     notes = STAGE / 'RELEASE.md'
     notes.write_text(

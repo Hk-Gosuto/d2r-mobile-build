@@ -47,9 +47,12 @@ class ReleaseTests(unittest.TestCase):
             report.update(ipa_bytes=len(content), ipa_sha256=digest)
             (output / 'build-report.json').write_text(json.dumps(report))
             (output / 'SHA256SUMS.txt').write_text(f'{digest}  D2RMobile-unsigned.ipa\n')
+            stage = root / 'stage'
+            stage.mkdir()
+            guide = module.write_install_guide(stage)
             assets = [{'name': path.name, 'size': path.stat().st_size,
                        'digest': 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest()}
-                      for path in output.iterdir()]
+                      for path in [*output.iterdir(), guide]]
             release = {'assets': assets, 'html_url': 'https://github.com/owner/repo/releases/tag/tag'}
             env = {'GITHUB_REPOSITORY': 'owner/repo', 'INPUT_REVISION': 'revision-1', 'GITHUB_SHA': 'abc'}
             with patch.dict(os.environ, env), patch.object(module, 'api', return_value={'private': False}), patch.object(module, 'OUT', output), patch.object(module, 'STAGE', root / 'stage'), patch.object(module, 'release_info', return_value=release), patch.object(module, 'gh') as gh:
