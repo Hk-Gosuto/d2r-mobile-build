@@ -1,38 +1,40 @@
-# D2R Mobile · GitHub Actions 构建与自动发布
+# D2R Mobile · GitHub Actions Builds and Automatic Releases
+
+**English** | [简体中文](README.zh-CN.md)
 
 [![Build IPA](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml)
 [![Export resources](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml)
 
-基于 [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 的 **NO_XCODE** 方案，在 GitHub Actions 的 Ubuntu runner 上生成未签名 IPA、导出配套游戏资源，并在成功后自动发布 Release。
+Build an unsigned IPA, export matching game resources, and publish them automatically to GitHub Releases using the **NO_XCODE** approach from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile). Builds run on Ubuntu runners in GitHub Actions.
 
-本仓库保存构建脚本和固定版本配置。IPA 和资源文件作为 Release / Actions 附件保存，主机密钥和下载输入放在 Actions Secrets 中，不提交到 Git。
+This repository contains build scripts and pinned version settings. IPA and resource files are stored as Release assets and Actions artifacts. Console keys and download inputs are configured through Actions Secrets and are not committed to Git.
 
-## 下载与安装
+## Download and install
 
-进入 **[最新 Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**，在 Assets 中下载：
+Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)** and download these files from Assets:
 
-| 附件 | 用途 |
+| Asset | Purpose |
 | --- | --- |
-| `D2RMobile-unsigned.ipa` | 约 126MB，用 Sideloadly 签名并安装 |
-| `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 配套资源 ZIP 的三个分卷，必须全部下载，总计约 5.42GB |
-| `Resources-Parts-SHA256SUMS.txt` | 检查三个分卷是否完整 |
-| `Resources-SHA256SUMS.txt` | 检查合并后的 ZIP |
-| `RESOURCE-INSTALL.txt` | 分卷合并和资源导入说明 |
-| `build-report.json`、`resources-report.json`、`SHA256SUMS.txt` | 版本、逐文件大小与 SHA256 等校验信息 |
+| `D2RMobile-unsigned.ipa` | About 126 MB; sign and install with Sideloadly |
+| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Three parts of the resource ZIP; download all three, totaling about 5.42 GB |
+| `Resources-Parts-SHA256SUMS.txt` | Verify the three ZIP parts |
+| `Resources-SHA256SUMS.txt` | Verify the combined ZIP |
+| `RESOURCE-INSTALL.txt` | Instructions for combining the parts and importing resources |
+| `build-report.json`, `resources-report.json`, `SHA256SUMS.txt` | Version information, file sizes, and SHA256 checksums |
 
-GitHub 自动附带的 `Source code` 压缩包是构建脚本源码。
+The `Source code` archives that GitHub adds automatically contain the build scripts.
 
-### 1. 安装 IPA
+### 1. Install the IPA
 
-手机需要 **iOS 26 或以上**。用 Sideloadly 签名并安装 IPA，按系统提示完成信任设置。
+Your phone needs **iOS 26 or later**. Sign and install the IPA with Sideloadly, then complete the trust setup prompted by iOS.
 
-**IPA 内包含游戏程序和转换后的着色器等生成内容，地图、模型、音频等大资源需要另外导入。** 只有 IPA 还不能直接游玩。
+**The IPA contains the game program, converted shaders, and other generated content. Large resources such as maps, models, and audio must be imported separately.** Installing only the IPA is not enough to play.
 
-### 2. 合并资源分卷
+### 2. Combine the resource parts
 
-将三个分卷和两个 `Resources-…SHA256SUMS.txt` 文件放在同一目录。
+Place all three parts and both `Resources-…SHA256SUMS.txt` files in the same directory.
 
-macOS：在该目录打开终端，执行：
+On macOS, open a terminal in that directory and run:
 
 ```sh
 shasum -a 256 -c Resources-Parts-SHA256SUMS.txt
@@ -40,61 +42,61 @@ cat D2R-Mobile-Resources.zip.001 D2R-Mobile-Resources.zip.002 D2R-Mobile-Resourc
 shasum -a 256 -c Resources-SHA256SUMS.txt
 ```
 
-Linux 可使用 `sha256sum -c` 替代上面的 `shasum -a 256 -c`。
+On Linux, use `sha256sum -c` in place of `shasum -a 256 -c` above.
 
-Windows：在分卷所在目录打开**命令提示符（cmd）**，执行：
+On Windows, open **Command Prompt (cmd)** in the directory containing the parts and run:
 
 ```bat
 copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Resources.zip.003 D2R-Mobile-Resources.zip
 ```
 
-合并后的完整 ZIP 约 5.42GB，解压后得到 `D2R Mobile Resources` 文件夹，里面有 18 个 `.data` 文件，合计 **5,561,224,037 字节（约 5.56GB）**。保留分卷、合并 ZIP 和解压文件时，需要分别为它们留出空间。
+The combined ZIP is about 5.42 GB. Extract it to get a `D2R Mobile Resources` folder containing 18 `.data` files, totaling **5,561,224,037 bytes (about 5.56 GB)**. If you keep the parts, the combined ZIP, and the extracted files, allow disk space for each copy.
 
-### 3. 导入手机
+### 3. Import resources to your phone
 
-用数据线连接 iPhone，在 **Finder → iPhone → 文件 → D2R Mobile** 中拖入整个 `D2R Mobile Resources` 文件夹；也可以放进手机的 **文件 → 我的 iPhone → D2R Mobile**。
+Connect your iPhone by cable. In **Finder → iPhone → Files → D2R Mobile**, drag in the entire `D2R Mobile Resources` folder. Alternatively, place the folder in **Files → On My iPhone → D2R Mobile** on the phone.
 
-回到应用点击“重试”。首次启动会在手机上编译着色器，等待进度完成，耗时取决于机型。正常覆盖安装且应用标识不变时通常保留资源；卸载应用会删除资源和存档。
+Return to the app and tap **Retry**. On the first launch, the phone compiles shaders; wait for it to finish. The time required depends on the device. Installing over an existing installation with the same app identifier usually preserves resources. Uninstalling the app deletes its resources and saves.
 
-本仓库已完成云端构建与文件完整性校验，**尚未做本仓库产物的真机运行验证**。
+Cloud builds and file integrity checks have passed, but **this repository's outputs have not yet been tested on a physical iPhone**.
 
-## 固定配套版本
+## Pinned versions
 
-| 项目 | 当前配置 |
+| Component | Current setting |
 | --- | --- |
-| 上游 | v1.0，提交 `46578a2b5d302de5d01b5d50b68e2a077e5da0ad` |
-| iOS 壳包 | 上游 v1.0 `D2RMobile-shell.ipa` |
-| Switch 更新 | `1.0.34.0` / `v2228224` |
-| 游戏内部版本 | `3.3.94012` |
+| Upstream | v1.0, commit `46578a2b5d302de5d01b5d50b68e2a077e5da0ad` |
+| iOS shell | Upstream v1.0 `D2RMobile-shell.ipa` |
+| Switch update | `1.0.34.0` / `v2228224` |
+| Internal game version | `3.3.94012` |
 | SPIRV-Cross | `1.4.357.0` |
 
-哈希和工具提交固定在 [build-config.json](build-config.json)。不要混用其他游戏版本或其他上游壳包。导出的 18 个资源档案直接来自合并本体与更新后的 RomFS，打包时不修改内容；文件名和大小按上游清单检查，压缩前后逐文件核对 SHA256。
+Hashes and tool commits are pinned in [build-config.json](build-config.json). Do not mix other game versions or upstream shell packages. The 18 exported resource archives come directly from the RomFS after merging the base game and update; packaging does not modify their contents. File names and sizes are checked against the upstream list, and each file's SHA256 is verified before and after ZIP compression.
 
-## 自己运行构建
+## Run your own build
 
-Fork 后需自行配置输入；Fork 不继承本仓库的 Actions Secrets。请使用自己合法持有并有权使用的游戏输入和主机密钥。
+Configure your own inputs after forking; forks do not inherit this repository's Actions Secrets. Use game inputs and console keys that you legally possess and are authorized to use.
 
-在 **Settings → Secrets and variables → Actions** 配置：
+Configure these secrets under **Settings → Secrets and variables → Actions**:
 
-| Secret | 说明 |
+| Secret | Description |
 | --- | --- |
-| `GAME_INPUT_MANIFEST` | 必需，JSON 格式的下载输入清单 |
-| `PROD_KEYS` | NSP/XCI 解包时使用的 `prod.keys` 全文；已解密输入无需配置 |
+| `GAME_INPUT_MANIFEST` | Required: a JSON manifest describing download inputs |
+| `PROD_KEYS` | Full contents of `prod.keys` for NSP/XCI extraction; not needed for already decrypted inputs |
 
-方案 A：已经解密、合并更新后的 ExeFS / RomFS 压缩包：
+Option A: an archive containing decrypted ExeFS / RomFS with the update already merged:
 
 ```json
 {
   "kind": "prepared",
   "files": [
-    {"name": "game.zip", "url": "https://example.com/your-game.zip", "sha256": "替换为文件的64位SHA256"}
+    {"name": "game.zip", "url": "https://example.com/your-game.zip", "sha256": "REPLACE_WITH_THE_FILES_64_HEX_CHARACTER_SHA256"}
   ]
 }
 ```
 
-压缩包里需要唯一一组 `ExeFS/` 与 `RomFS/`。程序与资源必须对应上表版本。
+The archive must contain exactly one pair of `ExeFS/` and `RomFS/` directories. The program and resources must match the versions in the table above.
 
-方案 B：本体与指定更新的 NSP/XCI，同时配置 `PROD_KEYS`：
+Option B: NSP/XCI packages for the base game and specified update, with `PROD_KEYS` also configured:
 
 ```json
 {
@@ -106,58 +108,58 @@ Fork 后需自行配置输入；Fork 不继承本仓库的 Actions Secrets。请
 }
 ```
 
-URL 必须能直接返回文件，验证码页面和网盘展示页不能用于无人值守下载。普通文件的 `sha256` 可省略；填写时必须是实际哈希。支持 zip/rar/7z 包装和 RAR 分卷；NSZ 不支持。DLC 包不参与此脚本的提取。
+URLs must return files directly. CAPTCHA pages and file-hosting landing pages cannot be used for unattended downloads. The `sha256` field is optional for ordinary files; when provided, it must contain the actual hash. ZIP/RAR/7z wrappers and multipart RAR archives are supported. NSZ is not supported. DLC packages are not extracted by this script.
 
-也支持 `.torrent` 输入：必须提供元数据文件的 `sha256`，并以 `select: [1, 2]` 明确指定要下载的包序号。高级输入可配置带 URL 和 SHA256 的 `key_archive`，该配置也应放入 Secret；归档读取后立即删除，不进入缓存。
+`.torrent` inputs are also supported: provide the metadata file's `sha256` and explicitly select package indices with `select: [1, 2]`. Advanced inputs may include a `key_archive` with a URL and SHA256; keep that configuration in the Secret as well. The key archive is deleted immediately after reading and is not cached.
 
-### 工作流
+### Workflows
 
-| 工作流 | 作用 |
+| Workflow | Purpose |
 | --- | --- |
-| **Build D2R Mobile IPA** | 准备游戏输入，生成并验证 IPA，自动上传 Release |
-| **Export D2R Mobile resources** | 从已有原始下载缓存重新解包，导出 18 个资源档案，自动上传资源分卷到 Release |
-| **Probe remote game source** | 从 Secret 读取种子输入，短暂测试指定包的连通性，不生成完整游戏文件 |
-| **Check PNG encoder compatibility** | 检查尚未过期的 PNG 诊断 artifact，仅用于排错 |
+| **Build D2R Mobile IPA** | Prepare game inputs, generate and validate an IPA, and automatically upload it to the Release |
+| **Export D2R Mobile resources** | Extract again from the existing raw download cache, export 18 resource archives, and automatically upload resource parts to the Release |
+| **Probe remote game source** | Read torrent inputs from the Secret and briefly test connectivity for a selected package; does not produce complete game files |
+| **Check PNG encoder compatibility** | Inspect an unexpired PNG diagnostic artifact for troubleshooting |
 
-先运行 **Build D2R Mobile IPA**，再运行 **Export D2R Mobile resources**。资源导出工作流要求原始下载和解包工具缓存存在，缓存缺失时停止，不会自行重新下载游戏。
+Run **Build D2R Mobile IPA** first, then **Export D2R Mobile resources**. Resource export requires the raw download and extraction tool caches to exist. If a required cache is missing, it stops rather than downloading the game again.
 
-构建参数：
+Build inputs:
 
-- `prepare_only=false`：完整构建 IPA。
-- `prepare_only=true`：只验证工具链和预热缓存，不生成 IPA、不发布 Release。
-- `input_revision`：两个工作流使用相同值；更换输入文件时修改它，区分缓存和 Release。
+- `prepare_only=false`: build the complete IPA.
+- `prepare_only=true`: validate the toolchain and warm caches only; no IPA or Release is produced.
+- `input_revision`: use the same value in both workflows. Change it when replacing input files to distinguish caches and Releases.
 
-构建通过 Actions 的 **Run workflow** 启动；**Release 发布是成功构建后的自动步骤，不需要另外运行发布任务或填写标签**。
+Start builds with **Run workflow** in Actions. **Release publishing happens automatically after successful builds; no separate publishing task or manually entered tag is needed.**
 
-## 自动发布与产物
+## Automatic releases and outputs
 
-Release 标签由游戏版本、上游提交和 `input_revision` 自动生成。同一配套版本的两个工作流更新同一个 Release；首次只有一种产物时暂存草稿，IPA、三个资源分卷及配套文件齐全后自动发布。后续同版本构建更新相应附件，版本或输入修订号变化时创建另一份 Release。
+Release tags are generated from the game version, upstream commit, and `input_revision`. Both workflows update the same Release for matching versions. When only one type of output is available initially, the Release remains a draft. It is published automatically once the IPA, all three resource parts, and accompanying files are present. Later builds of the same version update the corresponding assets; changing the version or input revision creates a separate Release.
 
-GitHub 每个 Release 附件必须小于 2GiB，因此资源 ZIP 按每卷最多 1,900,000,000 字节拆分。上传前检查本地产物 SHA256，上传后检查附件大小及 GitHub 返回的 SHA256。
+Each GitHub Release asset must be smaller than 2 GiB, so the resource ZIP is split into parts of at most 1,900,000,000 bytes. Local SHA256 checks run before upload; asset sizes and the SHA256 returned by GitHub are checked afterward.
 
-Actions artifact 保留 **3 天**：IPA artifact 内有 IPA 和构建报告，资源 artifact 内是**完整资源 ZIP**和报告，不需要合并分卷。Release 附件不受 Actions artifact 的保留期影响。
+Actions artifacts are retained for **3 days**. The IPA artifact contains the IPA and build report. The resource artifact contains the **complete resource ZIP** and report, so no part combining is required. Release assets are independent of the Actions artifact retention period.
 
-## 公开仓库与输入可见性
+## Public repository and input visibility
 
-这个仓库已公开，**Release、Actions 日志和构建产物可被其他人访问**；下载 Actions artifact 需要登录 GitHub 并有仓库读取权限。[GitHub 说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
+This repository is public. **Other people can access Releases, Actions logs, and build outputs.** Downloading Actions artifacts requires a GitHub login and read access to the repository. [GitHub documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
 
-Actions Secrets 的值不会因为仓库公开而展示给访客，Fork 的 PR 工作流默认也拿不到原仓库 Secrets。不要把实际下载凭据、密钥内容写进 README、提交、日志或 artifact。[GitHub Secrets 说明](https://docs.github.com/en/code-security/reference/secret-security/secret-types)
+Making the repository public does not expose Actions Secret values to visitors. Pull request workflows from forks also do not receive the original repository's Secrets by default. Do not put actual download credentials or key contents in the README, commits, logs, or artifacts. [GitHub Secrets documentation](https://docs.github.com/en/code-security/reference/secret-security/secret-types)
 
-**Actions 缓存不能视为私有文件存储。** GitHub 明确说明，能向仓库发起 PR 的人可能读取基础分支的缓存；本项目的缓存包含原始游戏包和生成内容，不包含主机密钥或输入 Secret 原文。若输入文件需要保密，应在独立私有仓库或受控存储中构建，不使用此公开仓库的缓存。[GitHub 缓存说明](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
+**Actions caches are not private file storage.** GitHub states that people who can open pull requests may be able to read caches from the base branch. This project's caches include raw game packages and generated content, but not console keys or the original input Secret text. If input files must remain private, build in a separate private repository or controlled storage environment instead of using this public repository's caches. [GitHub caching documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
 
-当前工作流只通过手动构建入口运行，没有给外部 PR 执行带 Secrets 或写入 Release 的构建步骤。
+The current workflows are started manually. They do not run build steps with Secrets or Release write access for external pull requests.
 
-## 缓存与校验
+## Caching and validation
 
-- **工具缓存**：SPIRV-Cross、hactool 和上游壳包。
-- **原始下载缓存**：完整游戏输入和大小 / SHA256 清单，下载成功后立即保存，再读取密钥并解包。后续解包或编译失败仍可复用。
-- **生成缓存**：改写后的游戏程序、着色器转换工具与结果、界面素材。
-- **PNG 压缩后端和 Python 依赖缓存**：固定版本，避免生成内容变化。
+- **Tool cache:** SPIRV-Cross, hactool, and the upstream shell package.
+- **Raw download cache:** complete game inputs and a size / SHA256 manifest. It is saved immediately after successful downloads, before reading keys and extracting files, so later extraction or compilation failures do not require another download.
+- **Generated cache:** the rewritten game program, shader conversion tools and results, and UI assets.
+- **PNG compression backend and Python dependency caches:** pinned versions to keep generated content consistent.
 
-原始下载缓存独立于密钥与解包脚本；修改解包流程或更换密钥不会使其失效。生成缓存按工具、配置和输入修订号区分。密钥仅写入临时目录，提取结束后删除，不进入缓存或附件。
+The raw download cache is independent of keys and extraction scripts. Changing the extraction process or replacing keys does not invalidate it. Generated caches are distinguished by tools, configuration, and input revision. Keys are written only to a temporary directory and deleted after extraction; they are not included in caches or assets.
 
-GitHub 缓存有容量和淘汰机制，不是永久备份。云端解包前会清理临时 runner 上无关的预装 SDK，并检查至少 28GiB 空闲空间；不修改本地电脑。
+GitHub caches have storage limits and eviction rules; they are not permanent backups. Before cloud extraction, the workflow removes unrelated preinstalled SDKs from the temporary runner and checks for at least 28 GiB of free space. It does not modify your local computer.
 
-完整构建及缓存复用分别在 [首次成功构建](https://github.com/jiayx/d2r-mobile-build/actions/runs/38249053001) 和 [缓存复用构建](https://github.com/jiayx/d2r-mobile-build/actions/runs/38251016443) 验证。原始程序哈希、冻结 PNG、着色器源码摘要、安装包内容清单和 ZIP CRC 均通过检查；文件校验不代表已完成真机测试。
+The full build and cache reuse were verified in the [first successful build](https://github.com/jiayx/d2r-mobile-build/actions/runs/38249053001) and [cache reuse build](https://github.com/jiayx/d2r-mobile-build/actions/runs/38251016443). Checks passed for original program hashes, frozen PNG outputs, shader source digests, package content manifests, and ZIP CRCs. File validation does not mean physical device testing has been completed.
 
-公开上游源码缺少录制的启动预取表 `bootlist.tsv`，运行时支持缺表时跳过预取。本流程仅从临时壳的内容清单移除该可选项，其他壳文件保持原字节；构建报告标记 `startup_prefetch: false`，未启用这项启动加速优化。
+The public upstream source does not include the recorded startup prefetch table `bootlist.tsv`. The runtime supports skipping prefetch when that table is absent. This workflow removes only that optional entry from the temporary shell's content manifest; all other shell files retain their original bytes. Build reports record `startup_prefetch: false`, so this startup optimization is not enabled.
