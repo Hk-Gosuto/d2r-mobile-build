@@ -72,6 +72,19 @@ class InputVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'truncated'):
             ci.ticket_title_key(data[:300])
 
+    def test_diagnostics_do_not_include_key_values(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            logs = root / 'downloads'
+            logs.mkdir()
+            secret = '12ab' * 8
+            (logs / 'extract.log').write_text('Titlekey (Encrypted) ' + secret + '\nerror: missing RomFS\n')
+            with patch.object(ci, 'ROOT', root), patch.object(ci, 'WORK', logs), patch.object(ci, 'DM', root):
+                ci.diagnostics()
+            saved = next((root / 'outputs/diagnostics').glob('*.log')).read_text()
+            self.assertNotIn(secret, saved)
+            self.assertIn('error: missing RomFS', saved)
+
     def test_extracts_shell_version_from_manifest(self):
         with tempfile.TemporaryDirectory() as temp:
             shell = Path(temp) / 'shell.ipa'

@@ -148,6 +148,17 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+      - name: Collect sanitized failure diagnostics
+        if: failure()
+        run: python scripts/ci.py diagnostics
+      - name: Upload sanitized failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build-diagnostics-${{ github.run_number }}
+          path: outputs/diagnostics/
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Report result
         if: success()
         env:

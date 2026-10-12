@@ -326,9 +326,22 @@ def verify_ipa():
     print('IPA verified:', output.stat().st_size, 'bytes;', len(shader_files), 'shader libraries')
 
 
+def diagnostics():
+    target = ROOT / 'outputs/diagnostics'
+    target.mkdir(parents=True, exist_ok=True)
+    sources = list(WORK.glob('*.log')) + list((DM / 'build/pack/stage').glob('*.log'))
+    sources += list((DM / 'build/cache/dm/out').glob('*/*.patch.log'))
+    for i, path in enumerate(sources):
+        content = path.read_text(errors='replace')
+        # Never publish 128-bit (or longer) key values from tool diagnostics.
+        content = re.sub(r'(?i)(?<![0-9a-f])[0-9a-f]{32,}(?![0-9a-f])', '[hex redacted]', content)
+        (target / f'{i:02}-{path.name}').write_text(content)
+    print('Sanitized diagnostic logs:', len(sources))
+
+
 if __name__ == '__main__':
     try:
-        {'shell': ensure_shell, 'inputs': prepare_game, 'validate-game': validate_game, 'verify-ipa': verify_ipa}[sys.argv[1]]()
+        {'shell': ensure_shell, 'inputs': prepare_game, 'validate-game': validate_game, 'verify-ipa': verify_ipa, 'diagnostics': diagnostics}[sys.argv[1]]()
     except Exception as error:
         print(f'::error::{error}', file=sys.stderr)
         sys.exit(1)
