@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import time
+from urllib.parse import unquote, urlparse
 
 import ci
 
@@ -87,8 +88,16 @@ def release_info(repo, tag):
     raise RuntimeError('Could not inspect release: ' + result.stderr.strip())
 
 
-def publish_complete(repo, tag, notes):
-    gh('release', 'edit', tag, '--repo', repo, '--notes-file', notes, '--draft=false', '--latest')
+def release_title():
+    upstream_version = unquote(urlparse(ci.CONFIG['shell_url']).path.split('/releases/download/', 1)[1].split('/', 1)[0])
+    return f"D2R Mobile {upstream_version} · Game {ci.CONFIG['game_version']}"
+
+
+def publish_complete(repo, tag, notes, title=None):
+    args = ['release', 'edit', tag, '--repo', repo, '--notes-file', notes, '--draft=false', '--latest']
+    if title is not None:
+        args += ['--title', title]
+    gh(*args)
     release = release_info(repo, tag)
     if release is None or release['draft']:
         raise RuntimeError('Release did not become published')
@@ -131,7 +140,7 @@ def main(mode):
     repository = api(f'repos/{repo}')
     print('Release visibility:', 'private' if repository['private'] else 'public', flush=True)
     tag = f"d2r-{ci.CONFIG['game_version']}-{ci.CONFIG['upstream_commit'][:8]}-{revision}"
-    title = f"D2R Mobile {ci.CONFIG['game_version']} ({revision})"
+    title = release_title()
     STAGE.mkdir(exist_ok=True)
     if mode == 'ipa':
         report = json.loads((OUT / 'build-report.json').read_text())
@@ -199,7 +208,7 @@ def main(mode):
     if required <= remote.keys():
         # Refresh after publication: GitHub assigns a temporary untagged URL
         # to drafts, which must not be used as the final download link.
-        release = publish_complete(repo, tag, notes)
+        release = publish_complete(repo, tag, notes, title=title)
         print('Published complete release:', release['html_url'], flush=True)
         status = 'Published complete Release'
     else:
