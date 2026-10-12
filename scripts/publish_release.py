@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 
 import ci
 
@@ -93,6 +94,18 @@ def publish_complete(repo, tag, notes):
     return release
 
 
+def wait_for_created_release(repo, tag):
+    # A successful create can precede visibility in the tag/list endpoints.
+    # Retry reads only: never create another draft after a successful create.
+    for attempt in range(6):
+        release = release_info(repo, tag)
+        if release is not None:
+            return release
+        if attempt < 5:
+            time.sleep(2)
+    raise RuntimeError('Created release could not be found after retrying')
+
+
 def main(mode):
     repo = os.environ['GITHUB_REPOSITORY']
     revision = os.environ['INPUT_REVISION']
@@ -148,7 +161,7 @@ def main(mode):
     if release is None:
         gh('release', 'create', tag, '--repo', repo, '--target', os.environ['GITHUB_SHA'],
            '--title', title, '--notes-file', notes, '--draft')
-        release = release_info(repo, tag)
+        release = wait_for_created_release(repo, tag)
     if release is None:
         raise RuntimeError('Created release could not be found')
     if release.get('immutable'):

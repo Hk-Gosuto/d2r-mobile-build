@@ -15,6 +15,26 @@ spec.loader.exec_module(module)
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_new_draft_lookup_retries_until_visible(self):
+        draft = {'id': 123, 'draft': True, 'assets': []}
+        with patch.object(module, 'release_info', side_effect=[None, None, draft]) as lookup, patch.object(module.time, 'sleep') as sleep:
+            self.assertEqual(module.wait_for_created_release('owner/repo', 'tag'), draft)
+            self.assertEqual(lookup.call_count, 3)
+            self.assertEqual(sleep.call_count, 2)
+
+    def test_new_draft_lookup_stops_after_bounded_retries(self):
+        with patch.object(module, 'release_info', return_value=None) as lookup, patch.object(module.time, 'sleep') as sleep:
+            with self.assertRaisesRegex(RuntimeError, 'after retrying'):
+                module.wait_for_created_release('owner/repo', 'tag')
+            self.assertEqual(lookup.call_count, 6)
+            self.assertEqual(sleep.call_count, 5)
+
+    def test_new_draft_lookup_does_not_hide_permission_errors(self):
+        with patch.object(module, 'release_info', side_effect=RuntimeError('HTTP 403')), patch.object(module.time, 'sleep') as sleep:
+            with self.assertRaisesRegex(RuntimeError, '403'):
+                module.wait_for_created_release('owner/repo', 'tag')
+            sleep.assert_not_called()
+
     def test_public_repository_accepts_verified_ipa_publication(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
