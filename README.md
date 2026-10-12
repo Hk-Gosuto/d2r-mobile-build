@@ -58,7 +58,7 @@ Connect your iPhone by cable. In **Finder → iPhone → Files → D2R Mobile**,
 
 Return to the app and tap **Retry**. On the first launch, the phone compiles shaders; wait for it to finish. The time required depends on the device. Installing over an existing installation with the same app identifier usually preserves resources. Uninstalling the app deletes its resources and saves.
 
-Cloud builds and file integrity checks have passed, but **this repository's outputs have not yet been tested on a physical iPhone**.
+**Tested on iPhone 17 Pro Max.** Initial shader compilation takes about **6 minutes** on this device. Compilation time varies by device.
 
 ## Pinned versions
 

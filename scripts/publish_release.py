@@ -143,7 +143,7 @@ def main(mode):
             f"copy /b {'+'.join(path.name for path in assets)} D2R-Mobile-Resources.zip\n\n"
             '解压合并后的 ZIP，将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
             '打开应用点击重试；首次启动等待着色器编译。IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上。\n'
-            '游戏文件与打包校验已通过，本次产物尚未经过真机运行验证。\n')
+            '真机运行验证：iPhone 17 Pro Max，首次着色器编译约 6 分钟；其他机型耗时取决于设备。\n')
         assets += [STAGE / 'Resources-Parts-SHA256SUMS.txt', STAGE / 'RESOURCE-INSTALL.txt',
                    OUT / 'resources-report.json', OUT / 'Resources-SHA256SUMS.txt']
     else:
@@ -155,7 +155,7 @@ def main(mode):
         '- `D2RMobile-unsigned.ipa`：用 Sideloadly 签名安装，需要 iOS 26 或以上。\n'
         '- `D2R-Mobile-Resources.zip.001` 等：必须下载全部分卷，按 `RESOURCE-INSTALL.txt` 合并并校验，再解压导入应用。\n'
         '- `build-report.json`、`resources-report.json` 与 SHA256 文件：版本及完整性信息。\n\n'
-        'IPA 与 18 个资源文件配套使用；首次启动在手机上编译着色器。文件已通过构建校验，尚未真机验证。\n\n'
+        'IPA 与 18 个资源文件配套使用；首次启动在手机上编译着色器。真机运行验证：iPhone 17 Pro Max，首次着色器编译约 6 分钟；其他机型耗时取决于设备。\n\n'
         '本 Release 由成功构建自动维护，同一配套版本的后续构建会更新对应附件。\n')
     release = release_info(repo, tag)
     if release is None:
