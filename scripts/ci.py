@@ -207,7 +207,7 @@ def load_prod_keys(manifest):
 
 def ticket_title_key(data):
     # https://switchbrew.org/wiki/Ticket ; hactool expects encrypted title keys.
-    signature = int.from_bytes(data[:4], 'big')
+    signature = int.from_bytes(data[:4], 'little')
     offsets = {0x10000: 0x240, 0x10001: 0x140, 0x10002: 0x80,
                0x10003: 0x240, 0x10004: 0x140, 0x10005: 0x80, 0x10006: 0x40}
     offset = offsets.get(signature)

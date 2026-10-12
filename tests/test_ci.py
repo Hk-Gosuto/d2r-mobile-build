@@ -109,7 +109,8 @@ class InputVerificationTests(unittest.TestCase):
     def test_ticket_extracts_common_encrypted_key_and_rights_id(self):
         # Real source packages contain a 0x2C0-byte common ticket, not 0x400.
         data = bytearray(0x2C0)
-        data[:4] = (0x10004).to_bytes(4, 'big')
+        # Literal bytes observed in the package; signature type is little endian.
+        data[:4] = bytes.fromhex('04000100')
         data[0x180:0x190] = bytes(range(16))
         data[0x2A0:0x2B0] = bytes(range(16, 32))
         self.assertEqual(ci.ticket_title_key(data), (bytes(range(16, 32)).hex(), bytes(range(16)).hex()))
