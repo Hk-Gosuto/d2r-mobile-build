@@ -123,6 +123,10 @@ def unpack_archives():
                 if clean.startswith('/') or '..' in clean.split('/') or re.match(r'^[A-Za-z]:', clean):
                     raise ValueError('Unsafe archive member path')
             run(['7z', 'x', '-y', f'-o{target}', path], WORK / 'archive.log')
+    # Compressed wrappers are no longer needed; keep unpacked packages only.
+    for path in WORK.iterdir():
+        if path.is_file() and re.search(r'\.(zip|rar|7z)(\.\d{3})?$', path.name.lower()):
+            path.unlink()
 
 
 def prepare_game():
