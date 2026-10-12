@@ -68,7 +68,7 @@ jobs:
       - name: Install compiler and archive tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends clang cmake ninja-build p7zip-full p7zip-rar aria2 fonts-dejavu-core
+          sudo apt-get install -y --no-install-recommends clang cmake ninja-build p7zip-full p7zip-rar aria2 fonts-dejavu-core libjpeg-dev zlib1g-dev libfreetype6-dev libraqm-dev
           python -m pip install -r requirements.txt
           df -h "$GITHUB_WORKSPACE"
       - name: Restore build tools
@@ -144,6 +144,7 @@ jobs:
         if: ${{ !inputs.prepare_only }}
         run: |
           mkdir -p outputs
+          python -u scripts/png_preflight.py
           python -u upstream/dm/tools/d2rm_pack.py \
             .tools/D2RMobile-shell.ipa \
             "$DM_ROOT/data/switch/3.3.94012/Update" \
@@ -181,6 +182,14 @@ jobs:
           path: outputs/diagnostics/
           if-no-files-found: ignore
           retention-days: 3
+      - name: Upload PNG compatibility diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: png-compat-${{ github.run_number }}
+          path: outputs/png-compat/
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Report result
         if: success()
         env:
