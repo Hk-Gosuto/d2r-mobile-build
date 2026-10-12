@@ -48,6 +48,23 @@ class InputVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'HTTPS'):
             ci.download('http://example.invalid/game.zip', '/unused')
 
+    def test_nca_keys_exclude_malformed_unused_derivation_sources(self):
+        text = ('header_key = ' + 'ab' * 32 + '\nmaster_key_10 = ' + 'cd' * 16
+                + '\nmaster_kek_source_10 = ' + 'ef' * 17
+                + '\neticket_rsa_keypair = ' + '01' * 528)
+        normalized = ci.normalize_prod_keys(text)
+        self.assertIn('master_key_10 = ' + 'cd' * 16, normalized)
+        self.assertNotIn('master_kek_source', normalized)
+        self.assertNotIn('eticket', normalized)
+
+    def test_invalid_required_nca_key_fails_without_disclosing_value(self):
+        value = 'ab' * 17
+        with self.assertRaisesRegex(ValueError, 'header_key') as error:
+            ci.normalize_prod_keys('header_key = ' + value)
+        self.assertNotIn(value, str(error.exception))
+        with self.assertRaisesRegex(ValueError, 'header_key'):
+            ci.normalize_prod_keys('master_key_10 = ' + '00' * 16)
+
     def test_torrent_requires_pinned_metadata_and_explicit_selection(self):
         with self.assertRaisesRegex(ValueError, 'SHA256'):
             ci.download_torrent(Path('game.torrent'), {'select': [1, 2]})

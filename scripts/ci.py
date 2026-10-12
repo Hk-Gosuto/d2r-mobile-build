@@ -141,6 +141,7 @@ def download_torrent(path, item):
     result = subprocess.run([
         'aria2c', f'--dir={WORK}', '--seed-time=0', '--file-allocation=none',
         '--check-integrity=true', '--bt-stop-timeout=180',
+        '--bt-remove-unselected-file=true',
         '--max-upload-limit=128K', '--summary-interval=30',
         '--console-log-level=warn', '--enable-color=false',
         '--select-file=' + ','.join(map(str, selected)), str(path),
@@ -149,10 +150,40 @@ def download_torrent(path, item):
         raise RuntimeError('Selected torrent download did not finish')
 
 
+def normalize_prod_keys(text):
+    # NCA decryption needs no console-specific secrets or derivation-source
+    # tables. Ignore those fields rather than guessing corrections to keys.
+    fixed = {'header_key': 64, 'aes_kek_generation_source': 32,
+             'aes_key_generation_source': 32,
+             'key_area_key_application_source': 32, 'titlekek_source': 32}
+    pairs = {}
+    for line in text.lstrip('\ufeff').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        key, sep, value = line.partition('=')
+        key, value = key.strip(), value.strip()
+        if not sep or not re.fullmatch(r'[a-z0-9_]+', key):
+            raise ValueError('Invalid prod.keys syntax')
+        length = fixed.get(key)
+        if re.fullmatch(r'(master_key|titlekek|key_area_key_application)_[0-9a-f]{2}', key):
+            length = 32
+        if length is None:
+            continue
+        if not re.fullmatch(r'[0-9a-fA-F]{' + str(length) + r'}', value):
+            raise ValueError('Invalid prod.keys field length or encoding: ' + key)
+        if key in pairs and pairs[key] != value.lower():
+            raise ValueError('Conflicting prod.keys field: ' + key)
+        pairs[key] = value.lower()
+    if 'header_key' not in pairs:
+        raise ValueError('Key input is missing a valid header_key')
+    return ''.join(f'{key} = {value}\n' for key, value in sorted(pairs.items()))
+
+
 def load_prod_keys(manifest):
     text = os.environ.get('PROD_KEYS', '').strip()
     if text:
-        return text
+        return normalize_prod_keys(text)
     source = manifest.get('key_archive')
     if not source:
         raise ValueError('PROD_KEYS secret required to decrypt NSP/XCI; alternatively provide prepared ExeFS/RomFS')
@@ -166,17 +197,7 @@ def load_prod_keys(manifest):
             if len(names) != 1:
                 raise ValueError('Key archive must contain one prod.keys file')
             text = z.read(names[0]).decode('utf-8-sig')
-        pairs = {}
-        for line in text.splitlines():
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            key, sep, value = line.partition('=')
-            if not sep or not re.fullmatch(r'[a-z0-9_]+', key.strip()) or not re.fullmatch(r'[0-9a-fA-F]+', value.strip()):
-                raise ValueError('Invalid prod.keys syntax')
-            pairs[key.strip()] = value.strip()
-        if len(pairs.get('header_key', '')) != 64:
-            raise ValueError('Key archive is missing a valid header_key')
+        text = normalize_prod_keys(text)
         print('Remote key archive checksum and syntax verified; values suppressed')
         return text
     finally:
