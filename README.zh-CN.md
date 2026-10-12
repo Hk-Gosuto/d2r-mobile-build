@@ -1,17 +1,113 @@
-# D2R Mobile · GitHub Actions 构建与自动发布
+# D2R Mobile · GitHub Actions 构建模板
 
 [English](README.md) | **简体中文**
 
-[![Build IPA](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml)
-[![Export resources](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml)
+**[基于此模板创建自己的仓库](https://github.com/jiayx/d2r-mobile-build/generate)**
 
-基于 [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 的 **NO_XCODE** 方案，在 GitHub Actions 的 Ubuntu runner 上生成未签名 IPA、导出配套游戏资源，并在成功后自动发布 Release。
+基于 [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 的 **NO_XCODE** 方案，在自己的 GitHub 仓库中构建未签名 IPA 和配套游戏资源。构建在 GitHub Actions 的 Ubuntu runner 上运行，产物自动发布到运行工作流的仓库。
 
-本仓库保存构建脚本和固定版本配置。IPA 和资源文件作为 Release / Actions 附件保存，主机密钥和下载输入放在 Actions Secrets 中，不提交到 Git。
+请基于模板创建**私有仓库**，提供自己合法持有且有权处理的游戏文件与主机密钥。模板创建会复制源码文件，不继承 Secrets、Release、Actions 附件或缓存。模板不提供游戏下载来源或密钥。
 
-## 下载与安装
+## 1. 创建私有仓库
 
-进入 **[最新 Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**，在 Assets 中下载：
+1. 点击 **Use this template → Create a new repository**，或使用上面的创建链接。
+2. **Owner** 选择自己的账号，**Repository name** 自行填写，选择 **Private**。无需勾选 **Include all branches**，默认分支即可。
+3. 点击 **Create repository from template**，之后的操作都在**新建的仓库**中进行。
+4. 打开 **Actions**，如果 GitHub 提示启用工作流，按提示启用。账号或组织策略需要允许工作流使用的 Actions。私有仓库运行会使用你账号的 Actions 额度或计费设置。
+
+无需修改脚本中的仓库账号、壳包地址、源码提交或工具版本。发布脚本自动识别当前仓库，使用 GitHub 自动提供的 `GITHUB_TOKEN`，无需另外配置个人访问令牌。工作流已声明 `contents: write`，仍受组织策略约束。
+
+## 2. 配置游戏输入
+
+在新仓库打开 **Settings → Secrets and variables → Actions → New repository secret**。添加的是 **Secrets**，不是 Variables：
+
+| Secret 名称 | 是否必需 | 填写内容 |
+| --- | --- | --- |
+| `GAME_INPUT_MANIFEST` | 必需 | 以下两种 JSON 清单任选一种，将地址替换为自己的文件直链 |
+| `PROD_KEYS` | `packages` 需要 | 自己的 `prod.keys` 文件**完整文本内容**，不是文件路径；`prepared` 无需配置 |
+
+两种输入**选择一种**即可，均需符合[固定配套版本](#固定配套版本)。上游要求包含「术士君临」资料片，不含资料片的版本不支持、也未验证。
+
+### 方案 A：`packages`，本体与更新包
+
+将 `GAME_INPUT_MANIFEST` 设置为：
+
+```json
+{
+  "kind": "packages",
+  "files": [
+    {"name": "base.nsp", "url": "https://example.com/your-base.nsp"},
+    {"name": "update.nsp", "url": "https://example.com/your-update.nsp"}
+  ]
+}
+```
+
+替换两个地址，提供本体和 **Switch `1.0.34.0`（`v2228224`）更新包**，同时添加 `PROD_KEYS` Secret。`packages` 是输入类型，不代表只有一个地址：`files` 可以包含多个下载项。如果一个 ZIP/7z/RAR 已同时包含本体与更新，只填写一个下载项即可，例如 `{"name": "game.zip", "url": "https://example.com/your-game.zip"}`。支持 NSP/XCI 和 RAR 分卷，不支持 NSZ。DLC 包不参与此脚本的提取。
+
+### 方案 B：`prepared`，已解密的 ExeFS 与 RomFS
+
+将 `GAME_INPUT_MANIFEST` 设置为：
+
+```json
+{
+  "kind": "prepared",
+  "files": [
+    {"name": "game.zip", "url": "https://example.com/your-game.zip"}
+  ]
+}
+```
+
+压缩包内必须包含唯一一组同级 `ExeFS/` 和 `RomFS/` 目录，已经解密并合并指定更新，对应内部版本 **`3.3.94012`**。不能将 NSP/XCI 改名后当作此类输入。此方案不需要 `PROD_KEYS`。`packages` 流程已完整验证；`prepared` 已有实现，但尚未用独立输入压缩包做完整流程验证。
+
+### 下载地址与清单字段
+
+| 字段 | 含义 |
+| --- | --- |
+| `kind` | `packages` 或 `prepared` |
+| `files` | 要下载的文件列表，至少一项 |
+| `files[].name` | 唯一的本地文件名，保留正确扩展名；只能使用字母、数字、`.`、`_`、`-`，且不能以 `.` 开头 |
+| `files[].url` | 直接返回文件的 HTTPS 地址；可以使用自己私有存储的签名下载链接 |
+| `files[].sha256` | 普通文件可省略；填写时应为该下载文件实际的 64 位十六进制 SHA256 |
+
+GitHub runner 无法读取你电脑上的路径。需要把自己的输入放在 GitHub Actions 可访问的存储中，并保证下载结束前链接有效。本地路径、浏览器登录页、验证码页面和网盘展示页不能使用。不要把游戏包或密钥提交到 Git，也不要将真实地址写进公开教程。含凭据的下载地址只放入 Secret；修改清单中的地址也会改变缓存身份。
+
+需要校验下载完整性时，在每个下载项加入 `sha256`。macOS 使用 `shasum -a 256 文件名`，Linux 使用 `sha256sum 文件名` 获取。计算的是下载压缩包本身的哈希，不是解压后的内容。
+
+高级 `.torrent` 输入需要元数据文件的 SHA256，以及明确的包序号，例如 `select: [1, 2]`。仅使用自己有权下载和处理的输入。
+
+## 3. 先构建 IPA，再导出资源
+
+在新仓库进入 **Actions → Build D2R Mobile IPA → Run workflow**，选择 `main`，参数如下：
+
+| 工作流参数 | 正常构建填写 | 何时修改 |
+| --- | --- | --- |
+| `prepare_only` | `false`，不勾选 | `true` 仅检查工具并预热工具缓存，不下载游戏输入、不构建 IPA、不发布 Release |
+| `input_revision` | `game-3.3.94012-v1` | 更换文件或修改下载项时更换；允许 1～64 个字母、数字、`.`、`_`、`-` |
+
+等待 IPA 工作流**成功**后，再运行 **Actions → Export D2R Mobile resources → Run workflow**，选择 `main`，填写**相同的 `input_revision`**。资源工作流复用 IPA 构建保存的原始下载和工具缓存。若所需缓存已被淘汰，先重新运行完整 IPA 构建以补齐缓存，再重试资源导出。
+
+两个工作流成功后，配套 Release 自动发布到**自己的仓库**。首次只有 IPA 时暂存为草稿，等待资源齐全。无需手动打标签、创建 Release 或配置发布令牌。私有仓库的 Release 仅对有仓库访问权限的人开放。
+
+下载已缓存但解包失败时，修正密钥或解包问题，保留原 `input_revision` 重跑即可复用下载。如果修改了清单中的 `kind` 或 `files`，则两个工作流都使用新的修订号，避免复用不同输入。
+
+另外提供 **Probe remote game source**（种子连通性）与 **Check PNG encoder compatibility**（尚未过期的 PNG 诊断附件）用于排错，正常构建无需运行。
+
+## 固定配套版本
+
+| 项目 | 当前配置 |
+| --- | --- |
+| 上游 | v1.0.1，提交 `ea86e79688f9339319de3e2c52c69b8b13e30e9e` |
+| iOS 壳包 | 上游 v1.0.1 `D2RMobile-shell.ipa` |
+| Switch 更新 | `1.0.34.0` / `v2228224` |
+| 游戏内部版本 | `3.3.94012` |
+| 所需版本 | 《暗黑破坏神 II：狱火重生》含「术士君临」资料片 |
+| SPIRV-Cross | `1.4.357.0` |
+
+哈希和工具提交固定在 [build-config.json](build-config.json)。不要混用其他游戏版本或其他上游壳包。导出的 18 个资源档案直接来自合并本体与更新后的 RomFS，打包时不修改内容；文件名和大小按上游清单检查，压缩前后逐文件核对 SHA256。
+
+## 安装自己的构建产物
+
+两个工作流成功后，进入**你自己仓库的 Releases**，在 Assets 中下载：
 
 | 附件 | 用途 |
 | --- | --- |
@@ -60,78 +156,6 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 **本仓库产物已在 iPhone 17 Pro Max 上通过真机运行验证**，首次着色器编译约 **6 分钟**，其他机型耗时取决于设备。
 
-## 固定配套版本
-
-| 项目 | 当前配置 |
-| --- | --- |
-| 上游 | v1.0.1，提交 `ea86e79688f9339319de3e2c52c69b8b13e30e9e` |
-| iOS 壳包 | 上游 v1.0.1 `D2RMobile-shell.ipa` |
-| Switch 更新 | `1.0.34.0` / `v2228224` |
-| 游戏内部版本 | `3.3.94012` |
-| 所需版本 | 《暗黑破坏神 II：狱火重生》含「术士君临」资料片 |
-| SPIRV-Cross | `1.4.357.0` |
-
-哈希和工具提交固定在 [build-config.json](build-config.json)。不要混用其他游戏版本或其他上游壳包。导出的 18 个资源档案直接来自合并本体与更新后的 RomFS，打包时不修改内容；文件名和大小按上游清单检查，压缩前后逐文件核对 SHA256。
-
-## 自己运行构建
-
-Fork 后需自行配置输入；Fork 不继承本仓库的 Actions Secrets。请使用自己合法持有并有权使用的游戏输入和主机密钥。上游要求包含「术士君临」资料片，不含资料片的版本不支持、也未验证。
-
-在 **Settings → Secrets and variables → Actions** 配置：
-
-| Secret | 说明 |
-| --- | --- |
-| `GAME_INPUT_MANIFEST` | 必需，JSON 格式的下载输入清单 |
-| `PROD_KEYS` | NSP/XCI 解包时使用的 `prod.keys` 全文；已解密输入无需配置 |
-
-方案 A：已经解密、合并更新后的 ExeFS / RomFS 压缩包：
-
-```json
-{
-  "kind": "prepared",
-  "files": [
-    {"name": "game.zip", "url": "https://example.com/your-game.zip", "sha256": "替换为文件的64位SHA256"}
-  ]
-}
-```
-
-压缩包里需要唯一一组 `ExeFS/` 与 `RomFS/`。程序与资源必须对应上表版本。
-
-方案 B：本体与指定更新的 NSP/XCI，同时配置 `PROD_KEYS`：
-
-```json
-{
-  "kind": "packages",
-  "files": [
-    {"name": "base.nsp", "url": "https://example.com/your-base.nsp"},
-    {"name": "update.nsp", "url": "https://example.com/your-update.nsp"}
-  ]
-}
-```
-
-URL 必须能直接返回文件，验证码页面和网盘展示页不能用于无人值守下载。普通文件的 `sha256` 可省略；填写时必须是实际哈希。支持 zip/rar/7z 包装和 RAR 分卷；NSZ 不支持。DLC 包不参与此脚本的提取。
-
-也支持 `.torrent` 输入：必须提供元数据文件的 `sha256`，并以 `select: [1, 2]` 明确指定要下载的包序号。高级输入可配置带 URL 和 SHA256 的 `key_archive`，该配置也应放入 Secret；归档读取后立即删除，不进入缓存。
-
-### 工作流
-
-| 工作流 | 作用 |
-| --- | --- |
-| **Build D2R Mobile IPA** | 准备游戏输入，生成并验证 IPA，自动上传 Release |
-| **Export D2R Mobile resources** | 从已有原始下载缓存重新解包，导出 18 个资源档案，自动上传资源分卷到 Release |
-| **Probe remote game source** | 从 Secret 读取种子输入，短暂测试指定包的连通性，不生成完整游戏文件 |
-| **Check PNG encoder compatibility** | 检查尚未过期的 PNG 诊断 artifact，仅用于排错 |
-
-先运行 **Build D2R Mobile IPA**，再运行 **Export D2R Mobile resources**。资源导出工作流要求原始下载和解包工具缓存存在，缓存缺失时停止，不会自行重新下载游戏。
-
-构建参数：
-
-- `prepare_only=false`：完整构建 IPA。
-- `prepare_only=true`：只验证工具链和预热缓存，不生成 IPA、不发布 Release。
-- `input_revision`：两个工作流使用相同值；更换输入文件时修改它，区分缓存和 Release。
-
-构建通过 Actions 的 **Run workflow** 启动；**Release 发布是成功构建后的自动步骤，不需要另外运行发布任务或填写标签**。
-
 ## 自动发布与产物
 
 Release 标签由游戏版本、上游提交和 `input_revision` 自动生成。同一配套版本的两个工作流更新同一个 Release；首次只有一种产物时暂存草稿，IPA、三个资源分卷及配套文件齐全后自动发布。后续同版本构建更新相应附件，版本或输入修订号变化时创建另一份 Release。
@@ -140,15 +164,13 @@ GitHub 每个 Release 附件必须小于 2GiB，因此资源 ZIP 按每卷最多
 
 Actions artifact 保留 **3 天**：IPA artifact 内有 IPA 和构建报告，资源 artifact 内是**完整资源 ZIP**和报告，不需要合并分卷。Release 附件不受 Actions artifact 的保留期影响。
 
-## 公开仓库与输入可见性
+## 可见性与使用权利
 
-这个仓库已公开，**Release、Actions 日志和构建产物可被其他人访问**；下载 Actions artifact 需要登录 GitHub 并有仓库读取权限。[GitHub 说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
+包含自己输入和构建产物的仓库应保持**私有**。Actions 会缓存原始游戏下载和生成内容，IPA 与资源也会上传为构建附件和 Release 附件。不要把公开仓库的缓存当作私有存储。[GitHub 缓存访问说明](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
 
-Actions Secrets 的值不会因为仓库公开而展示给访客，Fork 的 PR 工作流默认也拿不到原仓库 Secrets。不要把实际下载凭据、密钥内容写进 README、提交、日志或 artifact。[GitHub Secrets 说明](https://docs.github.com/en/code-security/reference/secret-security/secret-types)
+本模板仓库公开且有公开的 Release 附件。启用模板不会删除已有 Release、构建附件或缓存，也不会改变它们的访问权限。基于模板新建的仓库不继承这些内容。[GitHub 模板说明](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
 
-**Actions 缓存不能视为私有文件存储。** GitHub 明确说明，能向仓库发起 PR 的人可能读取基础分支的缓存；本项目的缓存包含原始游戏包和生成内容，不包含主机密钥或输入 Secret 原文。若输入文件需要保密，应在独立私有仓库或受控存储中构建，不使用此公开仓库的缓存。[GitHub 缓存说明](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
-
-当前工作流只通过手动构建入口运行，没有给外部 PR 执行带 Secrets 或写入 Release 的构建步骤。
+私有构建和模板功能不授予游戏内容的使用许可，也不能保证合法。请仅使用有权使用的文件和密钥；复制、修改、绕过技术措施与分发产物可能分别受到法律限制。未经授权不要转发游戏内容。[GitHub DMCA 政策](https://docs.github.com/en/site-policy/content-removal-policies/dmca-takedown-policy)
 
 ## 缓存与校验
 
