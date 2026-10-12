@@ -16,8 +16,8 @@ import romfs_art
 
 def main():
     environment = {'pillow': Image.__version__,
-                   'zlib': features.version_module('zlib'),
-                   'zlib_ng': features.version_feature('zlib_ng')}
+                   'zlib': features.version('zlib'),
+                   'zlib_ng': features.version('zlib_ng')}
     print('PNG encoder:', json.dumps(environment), flush=True)
     manifest = json.loads((ci.ROOT / 'upstream/dm/ios/Sources/TouchArt/native_art_manifest.json').read_text())
     for asset in manifest['assets']:
