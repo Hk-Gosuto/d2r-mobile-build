@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automatically publish matching IPA and resources to a private Release."""
+"""Automatically publish matching IPA and resources to a GitHub Release."""
 import hashlib
 import json
 import os
@@ -98,8 +98,8 @@ def main(mode):
     revision = os.environ['INPUT_REVISION']
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', revision):
         raise ValueError('Invalid input revision')
-    if not api(f'repos/{repo}')['private']:
-        raise ValueError('Game release publishing requires a private repository')
+    repository = api(f'repos/{repo}')
+    print('Release visibility:', 'private' if repository['private'] else 'public', flush=True)
     tag = f"d2r-{ci.CONFIG['game_version']}-{ci.CONFIG['upstream_commit'][:8]}-{revision}"
     title = f"D2R Mobile {ci.CONFIG['game_version']} ({revision})"
     STAGE.mkdir(exist_ok=True)

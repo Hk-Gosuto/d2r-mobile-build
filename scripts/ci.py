@@ -38,7 +38,7 @@ def download(url, dest, expected=None):
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_suffix(dest.suffix + '.part')
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'd2r-private-build/1.0'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'd2r-mobile-build/1.0'})
         with urllib.request.urlopen(req, timeout=120) as r:
             if 'text/html' in r.headers.get('Content-Type', '').lower():
                 raise ValueError('Download returned an HTML page; supply a direct file URL')
@@ -348,7 +348,7 @@ def prepare_game():
         validate_game()
     (GAME / '.ci-verified.json').write_text(json.dumps({'game': CONFIG['game_version'], 'nso_sha256': CONFIG['nso_sha256']}))
     shutil.rmtree(WORK)
-    print('Game input verified; original downloads remain in private Actions cache')
+    print('Game input verified; original downloads remain in Actions cache')
 
 
 def extract_packages(key_text):

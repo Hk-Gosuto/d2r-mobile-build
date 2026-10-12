@@ -14,7 +14,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: d2r-private-build
+  group: d2r-build
   cancel-in-progress: false
 jobs:
   pack:
@@ -34,10 +34,8 @@ jobs:
           persist-credentials: false
       - name: Validate repository and cache inputs
         env:
-          IS_PRIVATE: ${{ github.event.repository.private }}
           INPUT_REVISION: ${{ inputs.input_revision }}
         run: |
-          test "$IS_PRIVATE" = true || { echo '::error::Game builds require a private repository'; exit 1; }
           [[ "$INPUT_REVISION" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || exit 1
           python -m unittest discover -s tests -v
       - name: Checkout matching upstream release
@@ -199,7 +197,7 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
-      - name: Automatically publish IPA to the matching private Release
+      - name: Automatically publish IPA to the matching Release
         if: ${{ !inputs.prepare_only }}
         env:
           GH_TOKEN: ${{ github.token }}
