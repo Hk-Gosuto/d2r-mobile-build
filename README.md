@@ -1,113 +1,17 @@
-# D2R Mobile · GitHub Actions Build Template
+# D2R Mobile · GitHub Actions Builds and Automatic Releases
 
 **English** | [简体中文](README.zh-CN.md)
 
-**[Create your own repository from this template](https://github.com/jiayx/d2r-mobile-build/generate)**
+[![Build IPA](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml)
+[![Export resources](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml)
 
-Build an unsigned IPA and matching game resources in your own GitHub repository using the **NO_XCODE** approach from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile). Builds run on Ubuntu runners in GitHub Actions and automatically publish a Release in the repository running the workflows.
+Build an unsigned IPA, export matching game resources, and publish them automatically to GitHub Releases using the **NO_XCODE** approach from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile). Builds run on Ubuntu runners in GitHub Actions.
 
-Create a **private repository** from this template and supply game files and console keys that you lawfully possess and are authorized to process. Template creation copies the source files; Secrets, Releases, Actions artifacts, and caches are not inherited. No game download source or key is supplied by the template.
+This repository contains build scripts and pinned version settings. IPA and resource files are stored as Release assets and Actions artifacts. Console keys and download inputs are configured through Actions Secrets and are not committed to Git.
 
-## 1. Create a private repository
+## Download and install
 
-1. Click **Use this template → Create a new repository**, or use the link above.
-2. Choose your account as **Owner**, enter a **Repository name** of your choice, and select **Private**. Keep **Include all branches** unchecked; the default branch is sufficient.
-3. Click **Create repository from template**. Continue in **the newly created repository**, not this public template.
-4. Open **Actions** and enable workflows if GitHub prompts you. Account or organization policies must allow the actions used by the workflows. Private repository runs use your account's Actions allowance or billing settings.
-
-There is no need to edit the repository owner, shell URL, source commit, or tool versions. Release publishing uses the current repository and the automatically supplied `GITHUB_TOKEN`; a personal access token is not required. The workflows declare `contents: write`, subject to your organization policies.
-
-## 2. Configure your inputs
-
-Open **Settings → Secrets and variables → Actions → New repository secret** in your new repository. Add **Secrets**, not Variables:
-
-| Secret | Required | Value |
-| --- | --- | --- |
-| `GAME_INPUT_MANIFEST` | Yes | One of the JSON manifests below, with your own direct download URLs |
-| `PROD_KEYS` | For `packages` | The complete text contents of your own `prod.keys` file, not a file path; omit for `prepared` |
-
-Choose **one** input type. Both must match the [pinned versions](#pinned-versions). The upstream requires the Reign of the Warlock expansion; the edition without it is not supported or verified.
-
-### Option A: `packages` — base game and update packages
-
-Set `GAME_INPUT_MANIFEST` to:
-
-```json
-{
-  "kind": "packages",
-  "files": [
-    {"name": "base.nsp", "url": "https://example.com/your-base.nsp"},
-    {"name": "update.nsp", "url": "https://example.com/your-update.nsp"}
-  ]
-}
-```
-
-Replace both URLs with your own. Supply the base game and **Switch update `1.0.34.0` (`v2228224`)**, and add the `PROD_KEYS` Secret. `packages` is an input type, not a single URL: `files` can list multiple downloads. If one ZIP/7z/RAR contains both packages, use one entry instead, such as `{"name": "game.zip", "url": "https://example.com/your-game.zip"}`. NSP/XCI and multipart RAR are supported; NSZ is not supported. DLC packages are not extracted by this script.
-
-### Option B: `prepared` — decrypted ExeFS and RomFS
-
-Set `GAME_INPUT_MANIFEST` to:
-
-```json
-{
-  "kind": "prepared",
-  "files": [
-    {"name": "game.zip", "url": "https://example.com/your-game.zip"}
-  ]
-}
-```
-
-The archive must contain exactly one pair of sibling `ExeFS/` and `RomFS/` directories, already decrypted with the specified update merged. It must match internal version **`3.3.94012`**. Do not rename NSP/XCI packages to use this option. No `PROD_KEYS` Secret is needed. The `packages` path has been verified end to end; `prepared` is implemented but has not been verified end to end with a separate input archive.
-
-### Download and manifest fields
-
-| Field | Meaning |
-| --- | --- |
-| `kind` | `packages` or `prepared` |
-| `files` | A nonempty list of files to download |
-| `files[].name` | Unique local filename with the correct extension; use only letters, numbers, `.`, `_`, and `-`, without a leading `.` |
-| `files[].url` | An HTTPS URL returning the actual file; a signed URL for your own private storage can be used |
-| `files[].sha256` | Optional for ordinary files: the actual 64-character hexadecimal SHA256 of that downloaded file |
-
-GitHub runners cannot read paths on your computer. Put your own inputs in storage reachable from GitHub Actions and keep URLs valid until downloading finishes. Local paths, browser login pages, CAPTCHA pages, and file-hosting landing pages do not work. Do not upload game packages or keys as Git commits or put real URLs in public documentation. Store credential-bearing URLs only in the Secret; changing a URL in the manifest also changes its cache identity.
-
-For integrity checks, add a `sha256` field to each entry. On macOS, obtain it with `shasum -a 256 filename`; on Linux, use `sha256sum filename`. Hash the downloaded archive itself, not its extracted contents.
-
-Advanced `.torrent` inputs require the metadata file's SHA256 and explicit package indices, for example `select: [1, 2]`. Only use inputs you are authorized to download and process.
-
-## 3. Build the IPA, then export resources
-
-In your new repository, open **Actions → Build D2R Mobile IPA → Run workflow**, select `main`, and use:
-
-| Workflow input | Normal setting | When to change it |
-| --- | --- | --- |
-| `prepare_only` | `false` (unchecked) | `true` only checks tools and warms tool caches; it does not download game inputs, build an IPA, or publish a Release |
-| `input_revision` | `game-3.3.94012-v1` | Change when replacing files or editing download entries; 1–64 letters, numbers, `.`, `_`, or `-` |
-
-Wait for the IPA workflow to **succeed**. Then run **Actions → Export D2R Mobile resources → Run workflow** on `main`, with the **same `input_revision`**. This workflow reuses the original download and tool caches from the IPA build. If a required cache has been evicted, rerun the full IPA workflow to populate it, then retry resource export.
-
-Once both workflows succeed, the matching Release is automatically published in **your own repository**. The first workflow leaves a draft while waiting for resources. No manual tag, release creation, or publishing token is needed. Private repository Releases are accessible only to people with repository access.
-
-For an extraction failure after downloads were cached, fix the keys or extraction problem and rerun with the same `input_revision` to reuse the downloads. If you change `kind` or `files` in the manifest, use a new revision in both workflows to avoid reusing different inputs.
-
-Optional diagnostics are available as **Probe remote game source** (torrent connectivity) and **Check PNG encoder compatibility** (an unexpired PNG diagnostic artifact). Neither is required for a normal build.
-
-## Pinned versions
-
-| Component | Current setting |
-| --- | --- |
-| Upstream | v1.0.1, commit `ea86e79688f9339319de3e2c52c69b8b13e30e9e` |
-| iOS shell | Upstream v1.0.1 `D2RMobile-shell.ipa` |
-| Switch update | `1.0.34.0` / `v2228224` |
-| Internal game version | `3.3.94012` |
-| Required edition | Diablo II: Resurrected with Reign of the Warlock |
-| SPIRV-Cross | `1.4.357.0` |
-
-Hashes and tool commits are pinned in [build-config.json](build-config.json). Do not mix other game versions or upstream shell packages. The 18 exported resource archives come directly from the RomFS after merging the base game and update; packaging does not modify their contents. File names and sizes are checked against the upstream list, and each file's SHA256 is verified before and after ZIP compression.
-
-## Install your build
-
-In **your own repository**, open **Releases** after both workflows succeed and download these files from Assets:
+Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)** and download these files from Assets:
 
 | Asset | Purpose |
 | --- | --- |
@@ -156,6 +60,78 @@ Return to the app and tap **Retry**. On the first launch, the phone compiles sha
 
 **Tested on iPhone 17 Pro Max.** Initial shader compilation takes about **6 minutes** on this device. Compilation time varies by device.
 
+## Pinned versions
+
+| Component | Current setting |
+| --- | --- |
+| Upstream | v1.0.1, commit `ea86e79688f9339319de3e2c52c69b8b13e30e9e` |
+| iOS shell | Upstream v1.0.1 `D2RMobile-shell.ipa` |
+| Switch update | `1.0.34.0` / `v2228224` |
+| Internal game version | `3.3.94012` |
+| Required edition | Diablo II: Resurrected with Reign of the Warlock |
+| SPIRV-Cross | `1.4.357.0` |
+
+Hashes and tool commits are pinned in [build-config.json](build-config.json). Do not mix other game versions or upstream shell packages. The 18 exported resource archives come directly from the RomFS after merging the base game and update; packaging does not modify their contents. File names and sizes are checked against the upstream list, and each file's SHA256 is verified before and after ZIP compression.
+
+## Run your own build
+
+Configure your own inputs after forking; forks do not inherit this repository's Actions Secrets. Use game inputs and console keys that you legally possess and are authorized to use. Upstream requires the Reign of the Warlock expansion; the edition without it is not supported or verified.
+
+Configure these secrets under **Settings → Secrets and variables → Actions**:
+
+| Secret | Description |
+| --- | --- |
+| `GAME_INPUT_MANIFEST` | Required: a JSON manifest describing download inputs |
+| `PROD_KEYS` | Full contents of `prod.keys` for NSP/XCI extraction; not needed for already decrypted inputs |
+
+Option A: an archive containing decrypted ExeFS / RomFS with the update already merged:
+
+```json
+{
+  "kind": "prepared",
+  "files": [
+    {"name": "game.zip", "url": "https://example.com/your-game.zip", "sha256": "REPLACE_WITH_THE_FILES_64_HEX_CHARACTER_SHA256"}
+  ]
+}
+```
+
+The archive must contain exactly one pair of `ExeFS/` and `RomFS/` directories. The program and resources must match the versions in the table above.
+
+Option B: NSP/XCI packages for the base game and specified update, with `PROD_KEYS` also configured:
+
+```json
+{
+  "kind": "packages",
+  "files": [
+    {"name": "base.nsp", "url": "https://example.com/your-base.nsp"},
+    {"name": "update.nsp", "url": "https://example.com/your-update.nsp"}
+  ]
+}
+```
+
+URLs must return files directly. CAPTCHA pages and file-hosting landing pages cannot be used for unattended downloads. The `sha256` field is optional for ordinary files; when provided, it must contain the actual hash. ZIP/RAR/7z wrappers and multipart RAR archives are supported. NSZ is not supported. DLC packages are not extracted by this script.
+
+`.torrent` inputs are also supported: provide the metadata file's `sha256` and explicitly select package indices with `select: [1, 2]`. Advanced inputs may include a `key_archive` with a URL and SHA256; keep that configuration in the Secret as well. The key archive is deleted immediately after reading and is not cached.
+
+### Workflows
+
+| Workflow | Purpose |
+| --- | --- |
+| **Build D2R Mobile IPA** | Prepare game inputs, generate and validate an IPA, and automatically upload it to the Release |
+| **Export D2R Mobile resources** | Extract again from the existing raw download cache, export 18 resource archives, and automatically upload resource parts to the Release |
+| **Probe remote game source** | Read torrent inputs from the Secret and briefly test connectivity for a selected package; does not produce complete game files |
+| **Check PNG encoder compatibility** | Inspect an unexpired PNG diagnostic artifact for troubleshooting |
+
+Run **Build D2R Mobile IPA** first, then **Export D2R Mobile resources**. Resource export requires the raw download and extraction tool caches to exist. If a required cache is missing, it stops rather than downloading the game again.
+
+Build inputs:
+
+- `prepare_only=false`: build the complete IPA.
+- `prepare_only=true`: validate the toolchain and warm caches only; no IPA or Release is produced.
+- `input_revision`: use the same value in both workflows. Change it when replacing input files to distinguish caches and Releases.
+
+Start builds with **Run workflow** in Actions. **Release publishing happens automatically after successful builds; no separate publishing task or manually entered tag is needed.**
+
 ## Automatic releases and outputs
 
 Release tags are generated from the game version, upstream commit, and `input_revision`. Both workflows update the same Release for matching versions. When only one type of output is available initially, the Release remains a draft. It is published automatically once the IPA, all three resource parts, and accompanying files are present. Later builds of the same version update the corresponding assets; changing the version or input revision creates a separate Release.
@@ -164,13 +140,15 @@ Each GitHub Release asset must be smaller than 2 GiB, so the resource ZIP is spl
 
 Actions artifacts are retained for **3 days**. The IPA artifact contains the IPA and build report. The resource artifact contains the **complete resource ZIP** and report, so no part combining is required. Release assets are independent of the Actions artifact retention period.
 
-## Visibility and rights
+## Public repository and input visibility
 
-Keep the repository containing your inputs and builds **private**. Its raw game downloads and generated content are cached by Actions, and IPA/resources are uploaded as artifacts and Release assets. Never use a public repository cache as private storage. [GitHub cache access documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
+This repository is public. **Other people can access Releases, Actions logs, and build outputs.** Downloading Actions artifacts requires a GitHub login and read access to the repository. [GitHub documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
 
-This template repository is public and has public Release assets. Enabling template mode does not remove existing Releases, artifacts, or caches, or change their access. New repositories created from the template do not inherit them. [GitHub template documentation](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
+Making the repository public does not expose Actions Secret values to visitors. Pull request workflows from forks also do not receive the original repository's Secrets by default. Do not put actual download credentials or key contents in the README, commits, logs, or artifacts. [GitHub Secrets documentation](https://docs.github.com/en/code-security/reference/secret-security/secret-types)
 
-A private build and a template do not grant a license to game content or guarantee legal compliance. Use only files and keys you are authorized to use; copying, modifying, circumventing protection, and distributing outputs may have separate legal restrictions. Do not redistribute game content without permission. [GitHub DMCA policy](https://docs.github.com/en/site-policy/content-removal-policies/dmca-takedown-policy)
+**Actions caches are not private file storage.** GitHub states that people who can open pull requests may be able to read caches from the base branch. This project's caches include raw game packages and generated content, but not console keys or the original input Secret text. If input files must remain private, build in a separate private repository or controlled storage environment instead of using this public repository's caches. [GitHub caching documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
+
+The current workflows are started manually. They do not run build steps with Secrets or Release write access for external pull requests.
 
 ## Caching and validation
 
