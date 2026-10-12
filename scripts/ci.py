@@ -211,8 +211,13 @@ def ticket_title_key(data):
     offsets = {0x10000: 0x240, 0x10001: 0x140, 0x10002: 0x80,
                0x10003: 0x240, 0x10004: 0x140, 0x10005: 0x80, 0x10006: 0x40}
     offset = offsets.get(signature)
-    if offset is None or len(data) < offset + 0x2C0:
-        raise ValueError('Unsupported or truncated game ticket')
+    if offset is None:
+        raise ValueError(f'Unsupported game ticket signature type: {signature:#x}; {len(data)} bytes')
+    # Only the fields through Rights ID are required. Common NSP tickets can
+    # omit the unused trailing area (the observed RSA-2048 tickets are 0x2C0
+    # bytes total, with a 0x140-byte signature and 0x180-byte body).
+    if len(data) < offset + 0x170:
+        raise ValueError(f'Truncated game ticket: {len(data)} bytes')
     if data[offset + 0x141] != 0:
         raise ValueError('Personalized game ticket requires console-specific keys')
     return data[offset + 0x160:offset + 0x170].hex(), data[offset + 0x40:offset + 0x50].hex()

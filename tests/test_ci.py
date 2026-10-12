@@ -107,7 +107,8 @@ class InputVerificationTests(unittest.TestCase):
                 ci.download_torrent(Path('game.torrent'), {'sha256': '0' * 64, 'select': [1, 2]})
 
     def test_ticket_extracts_common_encrypted_key_and_rights_id(self):
-        data = bytearray(0x400)
+        # Real source packages contain a 0x2C0-byte common ticket, not 0x400.
+        data = bytearray(0x2C0)
         data[:4] = (0x10004).to_bytes(4, 'big')
         data[0x180:0x190] = bytes(range(16))
         data[0x2A0:0x2B0] = bytes(range(16, 32))
@@ -115,8 +116,10 @@ class InputVerificationTests(unittest.TestCase):
         data[0x281] = 1
         with self.assertRaisesRegex(ValueError, 'Personalized'):
             ci.ticket_title_key(data)
-        with self.assertRaisesRegex(ValueError, 'truncated'):
+        with self.assertRaisesRegex(ValueError, '[Tt]runcated'):
             ci.ticket_title_key(data[:300])
+        with self.assertRaisesRegex(ValueError, 'Unsupported'):
+            ci.ticket_title_key(b'\x00\x00\x00\x00' + data[4:])
 
     def test_diagnostics_do_not_include_key_values(self):
         with tempfile.TemporaryDirectory() as temp:
