@@ -19,6 +19,7 @@ TOOLS = ROOT / '.tools'
 WORK = ROOT / '.downloads'
 RAW = ROOT / '.game-downloads'
 SHELL = TOOLS / 'D2RMobile-shell.ipa'
+PUBLIC_SHELL = DM / 'build/pack/D2RMobile-public-shell.ipa'
 
 
 def sha256(path):
@@ -70,6 +71,32 @@ def ensure_shell():
     if info['PRODUCT'] != product:
         raise ValueError('Pinned source and shell PRODUCT differ')
     print('Shell verified:', info['PRODUCT'], 'shader digest', info['SHADER_SRC'])
+
+
+def public_manifest(data):
+    # The public release deliberately omits the recorded startup prefetch list.
+    # hle_tact.c returns without prefetch when that file is absent; an empty
+    # fabricated list would instead cause a fatal runtime error.
+    rows = [line.strip() for line in data.decode().splitlines() if line.strip()]
+    if rows.count('dm/bootlist.tsv') != 1:
+        raise ValueError('Unexpected pinned shell prefetch manifest')
+    return [row for row in rows if row != 'dm/bootlist.tsv']
+
+
+def prepare_public_shell():
+    if sha256(SHELL) != CONFIG['shell_sha256']:
+        raise ValueError('Original shell SHA256 mismatch')
+    PUBLIC_SHELL.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(SHELL) as source, zipfile.ZipFile(PUBLIC_SHELL, 'w') as target:
+        manifests = [name for name in source.namelist() if name.endswith('/dm/shell_manifest.txt')]
+        if len(manifests) != 1:
+            raise ValueError('Shell content manifest missing or ambiguous')
+        for member in source.infolist():
+            data = source.read(member.filename)
+            if member.filename == manifests[0]:
+                data = ('\n'.join(public_manifest(data)) + '\n').encode()
+            target.writestr(member, data)
+    print('Public shell prepared: optional recorded startup prefetch omitted; executable unchanged')
 
 
 def resource_sizes():
@@ -388,7 +415,9 @@ def verify_ipa():
             raise ValueError('Shell app path ambiguous')
         base = bases[0]
         members = set(z.namelist())
-        required = shell.read(base + 'dm/shell_manifest.txt').decode().splitlines()
+        required = public_manifest(shell.read(base + 'dm/shell_manifest.txt'))
+        if z.read(base + 'dm/shell_manifest.txt').decode().splitlines() != required:
+            raise ValueError('Final IPA content manifest differs from the verified public shell')
         for item in required:
             item = item.strip()
             if not item:
@@ -405,7 +434,7 @@ def verify_ipa():
             raise ValueError('IPA shader library missing')
     digest = sha256(output)
     (output.parent / 'SHA256SUMS.txt').write_text(f'{digest}  {output.name}\n')
-    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'shell_sha256': CONFIG['shell_sha256'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False}
+    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'shell_sha256': CONFIG['shell_sha256'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'Recorded bootlist is not shipped in the public upstream source; the host supports no prefetch when absent.'}
     (output.parent / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print('IPA verified:', output.stat().st_size, 'bytes;', len(shader_files), 'shader libraries')
 
@@ -425,7 +454,7 @@ def diagnostics():
 
 if __name__ == '__main__':
     try:
-        {'shell': ensure_shell, 'downloads': download_game_inputs, 'inputs': prepare_game, 'validate-game': validate_game, 'verify-ipa': verify_ipa, 'diagnostics': diagnostics}[sys.argv[1]]()
+        {'shell': ensure_shell, 'public-shell': prepare_public_shell, 'downloads': download_game_inputs, 'inputs': prepare_game, 'validate-game': validate_game, 'verify-ipa': verify_ipa, 'diagnostics': diagnostics}[sys.argv[1]]()
     except Exception as error:
         print(f'::error::{error}', file=sys.stderr)
         sys.exit(1)

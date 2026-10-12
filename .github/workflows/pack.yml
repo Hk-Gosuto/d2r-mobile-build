@@ -171,8 +171,9 @@ jobs:
         if: ${{ !inputs.prepare_only }}
         run: |
           export LD_PRELOAD="$GITHUB_WORKSPACE/.tools/png-zlib-ng-2.3.2/lib/libz.so.1"
+          python scripts/ci.py public-shell
           python -u upstream/dm/tools/d2rm_pack.py \
-            .tools/D2RMobile-shell.ipa \
+            "$DM_ROOT/build/pack/D2RMobile-public-shell.ipa" \
             "$DM_ROOT/data/switch/3.3.94012/Update" \
             outputs/D2RMobile-unsigned.ipa
           python scripts/ci.py verify-ipa

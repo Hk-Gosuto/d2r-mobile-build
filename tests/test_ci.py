@@ -12,6 +12,29 @@ spec.loader.exec_module(ci)
 
 
 class InputVerificationTests(unittest.TestCase):
+    def test_public_shell_changes_only_the_optional_prefetch_manifest_entry(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, target = root / 'original.ipa', root / 'public.ipa'
+            entries = {'Payload/Game.app/Game': b'unchanged executable',
+                       'Payload/Game.app/dm/shell_info.txt': b'PRODUCT=test\n',
+                       'Payload/Game.app/dm/shell_manifest.txt': b'Frameworks/Guest.framework/\ndm/bootlist.tsv\ndm/main.cuts.tsv\n'}
+            with zipfile.ZipFile(source, 'w') as archive:
+                for name, content in entries.items():
+                    archive.writestr(name, content)
+            config = dict(ci.CONFIG, shell_sha256=ci.sha256(source))
+            with patch.object(ci, 'SHELL', source), patch.object(ci, 'PUBLIC_SHELL', target), patch.object(ci, 'CONFIG', config):
+                ci.prepare_public_shell()
+                with zipfile.ZipFile(target) as archive:
+                    self.assertEqual(set(archive.namelist()), set(entries))
+                    for name, content in entries.items():
+                        expected = content.replace(b'dm/bootlist.tsv\n', b'') if name.endswith('/shell_manifest.txt') else content
+                        self.assertEqual(archive.read(name), expected)
+                    self.assertIn(b'dm/main.cuts.tsv', archive.read('Payload/Game.app/dm/shell_manifest.txt'))
+                source.write_bytes(b'tampered shell')
+                with self.assertRaisesRegex(ValueError, 'SHA256 mismatch'):
+                    ci.prepare_public_shell()
+
     def test_rejects_wrong_program_even_if_cache_directory_exists(self):
         with tempfile.TemporaryDirectory() as temp:
             game = Path(temp)
