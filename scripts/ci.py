@@ -97,10 +97,10 @@ def validate_game(game=GAME):
     print('Game verified: 3 original NSO hashes and 18 archive sizes match 3.3.94012')
 
 
-def run(args, logfile):
+def run(args, logfile, env=None):
     logfile = Path(logfile)
     with logfile.open('wb') as f:
-        p = subprocess.run([str(a) for a in args], stdout=f, stderr=subprocess.STDOUT)
+        p = subprocess.run([str(a) for a in args], stdout=f, stderr=subprocess.STDOUT, env=env)
     if p.returncode:
         raise RuntimeError(f'{Path(str(args[0])).name} failed; inspect private runner log {logfile.name}')
     return logfile.read_text(errors='replace')
@@ -129,6 +129,73 @@ def unpack_archives():
             path.unlink()
 
 
+def download_torrent(path, item):
+    # Pin the metadata and explicitly select package files; never fetch an
+    # unrelated executable/mod just because it shares the same torrent.
+    if not item.get('sha256'):
+        raise ValueError('Torrent metadata requires a pinned SHA256')
+    selected = item.get('select', [])
+    if not selected or any(type(n) is not int or n < 1 for n in selected):
+        raise ValueError('Torrent input requires positive file indices in select')
+    print('Downloading selected torrent files:', ','.join(map(str, selected)), flush=True)
+    result = subprocess.run([
+        'aria2c', f'--dir={WORK}', '--seed-time=0', '--file-allocation=none',
+        '--check-integrity=true', '--bt-stop-timeout=180',
+        '--max-upload-limit=128K', '--summary-interval=30',
+        '--console-log-level=warn', '--enable-color=false',
+        '--select-file=' + ','.join(map(str, selected)), str(path),
+    ], timeout=5400)
+    if result.returncode:
+        raise RuntimeError('Selected torrent download did not finish')
+
+
+def load_prod_keys(manifest):
+    text = os.environ.get('PROD_KEYS', '').strip()
+    if text:
+        return text
+    source = manifest.get('key_archive')
+    if not source:
+        raise ValueError('PROD_KEYS secret required to decrypt NSP/XCI; alternatively provide prepared ExeFS/RomFS')
+    if not re.fullmatch(r'[a-fA-F0-9]{64}', source.get('sha256', '')):
+        raise ValueError('Remote key archive requires a pinned SHA256')
+    path = WORK / '.keyset.zip'
+    download(source['url'], path, source['sha256'])
+    try:
+        with zipfile.ZipFile(path) as z:
+            names = [n for n in z.namelist() if n.lower().endswith('prod.keys')]
+            if len(names) != 1:
+                raise ValueError('Key archive must contain one prod.keys file')
+            text = z.read(names[0]).decode('utf-8-sig')
+        pairs = {}
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            key, sep, value = line.partition('=')
+            if not sep or not re.fullmatch(r'[a-z0-9_]+', key.strip()) or not re.fullmatch(r'[0-9a-fA-F]+', value.strip()):
+                raise ValueError('Invalid prod.keys syntax')
+            pairs[key.strip()] = value.strip()
+        if len(pairs.get('header_key', '')) != 64:
+            raise ValueError('Key archive is missing a valid header_key')
+        print('Remote key archive checksum and syntax verified; values suppressed')
+        return text
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def ticket_title_key(data):
+    # https://switchbrew.org/wiki/Ticket ; hactool expects encrypted title keys.
+    signature = int.from_bytes(data[:4], 'big')
+    offsets = {0x10000: 0x240, 0x10001: 0x140, 0x10002: 0x80,
+               0x10003: 0x240, 0x10004: 0x140, 0x10005: 0x80, 0x10006: 0x40}
+    offset = offsets.get(signature)
+    if offset is None or len(data) < offset + 0x2C0:
+        raise ValueError('Unsupported or truncated game ticket')
+    if data[offset + 0x141] != 0:
+        raise ValueError('Personalized game ticket requires console-specific keys')
+    return data[offset + 0x160:offset + 0x170].hex(), data[offset + 0x40:offset + 0x50].hex()
+
+
 def prepare_game():
     if GAME.is_dir():
         validate_game()
@@ -141,8 +208,7 @@ def prepare_game():
     kind = manifest.get('kind')
     if kind not in ('prepared', 'packages'):
         raise ValueError('Input manifest kind must be prepared or packages')
-    if kind == 'packages' and not os.environ.get('PROD_KEYS', '').strip():
-        raise ValueError('PROD_KEYS secret required to decrypt NSP/XCI; alternatively provide prepared ExeFS/RomFS')
+    key_text = load_prod_keys(manifest) if kind == 'packages' else None
     files = manifest.get('files', [])
     if not files:
         raise ValueError('Input manifest files cannot be empty')
@@ -156,6 +222,8 @@ def prepare_game():
             raise ValueError('Invalid input SHA256')
         print('Downloading remote input:', name, flush=True)
         download(item['url'], WORK / name, digest)
+        if name.lower().endswith('.torrent'):
+            download_torrent(WORK / name, item)
     unpack_archives()
     GAME.parent.mkdir(parents=True, exist_ok=True)
     if kind == 'prepared':
@@ -165,22 +233,25 @@ def prepare_game():
         validate_game(candidates[0])
         shutil.move(str(candidates[0]), str(GAME))
     else:
-        extract_packages()
+        extract_packages(key_text)
         validate_game()
     (GAME / '.ci-verified.json').write_text(json.dumps({'game': CONFIG['game_version'], 'nso_sha256': CONFIG['nso_sha256']}))
     shutil.rmtree(WORK)
     print('Game input ready and eligible for private Actions cache')
 
 
-def extract_packages():
+def extract_packages(key_text):
     keys = WORK / 'prod.keys'
     fd = os.open(keys, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'w') as f:
-        f.write(os.environ['PROD_KEYS'])
+        f.write(key_text)
     ht = TOOLS / 'bin/hactool'
     prefix = [ht, '-k', keys, '--disablekeywarns', '--suppresskeys']
     ncas = WORK / 'ncas'
     ncas.mkdir()
+    title_keys = WORK / 'key-config/switch/title.keys'
+    title_keys.parent.mkdir(parents=True)
+    key_env = dict(os.environ, XDG_CONFIG_HOME=str(WORK / 'key-config'))
     try:
         packages = sorted(p for p in WORK.rglob('*') if p.suffix.lower() in ('.nsp', '.xci'))
         if not packages:
@@ -192,22 +263,33 @@ def extract_packages():
                 args = ['-t', 'pfs0', f'--outdir={ncas}', path]
             run(prefix + args, WORK / f'unpack-{i}.log')
             path.unlink()  # Reclaim space before materializing full RomFS.
+        tickets = {}
+        for path in ncas.glob('*.tik'):
+            rights, encrypted = ticket_title_key(path.read_bytes())
+            if rights in tickets and tickets[rights] != encrypted:
+                raise ValueError('Conflicting tickets for one Rights ID')
+            tickets[rights] = encrypted
+        fd = os.open(title_keys, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as f:
+            f.write(''.join(f'{rights} = {value}\n' for rights, value in tickets.items()))
+        print('Loaded common package tickets; title-key values suppressed')
         base, update = [], []
         for i, path in enumerate(sorted(ncas.glob('*.nca'))):
             if path.name.endswith('.cnmt.nca'):
                 continue
-            info = run(prefix + ['-t', 'nca', path], WORK / f'nca-{i}.log')
+            info = run(prefix + ['-t', 'nca', path], WORK / f'nca-{i}.log', env=key_env)
             if re.search(r'Content Type:\s*Program', info) and re.search(r'Title ID:\s*0100726014352000', info):
                 (update if 'BKTR' in info else base).append(path)
         if len(base) != 1 or len(update) != 1:
             raise ValueError('Need exactly one base Program NCA and one update Program NCA')
         temporary = GAME.with_name('Update.partial')
         temporary.mkdir()
-        run(prefix + ['-t', 'nca', f'--basenca={base[0]}', f'--exefsdir={temporary / "ExeFS"}', f'--romfsdir={temporary / "RomFS"}', update[0]], WORK / 'extract.log')
+        run(prefix + ['-t', 'nca', f'--basenca={base[0]}', f'--exefsdir={temporary / "ExeFS"}', f'--romfsdir={temporary / "RomFS"}', update[0]], WORK / 'extract.log', env=key_env)
         validate_game(temporary)
         temporary.rename(GAME)
     finally:
         keys.unlink(missing_ok=True)
+        title_keys.unlink(missing_ok=True)
 
 
 def verify_ipa():

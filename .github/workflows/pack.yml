@@ -19,7 +19,7 @@ concurrency:
 jobs:
   pack:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       DM_ROOT: ${{ github.workspace }}/.dm-work
       D2RM_NO_METAL: '1'
@@ -68,7 +68,7 @@ jobs:
       - name: Install compiler and archive tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends clang cmake ninja-build p7zip-full p7zip-rar fonts-dejavu-core
+          sudo apt-get install -y --no-install-recommends clang cmake ninja-build p7zip-full p7zip-rar aria2 fonts-dejavu-core
           python -m pip install -r requirements.txt
           df -h "$GITHUB_WORKSPACE"
       - name: Restore build tools

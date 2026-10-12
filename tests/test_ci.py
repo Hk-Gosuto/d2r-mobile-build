@@ -48,6 +48,30 @@ class InputVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'HTTPS'):
             ci.download('http://example.invalid/game.zip', '/unused')
 
+    def test_torrent_requires_pinned_metadata_and_explicit_selection(self):
+        with self.assertRaisesRegex(ValueError, 'SHA256'):
+            ci.download_torrent(Path('game.torrent'), {'select': [1, 2]})
+        with self.assertRaisesRegex(ValueError, 'positive file indices'):
+            ci.download_torrent(Path('game.torrent'), {'sha256': '0' * 64, 'select': [0]})
+
+    def test_failed_torrent_cannot_continue_to_game_validation(self):
+        with patch.object(ci.subprocess, 'run') as run:
+            run.return_value.returncode = 1
+            with self.assertRaisesRegex(RuntimeError, 'did not finish'):
+                ci.download_torrent(Path('game.torrent'), {'sha256': '0' * 64, 'select': [1, 2]})
+
+    def test_ticket_extracts_common_encrypted_key_and_rights_id(self):
+        data = bytearray(0x400)
+        data[:4] = (0x10004).to_bytes(4, 'big')
+        data[0x180:0x190] = bytes(range(16))
+        data[0x2A0:0x2B0] = bytes(range(16, 32))
+        self.assertEqual(ci.ticket_title_key(data), (bytes(range(16, 32)).hex(), bytes(range(16)).hex()))
+        data[0x281] = 1
+        with self.assertRaisesRegex(ValueError, 'Personalized'):
+            ci.ticket_title_key(data)
+        with self.assertRaisesRegex(ValueError, 'truncated'):
+            ci.ticket_title_key(data[:300])
+
     def test_extracts_shell_version_from_manifest(self):
         with tempfile.TemporaryDirectory() as temp:
             shell = Path(temp) / 'shell.ipa'
