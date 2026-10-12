@@ -37,12 +37,41 @@ class InputVerificationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'secret missing'):
                     ci.prepare_game()
 
-    def test_packages_require_keys_before_downloading(self):
+    def test_extraction_requires_keys_but_never_downloads_game(self):
         with tempfile.TemporaryDirectory() as temp:
-            env = {'GAME_INPUT_MANIFEST': json.dumps({'kind': 'packages', 'files': []}), 'PROD_KEYS': ''}
-            with patch.object(ci, 'GAME', Path(temp) / 'absent'), patch.dict(ci.os.environ, env):
+            env = {'GAME_INPUT_MANIFEST': json.dumps({'kind': 'packages', 'files': [{'name': 'game.nsp'}]}), 'PROD_KEYS': ''}
+            with patch.object(ci, 'GAME', Path(temp) / 'absent'), patch.dict(ci.os.environ, env), patch.object(ci, 'verify_download_cache', return_value=True), patch.object(ci, 'download') as download:
                 with self.assertRaisesRegex(ValueError, 'PROD_KEYS'):
                     ci.prepare_game()
+                download.assert_not_called()
+
+    def test_download_cache_survives_key_failure_and_skips_second_download(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = {'kind': 'packages', 'files': [{'name': 'base.nsp', 'url': 'https://example.invalid/base.nsp'}]}
+            env = {'GAME_INPUT_MANIFEST': json.dumps(manifest), 'PROD_KEYS': ''}
+            with patch.object(ci, 'RAW', root / 'raw'), patch.object(ci, 'GAME', root / 'absent'), patch.dict(ci.os.environ, env):
+                with patch.object(ci, 'download', side_effect=lambda url, path, digest: path.write_bytes(b'complete-package')) as download:
+                    ci.download_game_inputs()
+                    download.assert_called_once()
+                self.assertTrue(ci.verify_download_cache(manifest))
+                with self.assertRaisesRegex(ValueError, 'PROD_KEYS'):
+                    ci.prepare_game()
+                with patch.object(ci, 'download') as download:
+                    ci.download_game_inputs()
+                    download.assert_not_called()
+                (ci.RAW / 'base.nsp').write_bytes(b'broken')
+                with self.assertRaisesRegex(ValueError, 'corrupt'):
+                    ci.verify_download_cache(manifest)
+
+    def test_failed_download_is_not_eligible_for_cache(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = {'kind': 'packages', 'files': [{'name': 'base.nsp', 'url': 'https://example.invalid/base.nsp'}]}
+            with patch.object(ci, 'RAW', root / 'raw'), patch.object(ci, 'GAME', root / 'absent'), patch.dict(ci.os.environ, {'GAME_INPUT_MANIFEST': json.dumps(manifest)}), patch.object(ci, 'download', side_effect=RuntimeError('interrupted')):
+                with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+                    ci.download_game_inputs()
+                self.assertFalse(ci.verify_download_cache(manifest))
 
     def test_rejects_non_https_download(self):
         with self.assertRaisesRegex(ValueError, 'HTTPS'):

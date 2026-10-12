@@ -107,18 +107,38 @@ jobs:
         with:
           path: .dm-work/data/switch/3.3.94012/Update
           key: game-${{ runner.os }}-${{ hashFiles('build-config.json') }}-${{ inputs.input_revision }}
-      - name: Download, extract and verify game inputs
+      - name: Restore complete original downloads
+        if: ${{ !inputs.prepare_only && steps.game.outputs.cache-hit != 'true' }}
+        id: downloads
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .game-downloads
+          key: downloads-${{ runner.os }}-${{ inputs.input_revision }}
+      - name: Download game packages without decrypting
+        if: ${{ !inputs.prepare_only }}
+        env:
+          GAME_INPUT_MANIFEST: ${{ secrets.GAME_INPUT_MANIFEST }}
+        run: python scripts/ci.py downloads
+      - name: Cache complete downloads BEFORE extraction
+        if: ${{ !inputs.prepare_only && steps.game.outputs.cache-hit != 'true' && steps.downloads.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .game-downloads
+          key: ${{ steps.downloads.outputs.cache-primary-key }}
+      - name: Confirm original downloads are stored before extraction
+        if: ${{ !inputs.prepare_only && steps.game.outputs.cache-hit != 'true' }}
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .game-downloads
+          key: ${{ steps.downloads.outputs.cache-primary-key }}
+          lookup-only: true
+          fail-on-cache-miss: true
+      - name: Decrypt, extract and verify cached game inputs
         if: ${{ !inputs.prepare_only }}
         env:
           GAME_INPUT_MANIFEST: ${{ secrets.GAME_INPUT_MANIFEST }}
           PROD_KEYS: ${{ secrets.PROD_KEYS }}
         run: python scripts/ci.py inputs
-      - name: Cache verified game files before packing
-        if: ${{ !inputs.prepare_only && steps.game.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .dm-work/data/switch/3.3.94012/Update
-          key: ${{ steps.game.outputs.cache-primary-key }}
       - name: Generate unsigned IPA
         if: ${{ !inputs.prepare_only }}
         run: |
@@ -164,6 +184,7 @@ jobs:
         env:
           PREPARE_ONLY: ${{ inputs.prepare_only }}
           GAME_CACHE_HIT: ${{ steps.game.outputs.cache-hit }}
+          DOWNLOAD_CACHE_HIT: ${{ steps.downloads.outputs.cache-hit }}
           GENERATED_CACHE_HIT: ${{ steps.generated.outputs.cache-hit }}
         run: |
           python - <<'PY'
@@ -174,5 +195,6 @@ jobs:
               else:
                   f.write('Unsigned IPA built and verified; see the artifact and build-report.json.\n')
                   f.write('Game cache hit: ' + os.environ['GAME_CACHE_HIT'] + '\n\n')
+                  f.write('Original download cache hit: ' + os.environ['DOWNLOAD_CACHE_HIT'] + '\n\n')
                   f.write('Generated cache hit: ' + os.environ['GENERATED_CACHE_HIT'] + '\n')
           PY

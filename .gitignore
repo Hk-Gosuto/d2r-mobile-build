@@ -1,6 +1,7 @@
 .tools/
 .dm-work/
 .downloads/
+.game-downloads/
 upstream/
 outputs/
 __pycache__/

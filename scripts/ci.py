@@ -17,6 +17,7 @@ DM = Path(os.environ.get('DM_ROOT', str(ROOT / '.dm-work')))
 GAME = DM / 'data/switch/3.3.94012/Update'
 TOOLS = ROOT / '.tools'
 WORK = ROOT / '.downloads'
+RAW = ROOT / '.game-downloads'
 SHELL = TOOLS / 'D2RMobile-shell.ipa'
 
 
@@ -129,7 +130,7 @@ def unpack_archives():
             path.unlink()
 
 
-def download_torrent(path, item):
+def download_torrent(path, item, directory=RAW):
     # Pin the metadata and explicitly select package files; never fetch an
     # unrelated executable/mod just because it shares the same torrent.
     if not item.get('sha256'):
@@ -139,7 +140,7 @@ def download_torrent(path, item):
         raise ValueError('Torrent input requires positive file indices in select')
     print('Downloading selected torrent files:', ','.join(map(str, selected)), flush=True)
     result = subprocess.run([
-        'aria2c', f'--dir={WORK}', '--seed-time=0', '--file-allocation=none',
+        'aria2c', f'--dir={directory}', '--seed-time=0', '--file-allocation=none',
         '--check-integrity=true', '--bt-stop-timeout=180',
         '--bt-remove-unselected-file=true',
         '--max-upload-limit=128K', '--summary-interval=30',
@@ -217,11 +218,7 @@ def ticket_title_key(data):
     return data[offset + 0x160:offset + 0x170].hex(), data[offset + 0x40:offset + 0x50].hex()
 
 
-def prepare_game():
-    if GAME.is_dir():
-        validate_game()
-        print('Using validated game cache; no game download required')
-        return
+def input_manifest():
     raw = os.environ.get('GAME_INPUT_MANIFEST', '').strip()
     if not raw:
         raise ValueError('GAME_INPUT_MANIFEST secret missing and game cache not found. Supply direct download URLs for prepared ExeFS/RomFS or base+update packages.')
@@ -229,11 +226,47 @@ def prepare_game():
     kind = manifest.get('kind')
     if kind not in ('prepared', 'packages'):
         raise ValueError('Input manifest kind must be prepared or packages')
-    key_text = load_prod_keys(manifest) if kind == 'packages' else None
     files = manifest.get('files', [])
     if not files:
         raise ValueError('Input manifest files cannot be empty')
-    WORK.mkdir(parents=True, exist_ok=True)
+    return manifest
+
+
+def download_identity(manifest):
+    inputs = {'kind': manifest['kind'], 'files': manifest['files']}
+    return hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
+
+
+def verify_download_cache(manifest):
+    marker = RAW / '.complete.json'
+    if not marker.is_file():
+        return False
+    record = json.loads(marker.read_text())
+    if record.get('identity') != download_identity(manifest):
+        raise ValueError('Download cache belongs to different inputs; change input_revision')
+    if not record.get('files'):
+        raise ValueError('Download cache contains no files')
+    for item in record['files']:
+        name = Path(item['name'])
+        if name.is_absolute() or '..' in name.parts:
+            raise ValueError('Invalid download cache path')
+        path = RAW / name
+        if not path.is_file() or path.stat().st_size != item['bytes'] or sha256(path) != item['sha256']:
+            raise ValueError('Incomplete or corrupt download cache: ' + str(name))
+    return True
+
+
+def download_game_inputs():
+    if GAME.is_dir():
+        validate_game()
+        print('Using validated game cache; no game download required')
+        return
+    manifest = input_manifest()
+    if verify_download_cache(manifest):
+        print('Using complete download cache; no remote game download required', flush=True)
+        return
+    RAW.mkdir(parents=True, exist_ok=True)
+    files = manifest['files']
     for item in files:
         name = item['name']
         if not re.fullmatch(r'[A-Za-z0-9_.-]+', name) or name.startswith('.'):
@@ -242,9 +275,34 @@ def prepare_game():
         if digest and not re.fullmatch(r'[a-fA-F0-9]{64}', digest):
             raise ValueError('Invalid input SHA256')
         print('Downloading remote input:', name, flush=True)
-        download(item['url'], WORK / name, digest)
+        download(item['url'], RAW / name, digest)
         if name.lower().endswith('.torrent'):
-            download_torrent(WORK / name, item)
+            download_torrent(RAW / name, item, RAW)
+    payloads = sorted(p for p in RAW.rglob('*') if p.is_file() and p.name != '.complete.json')
+    record = {'identity': download_identity(manifest), 'files': [
+        {'name': str(p.relative_to(RAW)), 'bytes': p.stat().st_size, 'sha256': sha256(p)}
+        for p in payloads]}
+    (RAW / '.complete.json').write_text(json.dumps(record))
+    print('Download complete and ready to cache BEFORE decryption or extraction', flush=True)
+
+
+def prepare_game():
+    if GAME.is_dir():
+        validate_game()
+        print('Using validated game cache; no extraction required')
+        return
+    manifest = input_manifest()
+    if not verify_download_cache(manifest):
+        raise ValueError('Complete download cache missing; run downloads before extraction')
+    kind = manifest['kind']
+    key_text = load_prod_keys(manifest) if kind == 'packages' else None
+    WORK.mkdir(parents=True, exist_ok=True)
+    # The Actions cache has already been saved. Move, do not copy, the local
+    # packages so extraction can reclaim disk without touching that cache.
+    for path in RAW.iterdir():
+        if path.name != '.complete.json':
+            shutil.move(str(path), str(WORK / path.name))
+    shutil.rmtree(RAW)
     unpack_archives()
     GAME.parent.mkdir(parents=True, exist_ok=True)
     if kind == 'prepared':
@@ -258,7 +316,7 @@ def prepare_game():
         validate_game()
     (GAME / '.ci-verified.json').write_text(json.dumps({'game': CONFIG['game_version'], 'nso_sha256': CONFIG['nso_sha256']}))
     shutil.rmtree(WORK)
-    print('Game input ready and eligible for private Actions cache')
+    print('Game input verified; original downloads remain in private Actions cache')
 
 
 def extract_packages(key_text):
@@ -362,7 +420,7 @@ def diagnostics():
 
 if __name__ == '__main__':
     try:
-        {'shell': ensure_shell, 'inputs': prepare_game, 'validate-game': validate_game, 'verify-ipa': verify_ipa, 'diagnostics': diagnostics}[sys.argv[1]]()
+        {'shell': ensure_shell, 'downloads': download_game_inputs, 'inputs': prepare_game, 'validate-game': validate_game, 'verify-ipa': verify_ipa, 'diagnostics': diagnostics}[sys.argv[1]]()
     except Exception as error:
         print(f'::error::{error}', file=sys.stderr)
         sys.exit(1)
