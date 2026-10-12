@@ -160,6 +160,7 @@ def main(mode):
     notes = STAGE / 'RELEASE.md'
     notes.write_text(
         f"自动构建的 D2R Mobile，游戏版本 **{ci.CONFIG['game_version']}**，Switch 更新 **{ci.CONFIG['switch_version']}**。\n\n"
+        f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)），包含 IPA 安装、资源分卷合并和导入步骤。\n\n'
         '- `D2RMobile-unsigned.ipa`：用 Sideloadly 签名安装，需要 iOS 26 或以上。\n'
         '- `D2R-Mobile-Resources.zip.001` 等：必须下载全部分卷，按 `RESOURCE-INSTALL.txt` 合并并校验，再解压导入应用。\n'
         '- `build-report.json`、`resources-report.json` 与 SHA256 文件：版本及完整性信息。\n\n'
