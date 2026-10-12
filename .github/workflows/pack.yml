@@ -87,6 +87,7 @@ jobs:
             .dm-work/build/ios
             upstream/dm/ios/Gen/assets
             upstream/dm/ios/Sources/TouchArt
+            upstream/dm/ios/Sources/dm_touch_native_art.c
           key: generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'requirements.txt', 'scripts/tools.sh') }}-${{ inputs.input_revision }}-${{ inputs.prepare_only && 'tools' || 'full' }}
           restore-keys: |
             generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'requirements.txt', 'scripts/tools.sh') }}-${{ inputs.input_revision }}-
@@ -158,6 +159,7 @@ jobs:
             .dm-work/build/ios
             upstream/dm/ios/Gen/assets
             upstream/dm/ios/Sources/TouchArt
+            upstream/dm/ios/Sources/dm_touch_native_art.c
           key: ${{ steps.generated.outputs.cache-primary-key }}
       - name: Upload IPA and verification report
         if: ${{ !inputs.prepare_only }}
