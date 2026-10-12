@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: jhaizhou-ops/d2r-mobile
-          ref: 46578a2b5d302de5d01b5d50b68e2a077e5da0ad
+          ref: ea86e79688f9339319de3e2c52c69b8b13e30e9e
           path: upstream
           persist-credentials: false
       - name: Make room on the disposable runner

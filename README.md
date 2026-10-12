@@ -64,17 +64,18 @@ Cloud builds and file integrity checks have passed, but **this repository's outp
 
 | Component | Current setting |
 | --- | --- |
-| Upstream | v1.0, commit `46578a2b5d302de5d01b5d50b68e2a077e5da0ad` |
-| iOS shell | Upstream v1.0 `D2RMobile-shell.ipa` |
+| Upstream | v1.0.1, commit `ea86e79688f9339319de3e2c52c69b8b13e30e9e` |
+| iOS shell | Upstream v1.0.1 `D2RMobile-shell.ipa` |
 | Switch update | `1.0.34.0` / `v2228224` |
 | Internal game version | `3.3.94012` |
+| Required edition | Diablo II: Resurrected with Reign of the Warlock |
 | SPIRV-Cross | `1.4.357.0` |
 
 Hashes and tool commits are pinned in [build-config.json](build-config.json). Do not mix other game versions or upstream shell packages. The 18 exported resource archives come directly from the RomFS after merging the base game and update; packaging does not modify their contents. File names and sizes are checked against the upstream list, and each file's SHA256 is verified before and after ZIP compression.
 
 ## Run your own build
 
-Configure your own inputs after forking; forks do not inherit this repository's Actions Secrets. Use game inputs and console keys that you legally possess and are authorized to use.
+Configure your own inputs after forking; forks do not inherit this repository's Actions Secrets. Use game inputs and console keys that you legally possess and are authorized to use. Upstream requires the Reign of the Warlock expansion; the edition without it is not supported or verified.
 
 Configure these secrets under **Settings → Secrets and variables → Actions**:
 
@@ -160,6 +161,4 @@ The raw download cache is independent of keys and extraction scripts. Changing t
 
 GitHub caches have storage limits and eviction rules; they are not permanent backups. Before cloud extraction, the workflow removes unrelated preinstalled SDKs from the temporary runner and checks for at least 28 GiB of free space. It does not modify your local computer.
 
-The full build and cache reuse were verified in the [first successful build](https://github.com/jiayx/d2r-mobile-build/actions/runs/38249053001) and [cache reuse build](https://github.com/jiayx/d2r-mobile-build/actions/runs/38251016443). Checks passed for original program hashes, frozen PNG outputs, shader source digests, package content manifests, and ZIP CRCs. File validation does not mean physical device testing has been completed.
-
-The public upstream source does not include the recorded startup prefetch table `bootlist.tsv`. The runtime supports skipping prefetch when that table is absent. This workflow removes only that optional entry from the temporary shell's content manifest; all other shell files retain their original bytes. Build reports record `startup_prefetch: false`, so this startup optimization is not enabled.
+The public upstream source does not include the recorded startup prefetch table `bootlist.tsv`. The official v1.0.1 shell does not require it. The rewriting step removes stale prefetch files from build outputs. This workflow copies the verified shell byte for byte and rejects an unexpected prefetch requirement or stale prefetch files in the final IPA. Build reports record `startup_prefetch: false` and the shell's shader chain identifier; this startup optimization is not enabled.

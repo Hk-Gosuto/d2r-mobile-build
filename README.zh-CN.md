@@ -64,17 +64,18 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 | 项目 | 当前配置 |
 | --- | --- |
-| 上游 | v1.0，提交 `46578a2b5d302de5d01b5d50b68e2a077e5da0ad` |
-| iOS 壳包 | 上游 v1.0 `D2RMobile-shell.ipa` |
+| 上游 | v1.0.1，提交 `ea86e79688f9339319de3e2c52c69b8b13e30e9e` |
+| iOS 壳包 | 上游 v1.0.1 `D2RMobile-shell.ipa` |
 | Switch 更新 | `1.0.34.0` / `v2228224` |
 | 游戏内部版本 | `3.3.94012` |
+| 所需版本 | 《暗黑破坏神 II：狱火重生》含「术士君临」资料片 |
 | SPIRV-Cross | `1.4.357.0` |
 
 哈希和工具提交固定在 [build-config.json](build-config.json)。不要混用其他游戏版本或其他上游壳包。导出的 18 个资源档案直接来自合并本体与更新后的 RomFS，打包时不修改内容；文件名和大小按上游清单检查，压缩前后逐文件核对 SHA256。
 
 ## 自己运行构建
 
-Fork 后需自行配置输入；Fork 不继承本仓库的 Actions Secrets。请使用自己合法持有并有权使用的游戏输入和主机密钥。
+Fork 后需自行配置输入；Fork 不继承本仓库的 Actions Secrets。请使用自己合法持有并有权使用的游戏输入和主机密钥。上游要求包含「术士君临」资料片，不含资料片的版本不支持、也未验证。
 
 在 **Settings → Secrets and variables → Actions** 配置：
 
@@ -160,6 +161,4 @@ Actions Secrets 的值不会因为仓库公开而展示给访客，Fork 的 PR �
 
 GitHub 缓存有容量和淘汰机制，不是永久备份。云端解包前会清理临时 runner 上无关的预装 SDK，并检查至少 28GiB 空闲空间；不修改本地电脑。
 
-完整构建及缓存复用分别在 [首次成功构建](https://github.com/jiayx/d2r-mobile-build/actions/runs/38249053001) 和 [缓存复用构建](https://github.com/jiayx/d2r-mobile-build/actions/runs/38251016443) 验证。原始程序哈希、冻结 PNG、着色器源码摘要、安装包内容清单和 ZIP CRC 均通过检查；文件校验不代表已完成真机测试。
-
-公开上游源码缺少录制的启动预取表 `bootlist.tsv`，运行时支持缺表时跳过预取。本流程仅从临时壳的内容清单移除该可选项，其他壳文件保持原字节；构建报告标记 `startup_prefetch: false`，未启用这项启动加速优化。
+公开上游源码缺少录制的启动预取表 `bootlist.tsv`。官方 v1.0.1 壳不要求该文件，改写步骤会清理构建产物中的预取文件残留。本流程逐字节复制已校验的官方壳；若清单要求预取文件，或最终 IPA 残留旧预取文件，则停止构建。构建报告记录 `startup_prefetch: false` 和壳的着色器链标识，未启用这项启动加速优化。
