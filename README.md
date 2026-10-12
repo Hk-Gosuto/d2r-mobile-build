@@ -4,6 +4,14 @@ GitHub Actions 在临时云端机器上完成 NO_XCODE 打包，输出未签名 
 
 固定配套：上游 v1.0（46578a2b）、v1.0 壳包、Switch 1.0.34.0/v2228224（内部版本 3.3.94012）、SPIRV-Cross 1.4.357.0。版本和哈希登记在 build-config.json。
 
+## 单独导出手机游戏资源
+
+运行 Actions 的 **Export D2R Mobile resources**，沿用已有的 `input_revision`。它只恢复原始下载和解包工具缓存，重新解包、验证版本，导出手机需要的 18 个 `.data` 文件；不会重新下载游戏或编译 IPA。缓存缺失时会停止，避免意外重复下载。
+
+产物 `D2R-Mobile-Resources.zip` 内含 `D2R Mobile Resources/data/`、逐文件 SHA256 和中文导入说明。资源合计 5,561,224,037 字节，导出后逐个读取 ZIP 中的文件并核对大小和 SHA256。下载解压后，把整个 `D2R Mobile Resources` 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用，打开应用点击重试。正常覆盖安装且应用标识不变时通常保留资源；卸载会删除资源和存档。
+
+资源仅保存到私有 Actions artifact，保留 3 天，请及时下载并自行保管。源码仓库不提交游戏资源，IPA 不包含这 18 个大文件。
+
 ## 提供远端输入
 
 在这个私有仓库 Settings → Secrets and variables → Actions 设置 `GAME_INPUT_MANIFEST`。下载地址必须能直接返回文件；带验证码的页面或网盘展示页不能直接用于无人值守构建。临时签名地址可用，缓存失效后需要更新。
