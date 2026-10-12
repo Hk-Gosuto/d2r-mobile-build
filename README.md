@@ -54,7 +54,7 @@ Actions → Build D2R Mobile IPA → Run workflow。
 3. `.dm-work/build/cache`、`build/gfx`、`build/ios` 和生成素材：游戏程序改写、着色器提取、翻译器、着色器库及界面素材。
 4. Python 下载由 setup-python 缓存。
 
-缓存全部位于私有仓库的 Actions 存储，和 Git 提交历史无关。GitHub 缓存有配额和淘汰机制，不是永久网盘；被淘汰后工作流会重新下载。原始资源量较大，需关注仓库缓存额度与 runner 空闲磁盘。
+缓存全部位于私有仓库的 Actions 存储，和 Git 提交历史无关。GitHub 缓存有配额和淘汰机制，不是永久网盘；被淘汰后工作流会重新下载。原始资源量较大，需关注仓库缓存额度。工作流先移除临时 runner 上用不到的 Android/Swift/Haskell SDK，并要求至少 28 GiB 空闲空间；不修改你的本地电脑。
 
 生成缓存按上游/工具锁定配置、依赖版本、操作系统、输入修订号区分，避免混用不同版本。失败的打包不保存不完整生成缓存，但已验证的游戏资源提前保存，修复后不必重新下载。
 
