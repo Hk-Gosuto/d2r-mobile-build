@@ -1,0 +1,35 @@
+name: Probe remote game source
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Fetch and verify candidate torrent metadata
+        run: |
+          curl --fail --location --max-time 45 'https://gamegula.com/index.php?do=download&id=405' -o candidate.torrent
+          echo '016f7c907deb1f4cd6098a7cd06823907a589ff2502aa2c8b341a89ccf984266  candidate.torrent' | sha256sum -c -
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends aria2
+          aria2c --show-files candidate.torrent
+      - name: Test real update download for at most 150 seconds
+        run: |
+          mkdir sample
+          status=0
+          timeout 150 aria2c --dir=sample --select-file=2 --seed-time=0 \
+            --file-allocation=none --max-overall-download-limit=1M \
+            --summary-interval=30 --bt-stop-timeout=120 \
+            --console-log-level=warn --enable-color=false candidate.torrent || status=$?
+          echo "Downloader exit status: $status"
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          files = list(Path('sample').rglob('*.nsp'))
+          received = sum(p.stat().st_blocks * 512 for p in files)
+          print(f'Actual allocated downloaded data: {received} bytes')
+          if received < 1024 * 1024:
+              raise SystemExit('No usable seed transferred 1 MiB during the probe')
+          print('Source connectivity confirmed; this is only a partial download, not a validated game input.')
+          PYCODE
