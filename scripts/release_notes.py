@@ -1,6 +1,9 @@
 """English-first, bilingual descriptions for IPA and resource Releases."""
 
 
+INSTALLER_LINKS = '[Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), and [SideStore](https://sidestore.io/)'
+CHINESE_INSTALLER_LINKS = '[Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore)、[SideStore](https://sidestore.io/)'
+
 def bilingual(english, chinese):
     return ('[English](#english) | [简体中文](#简体中文)\n\n'
             '## English\n\n' + english.strip() + '\n\n---\n\n'
@@ -29,7 +32,7 @@ def ipa(repo, config, reference, legacy=None):
     english = (
         f"Game version **{config['game_version']}**, Switch update **{config['switch_version']}**.\n\n"
         f'For detailed installation and usage instructions, see the [README]({readme}).\n\n'
-        '### Install an IPA\n\nSign and install with Sideloadly. Choose by system:\n\n'
+        f'### Install an IPA\n\nSign and install using one of these tools: {INSTALLER_LINKS}. Choose by system:\n\n'
         '- iOS 26 and later: `D2RMobile-unsigned.ipa` (Metal 4).\n'
         '- iOS 18–25: `D2RMobile-ios18-unsigned.ipa` (Metal 3 compatibility build).\n\n'
         'The variants share an app identifier, so installing one replaces the other.\n\n'
@@ -43,7 +46,7 @@ def ipa(repo, config, reference, legacy=None):
     chinese = (
         f"游戏版本 **{config['game_version']}**，Switch 更新 **{config['switch_version']}**。\n\n"
         f'详细使用方式请参考 [中文 README]({chinese_readme})。\n\n'
-        '### 安装 IPA\n\n使用 Sideloadly 签名安装，按系统选择：\n\n'
+        f'### 安装 IPA\n\n可使用 {CHINESE_INSTALLER_LINKS} 签名安装，按系统选择：\n\n'
         '- iOS 26 及以上：`D2RMobile-unsigned.ipa`（Metal 4）。\n'
         '- iOS 18–25：`D2RMobile-ios18-unsigned.ipa`（Metal 3 兼容版）。\n\n'
         '两份 IPA 使用相同应用标识，安装另一份会覆盖当前版本。\n\n'

@@ -12,7 +12,7 @@ Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/l
 
 | File | Where | Purpose |
 | --- | --- | --- |
-| `D2RMobile-unsigned.ipa` | Assets | iOS 26+; sign and install with Sideloadly |
+| `D2RMobile-unsigned.ipa` | Assets | iOS 26+; sign and install with a tool listed below |
 | `D2RMobile-ios18-unsigned.ipa` | Assets | iOS 18–25, Metal 3 compatibility build |
 | `Legacy-Device-Pack.zip` | Legacy Device Pack link in the release notes | Additional textures for A16 and earlier devices; about 1 GB |
 | `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Game data links in the release notes | Download all three resource parts, totaling about 5.42 GB |
@@ -27,7 +27,16 @@ Choose by system: **iOS 26+** uses `D2RMobile-unsigned.ipa`; **iOS 18–25** use
 
 Both packages support **A17 Pro and newer chips, M-series iPads, and A16 and earlier chips with the matching Legacy Device Pack**. Older devices still need enough memory; support does not guarantee every model runs reliably.
 
-Sign and install the selected IPA with Sideloadly, then complete the trust setup prompted by iOS. The two variants share an app identifier, so installing one replaces the other. **The IPA requires the game data described below.**
+Choose an IPA installer:
+
+| Tool | Setup |
+| --- | --- |
+| [Sideloadly](https://sideloadly.io/) | macOS / Windows |
+| [iloader](https://iloader.app/) | macOS / Windows / Linux |
+| [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) | Set up AltServer on a Mac or Windows PC first |
+| [SideStore](https://sidestore.io/) | Initial setup uses a computer; install IPAs on the phone afterward |
+
+Follow the tool's official setup instructions, import the selected IPA, and complete the trust setup prompted by iOS. The two variants share an app identifier, so installing one replaces the other. **The IPA requires the game data described below.**
 
 ### 2. Combine and extract the game data
 

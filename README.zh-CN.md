@@ -12,7 +12,7 @@
 
 | 文件 | 下载位置 | 用途 |
 | --- | --- | --- |
-| `D2RMobile-unsigned.ipa` | Assets 附件 | iOS 26 及以上，用 Sideloadly 签名安装 |
+| `D2RMobile-unsigned.ipa` | Assets 附件 | iOS 26 及以上，使用下方工具签名安装 |
 | `D2RMobile-ios18-unsigned.ipa` | Assets 附件 | iOS 18–25，Metal 3 兼容版 |
 | `Legacy-Device-Pack.zip` | 正文的老设备补充包链接 | A16 及更早设备需要的额外贴图，约 1GB |
 | `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 正文的配套 Data 链接 | 三个资源分卷，必须全部下载，总计约 5.42GB |
@@ -27,7 +27,16 @@
 
 两份安装包均支持 **A17 Pro 或更新芯片、M 系列 iPad，以及导入配套老设备补充包的 A16 及更早芯片**。老设备仍需足够内存，不代表每种机型都已验证能稳定运行。
 
-使用 Sideloadly 签名并安装所选 IPA，按系统提示完成信任设置。两份 IPA 的应用标识相同，安装另一份会覆盖当前版本。**IPA 需要配合下方 Data 资源使用。**
+可选择以下 IPA 安装工具：
+
+| 工具 | 使用条件 |
+| --- | --- |
+| [Sideloadly](https://sideloadly.io/) | macOS / Windows |
+| [iloader](https://iloader.app/) | macOS / Windows / Linux |
+| [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) | 先在 Mac 或 Windows 电脑上配置 AltServer |
+| [SideStore](https://sidestore.io/) | 首次配置需要电脑，之后可在手机上导入 IPA |
+
+按工具的官方说明完成配置，导入所选 IPA，并按 iOS 提示完成信任设置。两份 IPA 的应用标识相同，安装另一份会覆盖当前版本。**IPA 需要配合下方 Data 资源使用。**
 
 ### 2. 合并并解压 Data
 
