@@ -107,4 +107,6 @@ Open **Actions → Build D2R Mobile IPA → Run workflow**, select `main`, and u
 
 After success, open **Releases in your own repository**. The Release description provides direct links to the matching Data parts and checksums, even when those files are hosted in an earlier Release. Download and import them as described above. If the resource identifier matches the Data already on your phone, updating the IPA does not require downloading Data again.
 
+Keep the Release hosting the referenced Data and its attachments so its download links remain available.
+
 The Actions run summary also links to the IPA and Data. The IPA artifact contains the installation package, resource download information (`resources.json`), and import instructions, and is retained for **3 days**.

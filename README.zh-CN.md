@@ -107,4 +107,6 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 构建成功后，进入**自己仓库的 Releases**。正文提供配套 Data 分卷与校验文件的直接下载链接，即使这些文件保存在较早的 Release，也可以从当前页面直接下载。按上方步骤合并并导入。资源标识与手机上已有 Data 相同时，更新 IPA 无需重新下载 Data。
 
+请保留配套 Data 所在的 Release 及其附件，确保下载链接持续可用。
+
 Actions 运行摘要中也有 IPA 和 Data 的下载入口。IPA 构建附件内包含安装包、资源下载信息（`resources.json`）和导入说明，保留期为 **3 天**。
