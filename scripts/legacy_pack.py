@@ -12,6 +12,7 @@ import zipfile
 import ci
 import export_resources
 import publish_release as publish
+import release_notes
 
 PACK = ci.DM / 'build/legacy/pack'
 ZIP_NAME = 'Legacy-Device-Pack.zip'
@@ -138,9 +139,7 @@ def publish_pack(repo, recipe_id, tag):
     (publish.STAGE / 'Legacy-SHA256SUMS.txt').write_text(
         f"{report['assets'][ZIP_NAME]['sha256']}  {ZIP_NAME}\n")
     notes = publish.STAGE / 'LEGACY-RELEASE.md'
-    notes.write_text('A16 及更早设备的配套贴图补充包，两种系统版本的 IPA 共用。\n\n'
-                     f'下载 `{ZIP_NAME}`，解压后把 `Legacy Device Pack` 文件夹与 `D2R Mobile Resources` 并排放进应用。\n\n'
-                     f'请使用引用本包的 IPA。详细使用方式参考 [README](https://github.com/{repo}#readme)。\n')
+    notes.write_text(release_notes.legacy(repo, ZIP_NAME))
     title = f"D2R Mobile Legacy Device Pack · {ci.CONFIG['game_version']} · {recipe_id[:12]}"
     current = publish.ensure_release(repo, tag, title, notes)
     if not current['draft']:

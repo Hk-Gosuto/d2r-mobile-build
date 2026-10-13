@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlparse
 
 import ci
 import export_resources
+import release_notes
 
 PART_BYTES = 1_900_000_000  # Strictly below GitHub's 2 GiB per-asset limit.
 OUT = ci.ROOT / 'outputs'
@@ -276,12 +277,7 @@ def publish_resources(repo, manifest):
     tag = f"data-{manifest['game_version']}-{manifest['resource_id']}"
     title = f"D2R Mobile Data · {manifest['game_version']} · {manifest['resource_id'][:12]}"
     notes = STAGE / 'DATA-RELEASE.md'
-    notes.write_text(
-        f"游戏资源 **{manifest['game_version']}**，Switch 更新 **{manifest['switch_version']}**。\n\n"
-        '下载全部三个资源分卷及两个校验文件，按 `RESOURCE-INSTALL.txt` 合并并导入。\n\n'
-        f"资源标识：`{manifest['resource_id']}`。\n\n"
-        f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)）。\n\n'
-        '配套 IPA 在各版本 Release 中下载。此资源版本可供多个 IPA 版本复用，请保留其附件。\n')
+    notes.write_text(release_notes.data(repo, manifest))
     existing = ensure_release(repo, tag, title, notes)
     if not existing['draft']:
         # A published but incomplete bundle is hidden while it is repaired.
@@ -321,21 +317,7 @@ def prepare_resources(repo):
 
 def write_ipa_notes(repo, reference, legacy=None):
     path = STAGE / 'RELEASE.md'
-    links = '\n'.join(f"- [{a['name']}]({a['url']})" for a in reference['assets']
-                      if a['name'] != 'resources-report.json')
-    path.write_text(
-        f"游戏版本 **{ci.CONFIG['game_version']}**，Switch 更新 **{ci.CONFIG['switch_version']}**。\n\n"
-        f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)）。\n\n'
-        '### 安装 IPA\n\n使用 Sideloadly 签名安装，按系统选择：\n\n'
-        '- iOS 26 及以上：`D2RMobile-unsigned.ipa`（Metal 4）。\n'
-        '- iOS 18–25：`D2RMobile-ios18-unsigned.ipa`（Metal 3 兼容版）。\n\n'
-        '两份 IPA 使用相同应用标识，安装另一份会覆盖当前版本。\n\n'
-        + (f"### A16 及更早设备\n\n还需下载 [Legacy-Device-Pack.zip]({next(a['url'] for a in legacy['assets'] if a['name'] == 'Legacy-Device-Pack.zip')})，"
-           '解压后将 `Legacy Device Pack` 文件夹与 `D2R Mobile Resources` 并排导入。两份 IPA 共用本补充包；A17 Pro 及更新芯片和 M 系列 iPad 无需导入。\n\n' if legacy else '') +
-        f"### 配套 Data\n\n[下载配套 Data]({reference['source_release']['url']})。下载全部三个分卷和两个校验文件，按本页 `RESOURCE-INSTALL.txt` 合并并导入。\n\n"
-        + links + '\n\n'
-        f"资源标识：`{reference['resource_id']}`。已导入相同资源时无需重复下载或导入。\n\n"
-        '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
+    path.write_text(release_notes.ipa(repo, ci.CONFIG, reference, legacy))
     return path
 
 
