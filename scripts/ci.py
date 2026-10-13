@@ -74,7 +74,7 @@ def ensure_shell():
 
 
 def public_manifest(data):
-    # The official v1.0.1 shell no longer requires the unpublished prefetch list.
+    # The pinned official shell does not require the unpublished prefetch list.
     # Reject a regression instead of silently editing the pinned shell.
     rows = [line.strip() for line in data.decode().splitlines() if line.strip()]
     if 'dm/bootlist.tsv' in rows:
@@ -432,7 +432,7 @@ def verify_ipa():
             raise ValueError('IPA shader library missing')
     digest = sha256(output)
     (output.parent / 'SHA256SUMS.txt').write_text(f'{digest}  {output.name}\n')
-    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'input_revision': os.environ.get('INPUT_REVISION'), 'shell_sha256': CONFIG['shell_sha256'], 'shader_chain': info['CHAIN'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'The official v1.0.1 public shell omits the unpublished bootlist; the host supports no prefetch when absent.'}
+    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'input_revision': os.environ.get('INPUT_REVISION'), 'shell_sha256': CONFIG['shell_sha256'], 'product': info['PRODUCT'], 'shader_chain': info['CHAIN'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'The pinned official public shell omits the unpublished bootlist; the host supports no prefetch when absent.'}
     (output.parent / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print('IPA verified:', output.stat().st_size, 'bytes;', len(shader_files), 'shader libraries')
 

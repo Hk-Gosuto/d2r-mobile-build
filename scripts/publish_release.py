@@ -127,8 +127,8 @@ def write_install_guide(destination):
         'Windows：在分卷所在目录用命令提示符执行：\n'
         f"copy /b {'+'.join(RESOURCE_PART_NAMES)} D2R-Mobile-Resources.zip\n\n"
         '解压合并后的 ZIP，将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
-        '打开应用点击重试；首次启动等待着色器编译。IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上。\n'
-        '真机运行验证：iPhone 17 Pro Max，首次着色器编译约 6 分钟；其他机型耗时取决于设备。\n')
+        '打开应用点击重试；首次启动等待着色器编译。IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上及支持 BC 贴图的设备（A17 Pro 及更新芯片，或 M 系列 iPad）；不包含老机型所需的额外 Legacy Device Pack。\n'
+        '首次着色器编译耗时参考：iPhone 17 Pro Max 约 6 分钟；其他机型耗时取决于设备。当前版本包尚未进行真机运行验证。\n')
     return path
 
 
@@ -170,10 +170,10 @@ def main(mode):
     notes.write_text(
         f"自动构建的 D2R Mobile，游戏版本 **{ci.CONFIG['game_version']}**，Switch 更新 **{ci.CONFIG['switch_version']}**。\n\n"
         f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)），包含 IPA 安装、资源分卷合并和导入步骤。\n\n'
-        '- `D2RMobile-unsigned.ipa`：用 Sideloadly 签名安装，需要 iOS 26 或以上。\n'
+        '- `D2RMobile-unsigned.ipa`：用 Sideloadly 签名安装，需要 iOS 26 或以上及支持 BC 贴图的设备（A17 Pro 及更新芯片，或 M 系列 iPad）；不包含老机型所需的额外 Legacy Device Pack。\n'
         '- `D2R-Mobile-Resources.zip.001` 等：必须下载全部分卷，按 `RESOURCE-INSTALL.txt` 合并并校验，再解压导入应用。\n'
         '- `build-report.json`、`resources-report.json` 与 SHA256 文件：版本及完整性信息。\n\n'
-        'IPA 与 18 个资源文件配套使用；首次启动在手机上编译着色器。真机运行验证：iPhone 17 Pro Max，首次着色器编译约 6 分钟；其他机型耗时取决于设备。\n\n'
+        'IPA 与 18 个资源文件配套使用；首次启动在手机上编译着色器。首次着色器编译耗时参考：iPhone 17 Pro Max 约 6 分钟；其他机型耗时取决于设备。当前版本包尚未进行真机运行验证。\n\n'
         '本 Release 由成功构建自动维护，同一配套版本的后续构建会更新对应附件。\n')
     release = release_info(repo, tag)
     if release is None:

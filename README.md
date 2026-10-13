@@ -26,7 +26,7 @@ The `Source code` archives that GitHub adds automatically contain the build scri
 
 ### 1. Install the IPA
 
-Your phone needs **iOS 26 or later**. Sign and install the IPA with Sideloadly, then complete the trust setup prompted by iOS.
+Your phone needs **iOS 26 or later**. This build targets devices with BC texture support (A17 Pro and later, or M-series iPads). The additional Legacy Device Pack required for A16 and earlier is not included. Sign and install the IPA with Sideloadly, then complete the trust setup prompted by iOS.
 
 **The IPA contains the game program, converted shaders, and other generated content. Large resources such as maps, models, and audio must be imported separately.** Installing only the IPA is not enough to play.
 
@@ -58,14 +58,14 @@ Connect your iPhone by cable. In **Finder → iPhone → Files → D2R Mobile**,
 
 Return to the app and tap **Retry**. On the first launch, the phone compiles shaders; wait for it to finish. The time required depends on the device. Installing over an existing installation with the same app identifier usually preserves resources. Uninstalling the app deletes its resources and saves.
 
-**Tested on iPhone 17 Pro Max.** Initial shader compilation takes about **6 minutes** on this device. Compilation time varies by device.
+**Initial shader compilation reference: about 6 minutes on iPhone 17 Pro Max.** Compilation time varies by device. The current v1.0.6 package has not yet been verified on a physical device.
 
 ## Pinned versions
 
 | Component | Current setting |
 | --- | --- |
-| Upstream | v1.0.1, commit `ea86e79688f9339319de3e2c52c69b8b13e30e9e` |
-| iOS shell | Upstream v1.0.1 `D2RMobile-shell.ipa` |
+| Upstream | v1.0.6, commit `2eb5758771f110cd53082b999d88d242766610da` |
+| iOS shell | Upstream v1.0.6 `D2RMobile-shell.ipa` |
 | Switch update | `1.0.34.0` / `v2228224` |
 | Internal game version | `3.3.94012` |
 | Required edition | Diablo II: Resurrected with Reign of the Warlock |
@@ -161,4 +161,4 @@ The raw download cache is independent of keys and extraction scripts. Changing t
 
 GitHub caches have storage limits and eviction rules; they are not permanent backups. Before cloud extraction, the workflow removes unrelated preinstalled SDKs from the temporary runner and checks for at least 28 GiB of free space. It does not modify your local computer.
 
-The public upstream source does not include the recorded startup prefetch table `bootlist.tsv`. The official v1.0.1 shell does not require it. The rewriting step removes stale prefetch files from build outputs. This workflow copies the verified shell byte for byte and rejects an unexpected prefetch requirement or stale prefetch files in the final IPA. Build reports record `startup_prefetch: false` and the shell's shader chain identifier; this startup optimization is not enabled.
+The public upstream source does not include the recorded startup prefetch table `bootlist.tsv`. The official v1.0.6 shell does not require it. The rewriting step removes stale prefetch files from build outputs. This workflow copies the verified shell byte for byte and rejects an unexpected prefetch requirement or stale prefetch files in the final IPA. Build reports record `startup_prefetch: false` and the shell's shader chain identifier; this startup optimization is not enabled.
