@@ -32,6 +32,21 @@ class ResourceExportTests(unittest.TestCase):
                 self.assertFalse(any('keys' in name or 'unused' in name for name in archive.namelist()))
                 self.assertIn(report['files'][0]['sha256'], archive.read('D2R Mobile Resources/SHA256SUMS.txt').decode())
 
+    def test_changed_content_after_scan_is_rejected_without_publishing_zip(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data = root / 'game/RomFS/data'
+            data.mkdir(parents=True)
+            source = data / '00-00000001.data'
+            source.write_bytes(b'original')
+            with patch.object(module.ci, 'validate_game'), patch.object(module.ci, 'resource_sizes', return_value={source.name: 8}):
+                manifest = module.scan_resources(root / 'game')
+                source.write_bytes(b'modified')  # Same length; size alone would miss it.
+                with self.assertRaisesRegex(ValueError, 'verification failed'):
+                    module.export_resources(root / 'game', root / 'out/resources.zip', manifest=manifest)
+            self.assertFalse((root / 'out/resources.zip').exists())
+            self.assertFalse((root / 'out/resources.zip.part').exists())
+
     def test_incomplete_archive_is_not_published(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

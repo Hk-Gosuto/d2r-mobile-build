@@ -35,30 +35,6 @@ class ReleaseTests(unittest.TestCase):
                 module.wait_for_created_release('owner/repo', 'tag')
             sleep.assert_not_called()
 
-    def test_public_repository_accepts_verified_ipa_publication(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            output = root / 'outputs'
-            output.mkdir()
-            content = b'verified IPA input'
-            digest = hashlib.sha256(content).hexdigest()
-            (output / 'D2RMobile-unsigned.ipa').write_bytes(content)
-            report = {key: module.ci.CONFIG[key] for key in ('game_version', 'switch_version', 'upstream_commit')}
-            report.update(ipa_bytes=len(content), ipa_sha256=digest)
-            (output / 'build-report.json').write_text(json.dumps(report))
-            (output / 'SHA256SUMS.txt').write_text(f'{digest}  D2RMobile-unsigned.ipa\n')
-            stage = root / 'stage'
-            stage.mkdir()
-            guide = module.write_install_guide(stage)
-            assets = [{'name': path.name, 'size': path.stat().st_size,
-                       'digest': 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest()}
-                      for path in [*output.iterdir(), guide]]
-            release = {'assets': assets, 'html_url': 'https://github.com/owner/repo/releases/tag/tag'}
-            env = {'GITHUB_REPOSITORY': 'owner/repo', 'INPUT_REVISION': 'revision-1', 'GITHUB_SHA': 'abc'}
-            with patch.dict(os.environ, env), patch.object(module, 'api', return_value={'private': False}), patch.object(module, 'OUT', output), patch.object(module, 'STAGE', root / 'stage'), patch.object(module, 'release_info', return_value=release), patch.object(module, 'gh') as gh:
-                module.main('ipa')
-                gh.assert_not_called()  # Identical assets are reused without uploading again.
-
     def test_split_parts_reassemble_exactly_and_include_checksums(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

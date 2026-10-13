@@ -3,20 +3,19 @@
 **English** | [简体中文](README.zh-CN.md)
 
 [![Build IPA](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml)
-[![Export resources](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml)
 
 Build an unsigned IPA and matching Data resources with GitHub Actions, using the **NO_XCODE** approach from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile). Download a build from Releases or run your own build below.
 
 ## Download and install
 
-Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)** and download:
+Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**. Download the IPA from its **Assets** and the Data files from the direct download links under **配套 Data** in the Release description:
 
-| File | Purpose |
-| --- | --- |
-| `D2RMobile-unsigned.ipa` | About 126 MB; sign and install with Sideloadly |
-| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Download all three resource parts, totaling about 5.42 GB |
-| `Resources-Parts-SHA256SUMS.txt`, `Resources-SHA256SUMS.txt` | Verify the parts and combined ZIP |
-| `RESOURCE-INSTALL.txt` | Resource combining and import instructions |
+| File | Where | Purpose |
+| --- | --- | --- |
+| `D2RMobile-unsigned.ipa` | Assets | About 126 MB; sign and install with Sideloadly |
+| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Data links in the Release description | Download all three resource parts, totaling about 5.42 GB |
+| `Resources-Parts-SHA256SUMS.txt`, `Resources-SHA256SUMS.txt` | Data links in the Release description | Verify the parts and combined ZIP |
+| `RESOURCE-INSTALL.txt` | Assets | Resource combining and import instructions |
 
 The `Source code` archives are build scripts, not the installation package.
 
@@ -95,17 +94,17 @@ In your repository, open **Settings → Secrets and variables → Actions → Ne
 
 The torrent contains the base game and update, selected by `select: [1, 2]`. `key_archive` is the ZIP containing extraction keys. No separate `PROD_KEYS` Secret is needed with this configuration.
 
-### 3. Build the IPA and Data
+### 3. Run the build
 
-1. Open **Actions → Build D2R Mobile IPA → Run workflow**, select `main`, and use the settings below.
-2. Wait for success, then run **Export D2R Mobile resources** with the same `input_revision`.
-3. After both succeed, download the files from **Releases in your own repository**. Publishing is automatic; the Release stays a draft until the IPA and Data are both ready.
+Open **Actions → Build D2R Mobile IPA → Run workflow**, select `main`, and use:
 
 | Input | Setting |
 | --- | --- |
 | `prepare_only` | `false` — leave unchecked |
-| `input_revision` | `game-3.3.94012-v1` — use the same value in both workflows |
+| `input_revision` | `game-3.3.94012-v1` — change when replacing game files or editing the torrent download entry |
 
-Change `input_revision` in both workflows if you replace the game files or edit the torrent download entry. If resource export reports a missing cache, rerun the IPA build first, then retry resource export.
+**Run this workflow once.** It builds the IPA, checks for matching Data, and publishes the Release automatically. Existing Data is reused without recompressing or uploading it; missing or changed Data is packaged and published automatically.
 
-You can also download outputs from each successful Actions run. These artifacts are retained for **3 days**; the resource artifact contains the **complete ZIP**, so part combining is not needed.
+After success, open **Releases in your own repository**. The Release description provides direct links to the matching Data parts and checksums, even when those files are hosted in an earlier Release. Download and import them as described above. If the resource identifier matches the Data already on your phone, updating the IPA does not require downloading Data again.
+
+The Actions run summary also links to the IPA and Data. The IPA artifact contains the installation package, resource download information (`resources.json`), and import instructions, and is retained for **3 days**.

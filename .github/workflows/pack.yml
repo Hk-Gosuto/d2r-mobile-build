@@ -188,16 +188,27 @@ jobs:
             upstream/dm/ios/Sources/TouchArt
             upstream/dm/ios/Sources/dm_touch_native_art.c
           key: ${{ steps.generated.outputs.cache-primary-key }}
+      - name: Reuse matching Data or publish it once
+        if: ${{ !inputs.prepare_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -u scripts/publish_release.py prepare-resources
       - name: Upload IPA and verification report
         if: ${{ !inputs.prepare_only }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: D2RMobile-unsigned-${{ github.run_number }}
-          path: outputs/
+          path: |
+            outputs/D2RMobile-unsigned.ipa
+            outputs/build-report.json
+            outputs/SHA256SUMS.txt
+            outputs/resource-manifest.json
+            outputs/resources.json
+            outputs/RESOURCE-INSTALL.txt
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
-      - name: Automatically publish IPA to the matching Release
+      - name: Automatically publish IPA with matching Data links
         if: ${{ !inputs.prepare_only }}
         env:
           GH_TOKEN: ${{ github.token }}

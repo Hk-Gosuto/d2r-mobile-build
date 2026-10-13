@@ -3,20 +3,19 @@
 [English](README.md) | **简体中文**
 
 [![Build IPA](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml)
-[![Export resources](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/resources.yml)
 
 基于 [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 的 **NO_XCODE** 方案，使用 GitHub Actions 构建未签名 IPA 和配套 Data 资源。可以从 Releases 下载，也可以按下方步骤自行构建。
 
 ## 下载与安装
 
-进入 **[最新 Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**，下载：
+进入 **[最新 Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**：IPA 从 **Assets 附件**下载，Data 从 Release 正文的**配套 Data**中直接点击下载链接。
 
-| 文件 | 用途 |
-| --- | --- |
-| `D2RMobile-unsigned.ipa` | 约 126MB，用 Sideloadly 签名并安装 |
-| `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 三个资源分卷，必须全部下载，总计约 5.42GB |
-| `Resources-Parts-SHA256SUMS.txt`、`Resources-SHA256SUMS.txt` | 校验分卷与合并后的 ZIP |
-| `RESOURCE-INSTALL.txt` | 分卷合并与资源导入说明 |
+| 文件 | 下载位置 | 用途 |
+| --- | --- | --- |
+| `D2RMobile-unsigned.ipa` | Assets 附件 | 约 126MB，用 Sideloadly 签名并安装 |
+| `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 正文的配套 Data 链接 | 三个资源分卷，必须全部下载，总计约 5.42GB |
+| `Resources-Parts-SHA256SUMS.txt`、`Resources-SHA256SUMS.txt` | 正文的配套 Data 链接 | 校验分卷与合并后的 ZIP |
+| `RESOURCE-INSTALL.txt` | Assets 附件 | 分卷合并与资源导入说明 |
 
 `Source code` 压缩包是构建脚本，不是安装包。
 
@@ -95,17 +94,17 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 种子中包含本体与更新包，`select: [1, 2]` 选择这两项；`key_archive` 是包含解包密钥的 ZIP。使用这份配置，无需另外填写 `PROD_KEYS` Secret。
 
-### 3. 构建 IPA 与 Data
+### 3. 运行构建
 
-1. 进入 **Actions → Build D2R Mobile IPA → Run workflow**，选择 `main`，使用下表参数。
-2. 等待成功后，运行 **Export D2R Mobile resources**，使用相同的 `input_revision`。
-3. 两个工作流成功后，在**自己仓库的 Releases** 下载产物。发布自动完成；IPA 和 Data 齐全前，Release 保持草稿。
+进入 **Actions → Build D2R Mobile IPA → Run workflow**，选择 `main`，使用下表参数：
 
 | 参数 | 填写内容 |
 | --- | --- |
 | `prepare_only` | `false`，不勾选 |
-| `input_revision` | `game-3.3.94012-v1`，两个工作流保持一致 |
+| `input_revision` | `game-3.3.94012-v1`；更换游戏文件或修改种子下载项时更换 |
 
-更换游戏文件或修改种子下载项时，两个工作流都更换 `input_revision`。资源导出提示缓存缺失时，先重新运行 IPA 构建，再重试资源导出。
+**只需运行这一个工作流。** 它会构建 IPA、检查配套 Data，并自动发布 Release。已有相同 Data 时直接复用，不重新压缩或上传；没有配套资源或内容发生变化时，自动打包并发布 Data。
 
-也可以在成功的 Actions 运行页面下载构建附件，保留期为 **3 天**。资源附件内是**完整 ZIP**，无需合并分卷。
+构建成功后，进入**自己仓库的 Releases**。正文提供配套 Data 分卷与校验文件的直接下载链接，即使这些文件保存在较早的 Release，也可以从当前页面直接下载。按上方步骤合并并导入。资源标识与手机上已有 Data 相同时，更新 IPA 无需重新下载 Data。
+
+Actions 运行摘要中也有 IPA 和 Data 的下载入口。IPA 构建附件内包含安装包、资源下载信息（`resources.json`）和导入说明，保留期为 **3 天**。

@@ -11,6 +11,7 @@ import time
 from urllib.parse import unquote, urlparse
 
 import ci
+import export_resources
 
 PART_BYTES = 1_900_000_000  # Strictly below GitHub's 2 GiB per-asset limit.
 OUT = ci.ROOT / 'outputs'
@@ -35,7 +36,8 @@ def validate_report(report):
         raise ValueError('Release input cache revision differs')
 
 
-def split_resources(source, destination, expected_sha, part_bytes=PART_BYTES):
+def split_resources(source, destination, expected_sha, part_bytes=None):
+    part_bytes = PART_BYTES if part_bytes is None else part_bytes
     destination.mkdir(parents=True, exist_ok=True)
     files = []
     whole = hashlib.sha256()
@@ -93,8 +95,8 @@ def release_title():
     return f"D2R Mobile {upstream_version} · Game {ci.CONFIG['game_version']}"
 
 
-def publish_complete(repo, tag, notes, title=None):
-    args = ['release', 'edit', tag, '--repo', repo, '--notes-file', notes, '--draft=false', '--latest']
+def publish_complete(repo, tag, notes, title=None, latest=True):
+    args = ['release', 'edit', tag, '--repo', repo, '--notes-file', notes, '--draft=false', '--latest=' + str(latest).lower()]
     if title is not None:
         args += ['--title', title]
     gh(*args)
@@ -116,19 +118,217 @@ def wait_for_created_release(repo, tag):
     raise RuntimeError('Created release could not be found after retrying')
 
 
-def write_install_guide(destination):
+def write_install_guide(destination, reference=None):
     path = destination / 'RESOURCE-INSTALL.txt'
+    source = ('配套 Data 下载：' + reference['source_release']['url'] + '\n\n') if reference else ''
     path.write_text(
-        '下载本 Release 的所有 D2R-Mobile-Resources.zip.00* 分卷及两个 Resources 校验文件。\n\n'
+        source + '下载配套 Data 的全部 D2R-Mobile-Resources.zip.00* 分卷及两个 Resources 校验文件。\n\n'
         'Mac / Linux：在分卷所在目录执行：\n'
         'shasum -a 256 -c Resources-Parts-SHA256SUMS.txt\n'
         f"cat {' '.join(RESOURCE_PART_NAMES)} > D2R-Mobile-Resources.zip\n"
         'shasum -a 256 -c Resources-SHA256SUMS.txt\n\n'
         'Windows：在分卷所在目录用命令提示符执行：\n'
         f"copy /b {'+'.join(RESOURCE_PART_NAMES)} D2R-Mobile-Resources.zip\n\n"
-        '解压合并后的 ZIP，将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
-        '打开应用点击重试；首次启动等待着色器编译。IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上及支持 BC 贴图的设备（A17 Pro 及更新芯片，或 M 系列 iPad）；不包含老机型所需的额外 Legacy Device Pack。\n'
-        '首次着色器编译耗时参考：iPhone 17 Pro Max 约 6 分钟；其他机型耗时取决于设备。当前版本包尚未进行真机运行验证。\n')
+        '解压后将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
+        '打开应用点击重试，等待首次着色器编译完成。配套 Data 不变时无需重新导入。\n'
+        'IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上及 A17 Pro 或更新芯片，或 M 系列 iPad。\n'
+        '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
+    return path
+
+
+def list_releases(repo):
+    pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repo}/releases?per_page=100'))
+    return [release for page in pages for release in page]
+
+
+def asset_digest(asset):
+    digest = asset.get('digest', '')
+    if not isinstance(digest, str) or not re.fullmatch(r'sha256:[a-f0-9]{64}', digest):
+        raise ValueError('Release asset has no verifiable SHA256')
+    if asset.get('state') != 'uploaded' or type(asset.get('size')) is not int or asset['size'] <= 0:
+        raise ValueError('Release asset upload incomplete')
+    return digest.removeprefix('sha256:')
+
+
+def read_metadata(repo, asset):
+    """Download small metadata only, including from private repositories."""
+    digest = asset_digest(asset)
+    if asset['size'] > 1024 * 1024:
+        raise ValueError('Resource metadata unexpectedly large')
+    content = subprocess.check_output(['gh', 'api', '-H', 'Accept: application/octet-stream',
+                                       f"repos/{repo}/releases/assets/{asset['id']}"])
+    if len(content) != asset['size'] or hashlib.sha256(content).hexdigest() != digest:
+        raise ValueError('Resource metadata SHA256 mismatch')
+    return content
+
+
+def parse_checksums(content):
+    result = {}
+    for line in content.decode('utf-8').splitlines():
+        fields = line.split()
+        if len(fields) != 2 or not re.fullmatch(r'[a-f0-9]{64}', fields[0]) or fields[1] in result:
+            raise ValueError('Invalid resource checksums')
+        result[fields[1]] = fields[0]
+    return result
+
+
+def resource_reference(repo, release, manifest):
+    """Return a verified reference, or reject an incompatible/incomplete bundle."""
+    if release.get('draft') or release.get('prerelease'):
+        return None
+    names = (*RESOURCE_PART_NAMES, 'resources-report.json',
+             'Resources-SHA256SUMS.txt', 'Resources-Parts-SHA256SUMS.txt')
+    assets = {a['name']: a for a in release['assets']}
+    if not set(names) <= assets.keys():
+        return None
+    try:
+        identity = export_resources.resource_identity(manifest)
+        for name in names:
+            asset_digest(assets[name])
+        report = json.loads(read_metadata(repo, assets['resources-report.json']))
+        if export_resources.resource_identity(report) != identity:
+            return None
+        parts = parse_checksums(read_metadata(repo, assets['Resources-Parts-SHA256SUMS.txt']))
+        whole = parse_checksums(read_metadata(repo, assets['Resources-SHA256SUMS.txt']))
+        if set(parts) != set(RESOURCE_PART_NAMES) or whole != {'D2R-Mobile-Resources.zip': report['zip_sha256']}:
+            return None
+        if type(report['zip_bytes']) is not int or report['zip_bytes'] <= 0:
+            return None
+        remaining = report['zip_bytes']
+        downloads = []
+        for name in names:
+            asset = assets[name]
+            digest = asset_digest(asset)
+            if name in RESOURCE_PART_NAMES:
+                expected = min(PART_BYTES, remaining)
+                if expected <= 0 or asset['size'] != expected or digest != parts[name]:
+                    return None
+                remaining -= expected
+            url = asset['browser_download_url']
+            if not url.startswith(f'https://github.com/{repo}/releases/download/'):
+                return None
+            downloads.append({'name': name, 'bytes': asset['size'], 'sha256': digest, 'url': url})
+        if remaining or not release['html_url'].startswith(f'https://github.com/{repo}/releases/tag/'):
+            return None
+        return {'schema_version': 1, 'resource_id': identity,
+                'game_version': manifest['game_version'], 'switch_version': manifest['switch_version'],
+                'archive_count': manifest['archive_count'], 'resource_bytes': manifest['resource_bytes'],
+                'zip_bytes': report['zip_bytes'], 'zip_sha256': report['zip_sha256'],
+                'source_release': {'id': release['id'], 'tag': release['tag_name'], 'url': release['html_url']},
+                'assets': downloads}
+    except (ValueError, KeyError, TypeError, AttributeError):
+        # Malformed or incomplete content is not reusable. Network/auth errors
+        # deliberately propagate rather than silently triggering a large rebuild.
+        return None
+
+
+def find_resources(repo, manifest):
+    # No cross-repository defaults: a fork uses resources in its own repository.
+    releases = list_releases(repo)
+    releases.sort(key=lambda r: not r['tag_name'].startswith('data-'))
+    for release in releases:
+        reference = resource_reference(repo, release, manifest)
+        if reference:
+            return reference
+    return None
+
+
+def ensure_release(repo, tag, title, notes):
+    release = release_info(repo, tag)
+    if release is None:
+        gh('release', 'create', tag, '--repo', repo, '--target', os.environ['GITHUB_SHA'],
+           '--title', title, '--notes-file', notes, '--draft')
+        release = wait_for_created_release(repo, tag)
+    if release.get('immutable'):
+        raise ValueError('Cannot update an immutable release')
+    return release
+
+
+def upload_verified(repo, tag, assets):
+    release = release_info(repo, tag)
+    current = {item['name']: item for item in release['assets']}
+    expected = {}
+    for path in assets:
+        digest = ci.sha256(path)
+        expected[path.name] = (path.stat().st_size, digest)
+        item = current.get(path.name)
+        if item and item.get('state') == 'uploaded' and item.get('digest') == 'sha256:' + digest and item['size'] == path.stat().st_size:
+            print('Release asset unchanged:', path.name, flush=True)
+            continue
+        print('Uploading release asset:', path.name, flush=True)
+        gh('release', 'upload', tag, path, '--repo', repo, '--clobber')
+    release = release_info(repo, tag)
+    remote = {item['name']: item for item in release['assets']}
+    for name, (size, digest) in expected.items():
+        item = remote.get(name)
+        if not item or item.get('size') != size or asset_digest(item) != digest:
+            raise ValueError('Uploaded asset missing or SHA256 mismatch: ' + name)
+    return release
+
+
+def publish_resources(repo, manifest):
+    """Create a Data release only when no complete matching resource set exists."""
+    report = export_resources.export_resources(game=ci.GAME, output=OUT / 'D2R-Mobile-Resources.zip', manifest=manifest)
+    parts = split_resources(OUT / 'D2R-Mobile-Resources.zip', STAGE, report['zip_sha256'])
+    if tuple(p.name for p in parts) != RESOURCE_PART_NAMES:
+        raise ValueError('Unexpected number of resource volumes')
+    tag = f"data-{manifest['game_version']}-{manifest['resource_id']}"
+    title = f"D2R Mobile Data · {manifest['game_version']} · {manifest['resource_id'][:12]}"
+    notes = STAGE / 'DATA-RELEASE.md'
+    notes.write_text(
+        f"游戏资源 **{manifest['game_version']}**，Switch 更新 **{manifest['switch_version']}**。\n\n"
+        '下载全部三个资源分卷及两个校验文件，按 `RESOURCE-INSTALL.txt` 合并并导入。\n\n'
+        f"资源标识：`{manifest['resource_id']}`。\n\n"
+        f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)）。\n\n'
+        '配套 IPA 在各版本 Release 中下载。此资源版本可供多个 IPA 版本复用，请保留其附件。\n')
+    existing = ensure_release(repo, tag, title, notes)
+    if not existing['draft']:
+        # A published but incomplete bundle is hidden while it is repaired.
+        gh('release', 'edit', tag, '--repo', repo, '--draft=true')
+    upload_verified(repo, tag, [*parts, STAGE / 'Resources-Parts-SHA256SUMS.txt',
+                               OUT / 'resources-report.json', OUT / 'Resources-SHA256SUMS.txt',
+                               write_install_guide(STAGE)])
+    release = publish_complete(repo, tag, notes, title, latest=False)
+    reference = resource_reference(repo, release, manifest)
+    if not reference:
+        raise ValueError('Published Data release failed verification')
+    return reference
+
+
+def prepare_resources(repo):
+    OUT.mkdir(exist_ok=True)
+    STAGE.mkdir(exist_ok=True)
+    manifest = export_resources.scan_resources(ci.GAME)
+    (OUT / 'resource-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    reference = find_resources(repo, manifest)
+    reused = reference is not None
+    if not reused:
+        reference = publish_resources(repo, manifest)
+    (OUT / 'resources.json').write_text(json.dumps(reference, indent=2) + '\n')
+    write_install_guide(OUT, reference)
+    message = ('Reused existing Data; skipped ZIP, splitting and upload' if reused else 'Published new Data')
+    print(message + ': ' + reference['source_release']['url'], flush=True)
+    summary = os.environ.get('GITHUB_STEP_SUMMARY')
+    if summary:
+        with open(summary, 'a') as f:
+            f.write(f"\n{message}: [Download Data]({reference['source_release']['url']})\n\n")
+            f.write(f"Resource ID: `{reference['resource_id']}`\n")
+    return reference
+
+
+def write_ipa_notes(repo, reference):
+    path = STAGE / 'RELEASE.md'
+    links = '\n'.join(f"- [{a['name']}]({a['url']})" for a in reference['assets']
+                      if a['name'] != 'resources-report.json')
+    path.write_text(
+        f"游戏版本 **{ci.CONFIG['game_version']}**，Switch 更新 **{ci.CONFIG['switch_version']}**。\n\n"
+        f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)）。\n\n'
+        '### 安装 IPA\n\n下载本页附件 `D2RMobile-unsigned.ipa`，使用 Sideloadly 签名安装。\n'
+        '需要 iOS 26 或以上，以及 A17 Pro 或更新芯片，或 M 系列 iPad。\n\n'
+        f"### 配套 Data\n\n[下载配套 Data]({reference['source_release']['url']})。下载全部三个分卷和两个校验文件，按本页 `RESOURCE-INSTALL.txt` 合并并导入。\n\n"
+        + links + '\n\n'
+        f"资源标识：`{reference['resource_id']}`。已导入相同资源时无需重复下载或导入。\n\n"
+        '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
     return path
 
 
@@ -137,87 +337,40 @@ def main(mode):
     revision = os.environ['INPUT_REVISION']
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', revision):
         raise ValueError('Invalid input revision')
-    repository = api(f'repos/{repo}')
-    print('Release visibility:', 'private' if repository['private'] else 'public', flush=True)
+    if mode == 'prepare-resources':
+        return prepare_resources(repo)
+    if mode != 'ipa':
+        raise ValueError('Expected ipa or prepare-resources')
+    report = json.loads((OUT / 'build-report.json').read_text())
+    validate_report(report)
+    path = OUT / 'D2RMobile-unsigned.ipa'
+    if path.stat().st_size != report['ipa_bytes'] or ci.sha256(path) != report['ipa_sha256']:
+        raise ValueError('IPA SHA256 mismatch before publishing')
+    if (OUT / 'SHA256SUMS.txt').read_text().strip() != f"{report['ipa_sha256']}  {path.name}":
+        raise ValueError('IPA checksum file differs from build report')
+    manifest = json.loads((OUT / 'resource-manifest.json').read_text())
+    for key in ('game_version', 'switch_version'):
+        if manifest[key] != ci.CONFIG[key]:
+            raise ValueError('IPA resource version differs: ' + key)
+    reference = json.loads((OUT / 'resources.json').read_text())
+    source = api(f"repos/{repo}/releases/{reference['source_release']['id']}")
+    if resource_reference(repo, source, manifest) != reference:
+        raise ValueError('Referenced Data is no longer complete or compatible')
+    STAGE.mkdir(exist_ok=True)
     tag = f"d2r-{ci.CONFIG['game_version']}-{ci.CONFIG['upstream_commit'][:8]}-{revision}"
     title = release_title()
-    STAGE.mkdir(exist_ok=True)
-    if mode == 'ipa':
-        report = json.loads((OUT / 'build-report.json').read_text())
-        validate_report(report)
-        path = OUT / 'D2RMobile-unsigned.ipa'
-        if path.stat().st_size != report['ipa_bytes'] or ci.sha256(path) != report['ipa_sha256']:
-            raise ValueError('IPA SHA256 mismatch before publishing')
-        assets = [path, OUT / 'build-report.json', OUT / 'SHA256SUMS.txt']
-    elif mode == 'resources':
-        report = json.loads((OUT / 'resources-report.json').read_text())
-        validate_report(report)
-        if report['archive_count'] != 18 or report['resource_bytes'] != 5561224037:
-            raise ValueError('Unexpected phone resource set')
-        path = OUT / 'D2R-Mobile-Resources.zip'
-        if path.stat().st_size != report['zip_bytes']:
-            raise ValueError('Resource ZIP size mismatch')
-        assets = split_resources(path, STAGE, report['zip_sha256'])
-        if tuple(path.name for path in assets) != RESOURCE_PART_NAMES:
-            raise ValueError('Unexpected number of resource volumes')
-        assets += [STAGE / 'Resources-Parts-SHA256SUMS.txt',
-                   OUT / 'resources-report.json', OUT / 'Resources-SHA256SUMS.txt']
-    else:
-        raise ValueError('Expected ipa or resources')
-    assets.append(write_install_guide(STAGE))
-
-    notes = STAGE / 'RELEASE.md'
-    notes.write_text(
-        f"自动构建的 D2R Mobile，游戏版本 **{ci.CONFIG['game_version']}**，Switch 更新 **{ci.CONFIG['switch_version']}**。\n\n"
-        f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)），包含 IPA 安装、资源分卷合并和导入步骤。\n\n'
-        '- `D2RMobile-unsigned.ipa`：用 Sideloadly 签名安装，需要 iOS 26 或以上及支持 BC 贴图的设备（A17 Pro 及更新芯片，或 M 系列 iPad）；不包含老机型所需的额外 Legacy Device Pack。\n'
-        '- `D2R-Mobile-Resources.zip.001` 等：必须下载全部分卷，按 `RESOURCE-INSTALL.txt` 合并并校验，再解压导入应用。\n'
-        '- `build-report.json`、`resources-report.json` 与 SHA256 文件：版本及完整性信息。\n\n'
-        'IPA 与 18 个资源文件配套使用；首次启动在手机上编译着色器。首次着色器编译耗时参考：iPhone 17 Pro Max 约 6 分钟；其他机型耗时取决于设备。当前版本包尚未进行真机运行验证。\n\n'
-        '本 Release 由成功构建自动维护，同一配套版本的后续构建会更新对应附件。\n')
-    release = release_info(repo, tag)
-    if release is None:
-        gh('release', 'create', tag, '--repo', repo, '--target', os.environ['GITHUB_SHA'],
-           '--title', title, '--notes-file', notes, '--draft')
-        release = wait_for_created_release(repo, tag)
-    if release is None:
-        raise RuntimeError('Created release could not be found')
-    if release.get('immutable'):
-        raise ValueError('Cannot update an immutable release')
-    current = {item['name']: item for item in release['assets']}
-    for path in assets:
-        digest = 'sha256:' + ci.sha256(path)
-        existing = current.get(path.name)
-        if existing and existing.get('digest') == digest and existing['size'] == path.stat().st_size:
-            print('Release asset unchanged:', path.name, flush=True)
-            continue
-        print('Uploading release asset:', path.name, flush=True)
-        gh('release', 'upload', tag, path, '--repo', repo, '--clobber')
-    release = release_info(repo, tag)
-    remote = {item['name']: item for item in release['assets']}
-    for path in assets:
-        item = remote.get(path.name)
-        if not item or item['size'] != path.stat().st_size:
-            raise ValueError('Uploaded asset missing or incomplete: ' + path.name)
-        if item.get('digest') and item['digest'] != 'sha256:' + ci.sha256(path):
-            raise ValueError('Uploaded asset SHA256 mismatch: ' + path.name)
-    required = {'D2RMobile-unsigned.ipa', 'build-report.json', 'SHA256SUMS.txt',
-                'D2R-Mobile-Resources.zip.001', 'D2R-Mobile-Resources.zip.002',
-                'D2R-Mobile-Resources.zip.003', 'resources-report.json',
-                'Resources-SHA256SUMS.txt', 'Resources-Parts-SHA256SUMS.txt', 'RESOURCE-INSTALL.txt'}
-    if required <= remote.keys():
-        # Refresh after publication: GitHub assigns a temporary untagged URL
-        # to drafts, which must not be used as the final download link.
-        release = publish_complete(repo, tag, notes, title=title)
-        print('Published complete release:', release['html_url'], flush=True)
-        status = 'Published complete Release'
-    else:
-        print('Assets uploaded; automatically waiting for matching IPA/resources', flush=True)
-        status = 'Draft prepared; waiting for the other successful build'
+    notes = write_ipa_notes(repo, reference)
+    ensure_release(repo, tag, title, notes)
+    upload_verified(repo, tag, [path, OUT / 'build-report.json', OUT / 'SHA256SUMS.txt',
+                               OUT / 'resource-manifest.json', OUT / 'resources.json',
+                               write_install_guide(OUT, reference)])
+    release = publish_complete(repo, tag, notes, title)
+    print('Published IPA with matching Data:', release['html_url'], flush=True)
     summary = os.environ.get('GITHUB_STEP_SUMMARY')
     if summary:
-        with open(summary, 'a') as stream:
-            stream.write(f'\n{status}: {release["html_url"]}\n')
+        with open(summary, 'a') as f:
+            f.write(f"\n[Download IPA]({release['html_url']}) · [Download Data]({reference['source_release']['url']})\n")
+    return release
 
 
 if __name__ == '__main__':
