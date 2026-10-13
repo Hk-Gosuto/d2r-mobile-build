@@ -75,43 +75,38 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 ## 自己运行构建
 
-Fork 后需自行配置输入；Fork 不继承本仓库的 Actions Secrets。请使用自己合法持有并有权使用的游戏输入和主机密钥。上游要求包含「术士君临」资料片，不含资料片的版本不支持、也未验证。
+Fork 不继承本仓库的 Actions Secrets。请使用自己合法持有并有权使用的游戏文件与主机密钥。上游要求包含「术士君临」资料片。
 
-在 **Settings → Secrets and variables → Actions** 配置：
-
-| Secret | 说明 |
-| --- | --- |
-| `GAME_INPUT_MANIFEST` | 必需，JSON 格式的下载输入清单 |
-| `PROD_KEYS` | NSP/XCI 解包时使用的 `prod.keys` 全文；已解密输入无需配置 |
-
-方案 A：已经解密、合并更新后的 ExeFS / RomFS 压缩包：
-
-```json
-{
-  "kind": "prepared",
-  "files": [
-    {"name": "game.zip", "url": "https://example.com/your-game.zip", "sha256": "替换为文件的64位SHA256"}
-  ]
-}
-```
-
-压缩包里需要唯一一组 `ExeFS/` 与 `RomFS/`。程序与资源必须对应上表版本。
-
-方案 B：本体与指定更新的 NSP/XCI，同时配置 `PROD_KEYS`：
+进入 **Settings → Secrets and variables → Actions → New repository secret**，名称填写 **`GAME_INPUT_MANIFEST`**，完整粘贴下面的配置。实际下载地址和 SHA256 已填好，无需替换：
 
 ```json
 {
   "kind": "packages",
   "files": [
-    {"name": "base.nsp", "url": "https://example.com/your-base.nsp"},
-    {"name": "update.nsp", "url": "https://example.com/your-update.nsp"}
-  ]
+    {
+      "name": "game.torrent",
+      "url": "https://gamegula.com/index.php?do=download&id=405",
+      "sha256": "016f7c907deb1f4cd6098a7cd06823907a589ff2502aa2c8b341a89ccf984266",
+      "select": [
+        1,
+        2
+      ]
+    }
+  ],
+  "key_archive": {
+    "url": "https://drive.google.com/uc?export=download&id=147IsDRRJNF_VMT6Fj50glrnqAeb7oR_1",
+    "sha256": "b73573af5eae6c9f7739ca9931cebf04774cf2ba9d6ee98f2f04c2dc88fca71c"
+  }
 }
 ```
 
-URL 必须能直接返回文件，验证码页面和网盘展示页不能用于无人值守下载。普通文件的 `sha256` 可省略；填写时必须是实际哈希。支持 zip/rar/7z 包装和 RAR 分卷；NSZ 不支持。DLC 包不参与此脚本的提取。
+这就是构建使用的输入配置：
 
-也支持 `.torrent` 输入：必须提供元数据文件的 `sha256`，并以 `select: [1, 2]` 明确指定要下载的包序号。高级输入可配置带 URL 和 SHA256 的 `key_archive`，该配置也应放入 Secret；归档读取后立即删除，不进入缓存。
+- `files[0].url` 从 GameGula 下载**种子文件**；对应 `sha256` 校验的是 `.torrent` 文件本身，不是游戏包。
+- `select: [1, 2]` 下载种子内的**本体 NSP 和 `1.0.34.0`（`v2228224`）更新 NSP**，因此这份配置没有单独的更新包下载地址。
+- `key_archive` 从 Google Drive 下载**包含 `prod.keys` 的 ZIP**，并校验该 ZIP 的 SHA256。它提供解包密钥，不是游戏更新包；临时读取后删除，不进入缓存或产物。
+
+使用这份配置，无需另外填写 `PROD_KEYS` Secret。Actions 自动下载并解包，缓存命中时直接复用完整原始下载。JSON 保存在 Secret 中，不要将游戏包或密钥内容提交到 Git。
 
 ### 工作流
 

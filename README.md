@@ -75,43 +75,38 @@ Hashes and tool commits are pinned in [build-config.json](build-config.json). Do
 
 ## Run your own build
 
-Configure your own inputs after forking; forks do not inherit this repository's Actions Secrets. Use game inputs and console keys that you legally possess and are authorized to use. Upstream requires the Reign of the Warlock expansion; the edition without it is not supported or verified.
+Forks do not inherit this repository's Actions Secrets. Use game files and console keys that you legally possess and are authorized to use. Upstream requires the Reign of the Warlock expansion.
 
-Configure these secrets under **Settings → Secrets and variables → Actions**:
-
-| Secret | Description |
-| --- | --- |
-| `GAME_INPUT_MANIFEST` | Required: a JSON manifest describing download inputs |
-| `PROD_KEYS` | Full contents of `prod.keys` for NSP/XCI extraction; not needed for already decrypted inputs |
-
-Option A: an archive containing decrypted ExeFS / RomFS with the update already merged:
-
-```json
-{
-  "kind": "prepared",
-  "files": [
-    {"name": "game.zip", "url": "https://example.com/your-game.zip", "sha256": "REPLACE_WITH_THE_FILES_64_HEX_CHARACTER_SHA256"}
-  ]
-}
-```
-
-The archive must contain exactly one pair of `ExeFS/` and `RomFS/` directories. The program and resources must match the versions in the table above.
-
-Option B: NSP/XCI packages for the base game and specified update, with `PROD_KEYS` also configured:
+Open **Settings → Secrets and variables → Actions → New repository secret**, name it **`GAME_INPUT_MANIFEST`**, and paste the complete configuration below. The actual download URLs and SHA256 values are already filled in; no replacements are needed:
 
 ```json
 {
   "kind": "packages",
   "files": [
-    {"name": "base.nsp", "url": "https://example.com/your-base.nsp"},
-    {"name": "update.nsp", "url": "https://example.com/your-update.nsp"}
-  ]
+    {
+      "name": "game.torrent",
+      "url": "https://gamegula.com/index.php?do=download&id=405",
+      "sha256": "016f7c907deb1f4cd6098a7cd06823907a589ff2502aa2c8b341a89ccf984266",
+      "select": [
+        1,
+        2
+      ]
+    }
+  ],
+  "key_archive": {
+    "url": "https://drive.google.com/uc?export=download&id=147IsDRRJNF_VMT6Fj50glrnqAeb7oR_1",
+    "sha256": "b73573af5eae6c9f7739ca9931cebf04774cf2ba9d6ee98f2f04c2dc88fca71c"
+  }
 }
 ```
 
-URLs must return files directly. CAPTCHA pages and file-hosting landing pages cannot be used for unattended downloads. The `sha256` field is optional for ordinary files; when provided, it must contain the actual hash. ZIP/RAR/7z wrappers and multipart RAR archives are supported. NSZ is not supported. DLC packages are not extracted by this script.
+This is the input configuration used for the builds:
 
-`.torrent` inputs are also supported: provide the metadata file's `sha256` and explicitly select package indices with `select: [1, 2]`. Advanced inputs may include a `key_archive` with a URL and SHA256; keep that configuration in the Secret as well. The key archive is deleted immediately after reading and is not cached.
+- `files[0].url` downloads the **torrent metadata** from GameGula; its `sha256` verifies the `.torrent` file, not the game packages.
+- `select: [1, 2]` downloads the **base NSP and `1.0.34.0` (`v2228224`) update NSP** from that torrent. There is no separate update download URL in this configuration.
+- `key_archive` downloads a **ZIP containing `prod.keys`** from Google Drive and verifies the ZIP's SHA256. It provides the extraction keys; it is not the update package. The ZIP is read temporarily and deleted, without being cached or included in outputs.
+
+With this configuration, no separate `PROD_KEYS` Secret is needed. Actions downloads and extracts the inputs automatically and reuses complete original downloads from the cache when available. Keep the JSON in the Secret; do not commit game packages or key contents to Git.
 
 ### Workflows
 
