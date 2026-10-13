@@ -198,12 +198,20 @@ class ResourceReuseTests(unittest.TestCase):
                 digest = hashlib.sha256(content).hexdigest()
                 report = {k: publish.ci.CONFIG[k] for k in ('game_version', 'switch_version', 'upstream_commit')}
                 report.update(ipa_bytes=len(content), ipa_sha256=digest, input_revision='revision-1')
+                packages = []
+                for name, minimum, shell_key in (('D2RMobile-unsigned.ipa', '26.0', 'shell_sha256'), ('D2RMobile-ios18-unsigned.ipa', '18.0', 'ios18_shell_sha256')):
+                    (output / name).write_bytes(content)
+                    packages.append(dict(report, ipa_name=name, minimum_os=minimum, shell_sha256=publish.ci.CONFIG[shell_key]))
+                report['packages'] = packages
                 (output / 'build-report.json').write_text(json.dumps(report))
-                (output / 'SHA256SUMS.txt').write_text(f'{digest}  D2RMobile-unsigned.ipa\n')
-                release = publish.main('ipa')
+                (output / 'SHA256SUMS.txt').write_text(''.join(f"{digest}  {r['ipa_name']}\n" for r in packages))
+                (output / 'legacy-resources.json').write_text('{}')
+                with patch.object(publish, 'verify_legacy_reference', return_value=None):
+                    release = publish.main('ipa')
                 self.assertEqual(store.latest, release['tag_name'])
                 self.assertFalse(release['draft'])
                 self.assertIn('resources.json', {a['name'] for a in release['assets']})
+                self.assertTrue({'D2RMobile-unsigned.ipa', 'D2RMobile-ios18-unsigned.ipa'} <= {a['name'] for a in release['assets']})
                 self.assertFalse(any(a['name'].endswith(('.001', '.002', '.003')) for a in release['assets']))
                 uploads_before = len([c for c in store.calls if c[:2] == ('release', 'upload')])
                 with patch.object(resources, 'export_resources') as export, patch.object(publish, 'split_resources') as split:

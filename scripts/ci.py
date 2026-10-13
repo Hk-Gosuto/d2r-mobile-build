@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import plistlib
 from pathlib import Path
 import re
 import shutil
@@ -66,7 +67,12 @@ def shell_info(path):
 def ensure_shell():
     if not SHELL.exists() or sha256(SHELL) != CONFIG['shell_sha256']:
         download(CONFIG['shell_url'], SHELL, CONFIG['shell_sha256'])
+    other = TOOLS / 'D2RMobile-shell-ios18.ipa'
+    if not other.exists() or sha256(other) != CONFIG['ios18_shell_sha256']:
+        download(CONFIG['ios18_shell_url'], other, CONFIG['ios18_shell_sha256'])
     info = shell_info(SHELL)
+    if shell_info(other) != info:
+        raise ValueError('The two shells have different program or shader requirements')
     product = (ROOT / 'upstream/dm/PRODUCT').read_text().strip()
     if info['PRODUCT'] != product:
         raise ValueError('Pinned source and shell PRODUCT differ')
@@ -399,10 +405,10 @@ def extract_packages(key_text):
         title_keys.unlink(missing_ok=True)
 
 
-def verify_ipa():
-    output = ROOT / 'outputs/D2RMobile-unsigned.ipa'
-    info = shell_info(SHELL)
-    with zipfile.ZipFile(SHELL) as shell, zipfile.ZipFile(output) as z:
+def verify_ipa(output=None, shell_path=SHELL, minimum_os=None, legacy_pack=None):
+    output = Path(output or ROOT / 'outputs/D2RMobile-unsigned.ipa')
+    info = shell_info(shell_path)
+    with zipfile.ZipFile(shell_path) as shell, zipfile.ZipFile(output) as z:
         corrupt = z.testzip()
         if corrupt:
             raise ValueError('Corrupt IPA member: ' + corrupt)
@@ -411,6 +417,16 @@ def verify_ipa():
             raise ValueError('Shell app path ambiguous')
         base = bases[0]
         members = set(z.namelist())
+        actual_os = plistlib.loads(z.read(base + 'Info.plist'))['MinimumOSVersion']
+        if minimum_os is not None and actual_os != minimum_os:
+            raise ValueError('IPA minimum system mismatch: ' + actual_os)
+        if legacy_pack is not None:
+            expected_pack = (Path(legacy_pack) / 'pack.json').read_bytes()
+            if z.read(base + 'romfs_overlay_astc/pack.json') != expected_pack:
+                raise ValueError('IPA Legacy Device Pack does not match')
+            for folder in ('romfs_overlay_astc/', 'romfs_overlay_astc_variants/'):
+                if not any(n.startswith(base + folder) and n.endswith('.data') for n in members):
+                    raise ValueError('Legacy overlay missing: ' + folder)
         if base + 'dm/bootlist.tsv' in members or base + 'dm/bootlist.sha256' in members:
             raise ValueError('Unexpected stale startup prefetch files in IPA')
         required = public_manifest(shell.read(base + 'dm/shell_manifest.txt'))
@@ -432,9 +448,10 @@ def verify_ipa():
             raise ValueError('IPA shader library missing')
     digest = sha256(output)
     (output.parent / 'SHA256SUMS.txt').write_text(f'{digest}  {output.name}\n')
-    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'input_revision': os.environ.get('INPUT_REVISION'), 'shell_sha256': CONFIG['shell_sha256'], 'product': info['PRODUCT'], 'shader_chain': info['CHAIN'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'The pinned official public shell omits the unpublished bootlist; the host supports no prefetch when absent.'}
+    report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'input_revision': os.environ.get('INPUT_REVISION'), 'shell_sha256': sha256(shell_path), 'minimum_os': actual_os, 'ipa_name': output.name, 'product': info['PRODUCT'], 'shader_chain': info['CHAIN'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'The pinned official public shell omits the unpublished bootlist; the host supports no prefetch when absent.'}
     (output.parent / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
-    print('IPA verified:', output.stat().st_size, 'bytes;', len(shader_files), 'shader libraries')
+    print('IPA verified:', output.name, output.stat().st_size, 'bytes;', len(shader_files), 'shader libraries', flush=True)
+    return report
 
 
 def diagnostics():

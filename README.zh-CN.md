@@ -12,7 +12,9 @@
 
 | 文件 | 下载位置 | 用途 |
 | --- | --- | --- |
-| `D2RMobile-unsigned.ipa` | Assets 附件 | 约 126MB，用 Sideloadly 签名并安装 |
+| `D2RMobile-unsigned.ipa` | Assets 附件 | iOS 26 及以上，用 Sideloadly 签名安装 |
+| `D2RMobile-ios18-unsigned.ipa` | Assets 附件 | iOS 18–25，Metal 3 兼容版 |
+| `Legacy-Device-Pack.zip` | 正文的老设备补充包链接 | A16 及更早设备需要的额外贴图，约 1GB |
 | `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 正文的配套 Data 链接 | 三个资源分卷，必须全部下载，总计约 5.42GB |
 | `Resources-Parts-SHA256SUMS.txt`、`Resources-SHA256SUMS.txt` | 正文的配套 Data 链接 | 校验分卷与合并后的 ZIP |
 | `RESOURCE-INSTALL.txt` | Assets 附件 | 分卷合并与资源导入说明 |
@@ -21,9 +23,11 @@
 
 ### 1. 安装 IPA
 
-需要 **iOS 26 或以上**，以及 **A17 Pro 或更新芯片，或 M 系列 iPad**。此包不包含 A16 及更早设备所需的额外贴图包。
+按系统选择：**iOS 26 及以上**使用 `D2RMobile-unsigned.ipa`；**iOS 18–25**使用 `D2RMobile-ios18-unsigned.ipa`。排查图形问题时，也可以在 iOS 26 及以上测试兼容版，但它并非已确认的系统崩溃修复。
 
-使用 Sideloadly 签名并安装 `D2RMobile-unsigned.ipa`，按系统提示完成信任设置。**IPA 需要配合下方 Data 资源使用。**
+两份安装包均支持 **A17 Pro 或更新芯片、M 系列 iPad，以及导入配套老设备补充包的 A16 及更早芯片**。老设备仍需足够内存，不代表每种机型都已验证能稳定运行。
+
+使用 Sideloadly 签名并安装所选 IPA，按系统提示完成信任设置。两份 IPA 的应用标识相同，安装另一份会覆盖当前版本。**IPA 需要配合下方 Data 资源使用。**
 
 ### 2. 合并并解压 Data
 
@@ -51,7 +55,9 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 用数据线连接 iPhone，在 **Finder → iPhone → 文件 → D2R Mobile** 中拖入整个 `D2R Mobile Resources` 文件夹；也可以放进手机的 **文件 → 我的 iPhone → D2R Mobile**。
 
-打开应用，点击“重试”。首次启动需等待着色器编译完成，**iPhone 17 Pro Max 参考耗时约 6 分钟**，其他机型耗时不同。当前 v1.0.6 包尚未进行真机运行验证。
+**A16 及更早设备**还需从当前 IPA Release 正文的链接下载 `Legacy-Device-Pack.zip`，解压后把整个 `Legacy Device Pack` 文件夹放进应用，与 `D2R Mobile Resources` 并排。请使用当前 IPA Release 链接的配套补充包，两种系统版本共用这一份。A17 Pro 及更新芯片和 M 系列 iPad 无需导入补充包。
+
+打开应用，点击“重试”。首次启动需等待着色器编译完成，**iPhone 17 Pro Max 参考耗时约 6 分钟**，其他机型耗时不同。当前 v1.0.7 包尚未进行真机运行验证。
 
 更新 IPA 时，配套资源版本不变就可以继续使用已有 Data。应用标识不变时，覆盖安装通常保留资源和存档；**卸载应用会删除它们**。
 
@@ -59,7 +65,7 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 | 项目 | 版本 |
 | --- | --- |
-| 上游 | v1.0.6 |
+| 上游 | v1.0.7 |
 | Switch 更新 | `1.0.34.0` / `v2228224` |
 | 游戏内部版本 | `3.3.94012` |
 | 所需版本 | 包含「术士君临」资料片 |
@@ -103,10 +109,10 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 | `prepare_only` | `false`，不勾选 |
 | `input_revision` | `game-3.3.94012-v1`；更换游戏文件或修改种子下载项时更换 |
 
-**只需运行这一个工作流。** 它会构建 IPA、检查配套 Data，并自动发布 Release。已有相同 Data 时直接复用，不重新压缩或上传；没有配套资源或内容发生变化时，自动打包并发布 Data。
+**只需运行这一个工作流。** 它会构建两份带老设备支持的 IPA，并自动发布 Release。已有相同 Data 时直接复用，不重新压缩或上传；没有配套资源或内容发生变化时，自动打包并发布 Data。老设备补充包也只生成一次，后续输入和转换设置匹配时直接复用。
 
 构建成功后，进入**自己仓库的 Releases**。正文提供配套 Data 分卷与校验文件的直接下载链接，即使这些文件保存在较早的 Release，也可以从当前页面直接下载。按上方步骤合并并导入。资源标识与手机上已有 Data 相同时，更新 IPA 无需重新下载 Data。
 
-请保留配套 Data 所在的 Release 及其附件，确保下载链接持续可用。
+请保留配套 Data 和老设备补充包所在的 Release 及其附件，确保下载链接持续可用。
 
-Actions 运行摘要中也有 IPA 和 Data 的下载入口。IPA 构建附件内包含安装包、资源下载信息（`resources.json`）和导入说明，保留期为 **3 天**。
+Actions 运行摘要中也有 IPA 和 Data 的下载入口。IPA 构建附件内包含两份安装包、资源下载信息（`resources.json`、`legacy-resources.json`）和导入说明，保留期为 **3 天**。

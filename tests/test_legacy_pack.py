@@ -1,0 +1,124 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import plistlib
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+import zipfile
+
+sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
+import ci
+import legacy_pack as legacy
+import publish_release as publish
+from test_resource_reuse import FakeGitHub, manifest
+
+
+def small_pack(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    content = b'encoded ASTC archive'
+    info = {'name': '00-00000008.data', 'size': len(content),
+            'sha256': hashlib.sha256(content).hexdigest()}
+    (directory / 'pack.json').write_text(json.dumps(info))
+    (directory / 'pack_index.tsv').write_text('# pack\t00-00000008.data\ntexture\tentry\n')
+    data = directory / 'Legacy Device Pack/data'
+    data.mkdir(parents=True, exist_ok=True)
+    (data / info['name']).write_bytes(content)
+    (data.parent / 'manifest.json').write_text(json.dumps({'files': [info]}))
+    return info
+
+
+class LegacyPackTests(unittest.TestCase):
+    def test_published_pack_is_restored_without_transcoding_or_uploading_again(self):
+        store = FakeGitHub()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            output, stage, pack = root / 'out', root / 'stage', root / 'pack'
+            def download(args, stdout, check):
+                stdout.write(store.content[int(args[-1].rsplit('/', 1)[1])])
+            env = {'GITHUB_REPOSITORY': store.repo, 'GITHUB_SHA': 'abc'}
+            with patch.dict(os.environ, env), patch.object(legacy, 'PACK', pack), patch.object(publish, 'OUT', output), patch.object(publish, 'STAGE', stage), patch.object(legacy.export_resources, 'scan_resources', return_value=manifest()), patch.object(legacy, 'recipe', return_value='a' * 64), patch.object(legacy, 'generate', side_effect=lambda: small_pack(pack)) as generate, patch.object(publish, 'gh', side_effect=store.gh), patch.object(publish, 'release_info', side_effect=lambda repo, tag: store.releases.get(tag)), patch.object(publish.subprocess, 'check_output', side_effect=store.download), patch.object(legacy.subprocess, 'run', side_effect=download):
+                legacy.main()
+                first = json.loads((output / 'legacy-resources.json').read_text())
+                self.assertIsNone(store.latest)
+                uploads = len([c for c in store.calls if c[:2] == ('release', 'upload')])
+                (pack / 'Legacy Device Pack/data/00-00000008.data').unlink()
+                legacy.main()
+                self.assertEqual(first, json.loads((output / 'legacy-resources.json').read_text()))
+                self.assertEqual(legacy.validate_pack(pack), first['pack'])
+                generate.assert_called_once()
+                self.assertEqual(uploads, len([c for c in store.calls if c[:2] == ('release', 'upload')]))
+                with zipfile.ZipFile(stage / legacy.ZIP_NAME) as z:
+                    self.assertEqual(set(z.namelist()), {'Legacy Device Pack/manifest.json', 'Legacy Device Pack/data/00-00000008.data'})
+                release = store.releases[first['source_release']['tag']]
+                index = next(a for a in release['assets'] if a['name'] == 'pack_index.tsv')
+                index['digest'] = 'sha256:' + '0' * 64
+                self.assertIsNone(legacy.reference(store.repo, release, 'a' * 64))
+
+    def test_corrupt_payload_and_wrong_phone_manifest_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            small_pack(root)
+            (root / 'Legacy Device Pack/manifest.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'manifest differs'):
+                legacy.validate_pack(root)
+            small_pack(root)
+            (root / 'Legacy Device Pack/data/00-00000008.data').write_bytes(b'wrong')
+            with self.assertRaisesRegex(ValueError, 'SHA256 mismatch'):
+                legacy.validate_pack(root)
+
+    def test_restore_rejects_unexpected_zip_paths(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with zipfile.ZipFile(root / legacy.ZIP_NAME, 'w') as z:
+                z.writestr('../escape', b'no')
+            with patch.object(publish, 'STAGE', root), patch.object(legacy, 'PACK', root / 'pack'):
+                with self.assertRaisesRegex(ValueError, 'ZIP members'):
+                    legacy.restore('owner/repo', {'assets': []})
+
+    def test_ipa_verification_checks_system_and_paired_overlay(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            info = small_pack(root / 'pack')
+            shell = root / 'shell.ipa'
+            entries = {'Payload/Game.app/dm/shell_info.txt': b'PRODUCT=test\nCHAIN=chain\nSHADER_SRC=source\n',
+                       'Payload/Game.app/dm/shell_manifest.txt': b'Frameworks/Guest.framework/\n',
+                       'Payload/Game.app/Info.plist': plistlib.dumps({'MinimumOSVersion': '18.0'})}
+            with zipfile.ZipFile(shell, 'w') as z:
+                for n, b in entries.items(): z.writestr(n, b)
+            entries.update({'Payload/Game.app/Frameworks/Guest.framework/Guest': bytes.fromhex('cffaedfe'),
+                            'Payload/Game.app/msl/b-chain/test_b.metallib': b'source',
+                            'Payload/Game.app/romfs_overlay_astc/pack.json': (root / 'pack/pack.json').read_bytes(),
+                            'Payload/Game.app/romfs_overlay_astc/data/a.data': b'overlay',
+                            'Payload/Game.app/romfs_overlay_astc_variants/pad/data/a.data': b'overlay'})
+            ipa = root / 'game.ipa'
+            with zipfile.ZipFile(ipa, 'w') as z:
+                for n, b in entries.items(): z.writestr(n, b)
+            report = ci.verify_ipa(ipa, shell, '18.0', root / 'pack')
+            self.assertEqual(report['minimum_os'], '18.0')
+            with self.assertRaisesRegex(ValueError, 'minimum system'):
+                ci.verify_ipa(ipa, shell, '26.0', root / 'pack')
+            (root / 'pack/pack.json').write_text(json.dumps(dict(info, sha256='0' * 64)))
+            with self.assertRaisesRegex(ValueError, 'does not match'):
+                ci.verify_ipa(ipa, shell, '18.0', root / 'pack')
+
+    def test_publication_rejects_missing_variant_and_modified_ipa(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch.object(publish, 'OUT', root):
+                with self.assertRaisesRegex(ValueError, 'Both verified'):
+                    publish.validate_packages({'packages': []})
+                packages = []
+                for name, minimum, key in (('D2RMobile-unsigned.ipa', '26.0', 'shell_sha256'),
+                                           ('D2RMobile-ios18-unsigned.ipa', '18.0', 'ios18_shell_sha256')):
+                    (root / name).write_bytes(b'ipa')
+                    packages.append(dict({k: ci.CONFIG[k] for k in ('upstream_commit', 'game_version', 'switch_version')},
+                                         ipa_name=name, minimum_os=minimum, shell_sha256=ci.CONFIG[key],
+                                         ipa_bytes=3, ipa_sha256=ci.sha256(root / name)))
+                (root / 'SHA256SUMS.txt').write_text(''.join(f"{p['ipa_sha256']}  {p['ipa_name']}\n" for p in packages))
+                self.assertEqual(len(publish.validate_packages({'packages': packages})), 2)
+                (root / packages[1]['ipa_name']).write_bytes(b'bad')
+                with self.assertRaisesRegex(ValueError, 'IPA SHA256 mismatch'):
+                    publish.validate_packages({'packages': packages})

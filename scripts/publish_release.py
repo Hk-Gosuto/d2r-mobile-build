@@ -131,7 +131,8 @@ def write_install_guide(destination, reference=None):
         f"copy /b {'+'.join(RESOURCE_PART_NAMES)} D2R-Mobile-Resources.zip\n\n"
         '解压后将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
         '打开应用点击重试，等待首次着色器编译完成。配套 Data 不变时无需重新导入。\n'
-        'IPA 使用 Sideloadly 签名安装，需要 iOS 26 或以上及 A17 Pro 或更新芯片，或 M 系列 iPad。\n'
+        'IPA 使用 Sideloadly 签名安装：D2RMobile-unsigned.ipa 用于 iOS 26+；D2RMobile-ios18-unsigned.ipa 用于 iOS 18–25。\n'
+        'A16 及更早设备还需下载本 IPA Release 正文链接的 Legacy-Device-Pack.zip，解压后将 Legacy Device Pack 文件夹与 D2R Mobile Resources 并排导入。\n'
         '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
     return path
 
@@ -153,7 +154,7 @@ def asset_digest(asset):
 def read_metadata(repo, asset):
     """Download small metadata only, including from private repositories."""
     digest = asset_digest(asset)
-    if asset['size'] > 1024 * 1024:
+    if asset['size'] > 16 * 1024 * 1024:
         raise ValueError('Resource metadata unexpectedly large')
     content = subprocess.check_output(['gh', 'api', '-H', 'Accept: application/octet-stream',
                                        f"repos/{repo}/releases/assets/{asset['id']}"])
@@ -298,7 +299,9 @@ def publish_resources(repo, manifest):
 def prepare_resources(repo):
     OUT.mkdir(exist_ok=True)
     STAGE.mkdir(exist_ok=True)
-    manifest = export_resources.scan_resources(ci.GAME)
+    manifest_path = OUT / 'resource-manifest.json'
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else export_resources.scan_resources(ci.GAME)
+    export_resources.resource_identity(manifest)
     (OUT / 'resource-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     reference = find_resources(repo, manifest)
     reused = reference is not None
@@ -316,20 +319,57 @@ def prepare_resources(repo):
     return reference
 
 
-def write_ipa_notes(repo, reference):
+def write_ipa_notes(repo, reference, legacy=None):
     path = STAGE / 'RELEASE.md'
     links = '\n'.join(f"- [{a['name']}]({a['url']})" for a in reference['assets']
                       if a['name'] != 'resources-report.json')
     path.write_text(
         f"游戏版本 **{ci.CONFIG['game_version']}**，Switch 更新 **{ci.CONFIG['switch_version']}**。\n\n"
         f'详细使用方式请参考 [README](https://github.com/{repo}#readme)（[简体中文](https://github.com/{repo}/blob/main/README.zh-CN.md)）。\n\n'
-        '### 安装 IPA\n\n下载本页附件 `D2RMobile-unsigned.ipa`，使用 Sideloadly 签名安装。\n'
-        '需要 iOS 26 或以上，以及 A17 Pro 或更新芯片，或 M 系列 iPad。\n\n'
+        '### 安装 IPA\n\n使用 Sideloadly 签名安装，按系统选择：\n\n'
+        '- iOS 26 及以上：`D2RMobile-unsigned.ipa`（Metal 4）。\n'
+        '- iOS 18–25：`D2RMobile-ios18-unsigned.ipa`（Metal 3 兼容版）。\n\n'
+        '两份 IPA 使用相同应用标识，安装另一份会覆盖当前版本。\n\n'
+        + (f"### A16 及更早设备\n\n还需下载 [Legacy-Device-Pack.zip]({next(a['url'] for a in legacy['assets'] if a['name'] == 'Legacy-Device-Pack.zip')})，"
+           '解压后将 `Legacy Device Pack` 文件夹与 `D2R Mobile Resources` 并排导入。两份 IPA 共用本补充包；A17 Pro 及更新芯片和 M 系列 iPad 无需导入。\n\n' if legacy else '') +
         f"### 配套 Data\n\n[下载配套 Data]({reference['source_release']['url']})。下载全部三个分卷和两个校验文件，按本页 `RESOURCE-INSTALL.txt` 合并并导入。\n\n"
         + links + '\n\n'
         f"资源标识：`{reference['resource_id']}`。已导入相同资源时无需重复下载或导入。\n\n"
         '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
     return path
+
+
+
+def validate_packages(report):
+    expected = {'D2RMobile-unsigned.ipa': ('26.0', ci.CONFIG['shell_sha256']),
+                'D2RMobile-ios18-unsigned.ipa': ('18.0', ci.CONFIG['ios18_shell_sha256'])}
+    packages = report.get('packages', [])
+    if len(packages) != 2 or {r['ipa_name'] for r in packages} != set(expected):
+        raise ValueError('Both verified IPA variants are required')
+    paths, sums = [], []
+    for item in packages:
+        validate_report(item)
+        name = item['ipa_name']
+        if (item['minimum_os'], item['shell_sha256']) != expected[name]:
+            raise ValueError('IPA shell or minimum system mismatch: ' + name)
+        path = OUT / name
+        if path.stat().st_size != item['ipa_bytes'] or ci.sha256(path) != item['ipa_sha256']:
+            raise ValueError('IPA SHA256 mismatch before publishing: ' + name)
+        paths.append(path)
+        sums.append(f"{item['ipa_sha256']}  {name}")
+    if (OUT / 'SHA256SUMS.txt').read_text().splitlines() != sums:
+        raise ValueError('IPA checksum file differs from build report')
+    return paths
+
+
+def verify_legacy_reference(repo, report):
+    import legacy_pack
+    reference = json.loads((OUT / 'legacy-resources.json').read_text())
+    source = api(f"repos/{repo}/releases/{reference['source_release']['id']}")
+    actual = legacy_pack.reference(repo, source, reference['recipe_id'])
+    if actual != reference or reference['pack'] != report.get('legacy_pack'):
+        raise ValueError('Referenced Legacy Device Pack is no longer compatible')
+    return reference
 
 
 def main(mode):
@@ -343,11 +383,8 @@ def main(mode):
         raise ValueError('Expected ipa or prepare-resources')
     report = json.loads((OUT / 'build-report.json').read_text())
     validate_report(report)
-    path = OUT / 'D2RMobile-unsigned.ipa'
-    if path.stat().st_size != report['ipa_bytes'] or ci.sha256(path) != report['ipa_sha256']:
-        raise ValueError('IPA SHA256 mismatch before publishing')
-    if (OUT / 'SHA256SUMS.txt').read_text().strip() != f"{report['ipa_sha256']}  {path.name}":
-        raise ValueError('IPA checksum file differs from build report')
+    paths = validate_packages(report)
+    legacy = verify_legacy_reference(repo, report)
     manifest = json.loads((OUT / 'resource-manifest.json').read_text())
     for key in ('game_version', 'switch_version'):
         if manifest[key] != ci.CONFIG[key]:
@@ -359,9 +396,10 @@ def main(mode):
     STAGE.mkdir(exist_ok=True)
     tag = f"d2r-{ci.CONFIG['game_version']}-{ci.CONFIG['upstream_commit'][:8]}-{revision}"
     title = release_title()
-    notes = write_ipa_notes(repo, reference)
+    notes = write_ipa_notes(repo, reference, legacy)
     ensure_release(repo, tag, title, notes)
-    upload_verified(repo, tag, [path, OUT / 'build-report.json', OUT / 'SHA256SUMS.txt',
+    upload_verified(repo, tag, [*paths, OUT / 'build-report.json', OUT / 'SHA256SUMS.txt',
+                               OUT / 'legacy-resources.json',
                                OUT / 'resource-manifest.json', OUT / 'resources.json',
                                write_install_guide(OUT, reference)])
     release = publish_complete(repo, tag, notes, title)
