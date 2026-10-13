@@ -4,19 +4,19 @@
 
 [![Build IPA](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml/badge.svg)](https://github.com/jiayx/d2r-mobile-build/actions/workflows/pack.yml)
 
-Build an unsigned IPA and matching Data resources with GitHub Actions, using the **NO_XCODE** approach from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile). Download a build from Releases or run your own build below.
+Build unsigned IPAs and the required game data with GitHub Actions, using the **NO_XCODE** approach from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile). Download a build from Releases or run your own build below.
 
 ## Download and install
 
-Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**. Download the IPA from its **Assets** and the Data files from the direct download links under **配套 Data** in the Release description:
+Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**. Download an IPA from **Assets**, then use the links in the release notes to download the required game data:
 
 | File | Where | Purpose |
 | --- | --- | --- |
 | `D2RMobile-unsigned.ipa` | Assets | iOS 26+; sign and install with Sideloadly |
 | `D2RMobile-ios18-unsigned.ipa` | Assets | iOS 18–25, Metal 3 compatibility build |
-| `Legacy-Device-Pack.zip` | Legacy Device Pack link in the Release description | Additional textures for A16 and earlier devices; about 1 GB |
-| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Data links in the Release description | Download all three resource parts, totaling about 5.42 GB |
-| `Resources-Parts-SHA256SUMS.txt`, `Resources-SHA256SUMS.txt` | Data links in the Release description | Verify the parts and combined ZIP |
+| `Legacy-Device-Pack.zip` | Legacy Device Pack link in the release notes | Additional textures for A16 and earlier devices; about 1 GB |
+| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Game data links in the release notes | Download all three resource parts, totaling about 5.42 GB |
+| `Resources-Parts-SHA256SUMS.txt`, `Resources-SHA256SUMS.txt` | Game data links in the release notes | Verify the parts and combined ZIP |
 | `RESOURCE-INSTALL.txt` | Assets | Resource combining and import instructions |
 
 The `Source code` archives are build scripts, not the installation package.
@@ -27,9 +27,9 @@ Choose by system: **iOS 26+** uses `D2RMobile-unsigned.ipa`; **iOS 18–25** use
 
 Both packages support **A17 Pro and newer chips, M-series iPads, and A16 and earlier chips with the matching Legacy Device Pack**. Older devices still need enough memory; support does not guarantee every model runs reliably.
 
-Sign and install the selected IPA with Sideloadly, then complete the trust setup prompted by iOS. The two variants share an app identifier, so installing one replaces the other. **The IPA must be used with the Data resources below.**
+Sign and install the selected IPA with Sideloadly, then complete the trust setup prompted by iOS. The two variants share an app identifier, so installing one replaces the other. **The IPA requires the game data described below.**
 
-### 2. Combine and extract Data
+### 2. Combine and extract the game data
 
 Place all three parts and both checksum files in the same directory.
 
@@ -51,7 +51,7 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 Extract the combined ZIP to get a `D2R Mobile Resources` folder containing **18 `.data` files, about 5.56 GB**.
 
-### 3. Import Data and launch
+### 3. Import the game data and launch
 
 Connect your iPhone by cable. In **Finder → iPhone → Files → D2R Mobile**, drag in the entire `D2R Mobile Resources` folder. Alternatively, place the folder in **Files → On My iPhone → D2R Mobile** on the phone.
 
@@ -59,7 +59,7 @@ For **A16 and earlier devices**, also download `Legacy-Device-Pack.zip` from the
 
 Open the app and tap **Retry**. On the first launch, wait for shader compilation to finish. The reference time is **about 6 minutes on iPhone 17 Pro Max**; other devices vary. The current v1.0.7 package has not yet been verified on a physical device.
 
-When updating the IPA, reuse the existing Data if the matching resource version is unchanged. Installing over an existing installation with the same app identifier usually preserves resources and saves. **Uninstalling the app deletes them.**
+When updating the IPA, keep the existing game data if the resource version is unchanged. Installing over an existing installation with the same app identifier usually preserves resources and saves. **Uninstalling the app deletes them.**
 
 ## Matching versions
 
@@ -109,10 +109,10 @@ Open **Actions → Build D2R Mobile IPA → Run workflow**, select `main`, and u
 | `prepare_only` | `false` — leave unchecked |
 | `input_revision` | `game-3.3.94012-v1` — change when replacing game files or editing the torrent download entry |
 
-**Run this workflow once.** It builds both IPA variants with legacy-device support and publishes the Release automatically. Existing Data is reused without recompressing or uploading it; missing or changed Data is packaged and published automatically. The matching Legacy Device Pack is also generated once and reused by later builds when its inputs and conversion settings match.
+**Run this workflow once.** It builds both IPA variants with legacy-device support and publishes the Release automatically. Existing game data is reused without recompressing or uploading it; missing or changed game data is packaged and published automatically. The matching Legacy Device Pack is also generated once and reused by later builds when its inputs and conversion settings match.
 
-After success, open **Releases in your own repository**. The Release description provides direct links to the matching Data parts and checksums, even when those files are hosted in an earlier Release. Download and import them as described above. If the resource identifier matches the Data already on your phone, updating the IPA does not require downloading Data again.
+After success, open **Releases in your own repository**. The release notes provide direct links to the required game data parts and checksums, even when those files are hosted in an earlier Release. Download and import them as described above. If the resource identifier matches the game data already on your phone, updating the IPA does not require downloading it again.
 
-Keep the Releases hosting the referenced Data and Legacy Device Pack, including their attachments so its download links remain available.
+Keep the releases and assets that host the referenced game data and Legacy Device Pack so the download links remain available.
 
-The Actions run summary also links to the IPA and Data. The IPA artifact contains both installation packages, resource download information (`resources.json` and `legacy-resources.json`), and import instructions, and is retained for **3 days**.
+The Actions run summary also links to the IPAs and game data. The IPA artifact contains both installation packages, resource download information (`resources.json` and `legacy-resources.json`), and import instructions, and is retained for **3 days**.
