@@ -31,6 +31,12 @@ def small_pack(directory):
 
 
 class LegacyPackTests(unittest.TestCase):
+    def setUp(self):
+        # Test publication must not append fake links or paths to the real runner.
+        isolated = patch.dict(os.environ, {'GITHUB_ENV': '', 'GITHUB_STEP_SUMMARY': ''})
+        isolated.start()
+        self.addCleanup(isolated.stop)
+
     def test_published_pack_is_restored_without_transcoding_or_uploading_again(self):
         store = FakeGitHub()
         with tempfile.TemporaryDirectory() as temp:

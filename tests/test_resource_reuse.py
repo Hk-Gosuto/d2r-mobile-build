@@ -101,6 +101,12 @@ def legacy_bundle(store):
 
 
 class ResourceReuseTests(unittest.TestCase):
+    def setUp(self):
+        # Test publication must not append fake links or paths to the real runner.
+        isolated = patch.dict(os.environ, {'GITHUB_ENV': '', 'GITHUB_STEP_SUMMARY': ''})
+        isolated.start()
+        self.addCleanup(isolated.stop)
+
     def test_identity_ignores_build_revision_zip_metadata_and_file_order(self):
         first = manifest()
         first['files'].append(dict(first['files'][0], name='00-00000002.data'))
