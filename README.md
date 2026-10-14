@@ -42,7 +42,7 @@ Follow the tool's official setup instructions, import the selected IPA, and comp
 
 ### 2. Combine and extract the game data
 
-Download all three parts and both checksum files from the same resource Release, then place them in the same directory. Do not mix parts or checksums from different Releases.
+Place all three parts and both checksum files in the same directory.
 
 On macOS, open a terminal in that directory and run:
 
@@ -72,13 +72,11 @@ Open the app and tap **Retry**. On the first launch, wait for shader compilation
 
 ### 4. Updating and reusing game data
 
-**An IPA update does not automatically require new game data.** The resources provided with v1.0.1 and v1.0.6 work with the v1.0.9 IPA: all 18 `.data` files have identical names, sizes and SHA256 hashes. If you already imported them, just update the IPA. For future updates, check the new Release's resource requirements; the IPA version number alone does not determine resource compatibility.
+**Game data downloaded with v1.0.1 or v1.0.6 can be reused with the v1.0.9 IPA. You do not need to download it again.**
 
-**Different ZIP hashes do not necessarily mean different game data.** The v1.0.1 and v1.0.6 resource ZIPs record different file timestamps, so their ZIP and part SHA256 hashes differ even though the extracted `.data` files are identical. Use the checksum files from the resource Release you downloaded to verify its parts and ZIP. When comparing game data across Releases, compare the `.data` entries in `resources-report.json` or `resource-manifest.json`.
+If the `D2R Mobile Resources` folder is already imported on your phone, just install the new IPA over the existing app with the same app identifier. Your resources and saves are usually preserved; no resource import is needed. **Do not uninstall the app first, as this deletes them.** If you have only downloaded the resources, combine, extract and import them using steps 2 and 3 above.
 
-This reuse applies to the `D2R Mobile Resources` folder. If your device needs a Legacy Device Pack, use the pack linked in the IPA Release.
-
-Installing over an existing installation with the same app identifier usually preserves resources and saves. **Uninstalling the app deletes them.**
+For future updates, check the new Release's resource requirements before replacing your game data. If your device needs a Legacy Device Pack, use the pack linked in the IPA Release.
 
 ## Matching versions
 
