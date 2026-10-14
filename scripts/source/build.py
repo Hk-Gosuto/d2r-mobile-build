@@ -65,6 +65,8 @@ def main():
     (ios/'source-build.yml').write_text(yaml.safe_dump(project,sort_keys=False))
     run('xcodegen','generate','--spec','source-build.yml',cwd=ios)
     derived=root/'native-build'
+    if os.environ.get('CCACHE_DIR'):
+        subprocess.run(['ccache', '--zero-stats'],check=True)
     subprocess.run(['xcodebuild','-project','SourceBuild.xcodeproj','-scheme','DmIOS','-configuration','Release',
                     '-sdk','iphoneos','-destination','generic/platform=iOS','-derivedDataPath',str(derived),
                     'CODE_SIGNING_ALLOWED=NO','CODE_SIGNING_REQUIRED=NO','build'],cwd=ios,check=True)

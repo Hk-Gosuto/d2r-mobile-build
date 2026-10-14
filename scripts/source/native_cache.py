@@ -16,16 +16,20 @@ def configure(root, minimum):
     if not ccache:
         raise ValueError('ccache is not installed')
     clang = run('xcrun', '--find', 'clang')
+    clangxx = run('xcrun', '--find', 'clang++')
     compiler = {'xcode': run('xcodebuild', '-version'), 'sdk': run('xcrun', '--sdk', 'iphoneos', '--show-sdk-build-version'),
-                'clang': run(clang, '--version'), 'ccache': run(ccache, '--version'),
+                'clang_sha256': hashlib.sha256(Path(clang).read_bytes()).hexdigest(),
+                'clangxx_sha256': hashlib.sha256(Path(clangxx).read_bytes()).hexdigest(),
+                'ccache': run(ccache, '--version').splitlines()[0],
                 'minimum': minimum, 'architecture': platform.machine()}
+    print('Compiler cache toolchain:', json.dumps(compiler, sort_keys=True), flush=True)
     family = hashlib.sha256(json.dumps(compiler, sort_keys=True).encode()).hexdigest()
     source = hashlib.sha256()
     for p in sorted((root/'upstream/dm').rglob('*')):
         if p.is_file() and not any(n in ('.git', 'bin', 'obj', '__pycache__') for n in p.parts):
             source.update(p.relative_to(root).as_posix().encode()+b'\0'+p.read_bytes())
     tools = root/'.tools'; tools.mkdir(exist_ok=True)
-    for name, executable in (('clang', clang), ('clang++', run('xcrun', '--find', 'clang++'))):
+    for name, executable in (('clang', clang), ('clang++', clangxx)):
         wrapper=tools/('ccache-'+name)
         wrapper.write_text('#!/bin/sh\nexec '+shlex.quote(ccache)+' '+shlex.quote(executable)+' "$@"\n')
         wrapper.chmod(0o755)
