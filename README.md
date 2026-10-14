@@ -66,7 +66,7 @@ Connect your iPhone by cable. In **Finder → iPhone → Files → D2R Mobile**,
 
 For **A16 and earlier devices**, also download `Legacy-Device-Pack.zip` from the link in this IPA Release. Extract it and copy the entire `Legacy Device Pack` folder beside `D2R Mobile Resources` inside the app. Use the pack linked by your IPA Release; both system variants share that pack. A17 Pro and newer devices and M-series iPads do not need it.
 
-Open the app and tap **Retry**. On the first launch, wait for shader compilation to finish. The reference time is **about 6 minutes on iPhone 17 Pro Max**; other devices vary. The current v1.0.7 package has not yet been verified on a physical device.
+Open the app and tap **Retry**. On the first launch, wait for shader compilation to finish. The reference time is **about 6 minutes on iPhone 17 Pro Max**; other devices vary. The current v1.0.9 package has not yet been verified on a physical device.
 
 When updating the IPA, keep the existing game data if the resource version is unchanged. Installing over an existing installation with the same app identifier usually preserves resources and saves. **Uninstalling the app deletes them.**
 
@@ -74,7 +74,7 @@ When updating the IPA, keep the existing game data if the resource version is un
 
 | Component | Version |
 | --- | --- |
-| Upstream | v1.0.7 |
+| Upstream | v1.0.9 |
 | Switch update | `1.0.34.0` / `v2228224` |
 | Internal game version | `3.3.94012` |
 | Required edition | Includes Reign of the Warlock |

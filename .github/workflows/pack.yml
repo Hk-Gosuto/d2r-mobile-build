@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: jhaizhou-ops/d2r-mobile
-          ref: d9e95c33812faaf58ddedf53772c8d0b43c9a685
+          ref: dc3cc22b9b8066031ba3779e7c5b716c23c0d649
           path: upstream
           persist-credentials: false
       - name: Make room for game extraction on the disposable runner
