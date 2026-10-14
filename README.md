@@ -95,6 +95,8 @@ The upstream source includes iCloud save synchronization. These unsigned package
 
 Run **Build IPA and Data** again with `source_ref` empty to build the latest official upstream Release using this project's latest build tools. Keep your existing `GAME_ARCHIVE` configuration when using the same input files.
 
+Each new run automatically uses the maintained shared workflow's latest build logic. You do not need to sync the template or copy updated scripts.
+
 - The checksum file determines the original archive's cache key. The verified archive is cached **before extraction**, independently of the app version; completed downloads survive later extraction or compilation failures.
 - Unchanged archive checksums reuse the verified input manifest. Matching payloads then build without restoring or extracting the large archive.
 - Drive downloads retry transient failures and resume partial transfers within a running job. A stopped or failed download is not treated as a completed cache entry.
