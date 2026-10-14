@@ -64,7 +64,7 @@ To test the latest development code, set `source_ref` to `main`. You can also en
 
 For a private source repository, add a `SOURCE_TOKEN` repository secret containing a fine-grained token with read-only Contents access to that source repository. Set `source_repository` to its `owner/repository` and `source_ref` to the branch or tag to build.
 
-The first build includes Legacy texture conversion and takes longer. Subsequent builds reuse existing resources.
+The first build includes Legacy texture conversion on two parallel Linux workers. Data is prepared in parallel with the IPA build path. Subsequent builds reuse existing resources and matching generated payloads.
 
 ## 4. Download and install
 
@@ -101,6 +101,8 @@ Run **Build IPA and Data** again with `source_ref` empty to build the latest off
 - Matching prebuilt SPIRV-Cross, zlib-ng and shader translator tools are downloaded and verified automatically. If a matching package is unavailable, the workflow compiles it from source. No additional configuration is needed.
 - When Data contents match, the Release links to your existing Data. Keep using the resources already imported on your phone.
 - Matching Legacy conversion inputs and settings reuse your existing Legacy pack.
+- Legacy reuse downloads only its verified index and descriptor; the phone's texture archive stays in its existing Release.
+- Completed generation stages are cached immediately. Both iOS variants compile in parallel on macOS 26 and use separate compiler caches capped at 128 MB each.
 - Retain older Data and Legacy Releases referenced by your app Releases.
 - GitHub can evict caches; retain your source archive. Keep the ZIP and checksum links in `GAME_ARCHIVE` current when replacing input files.
 

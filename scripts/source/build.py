@@ -46,6 +46,9 @@ def main():
                      'DM_BUILD_NUMBER':ci.CONFIG['build_number'],
                      'CURRENT_PROJECT_VERSION':ci.CONFIG['build_number'],
                      'MARKETING_VERSION':ci.CONFIG['app_version']})
+    if os.environ.get('CCACHE_DIR'):
+        settings.update(CC=str(root/'.tools/ccache-clang'), CPLUSPLUS=str(root/'.tools/ccache-clang++'),
+                        COMPILER_INDEX_STORE_ENABLE='NO')
     props=target['info']['properties']
     for key in list(props):
         if key.startswith('BA'):props.pop(key)
@@ -65,6 +68,8 @@ def main():
     subprocess.run(['xcodebuild','-project','SourceBuild.xcodeproj','-scheme','DmIOS','-configuration','Release',
                     '-sdk','iphoneos','-destination','generic/platform=iOS','-derivedDataPath',str(derived),
                     'CODE_SIGNING_ALLOWED=NO','CODE_SIGNING_REQUIRED=NO','build'],cwd=ios,check=True)
+    if os.environ.get('CCACHE_DIR'):
+        subprocess.run(['ccache', '--show-stats'],check=True)
     app=derived/'Build/Products/Release-iphoneos/DmIOS.app'
     plist=plistlib.loads((app/'Info.plist').read_bytes());native=(app/plist['CFBundleExecutable']).read_bytes()
     native_os=ci.macho_minimum_os(native)

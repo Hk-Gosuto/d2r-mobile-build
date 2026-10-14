@@ -89,8 +89,10 @@ class LegacyPackTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             output, stage, pack = root / 'out', root / 'stage', root / 'pack'
+            downloaded = []
             def download(args, stdout, check):
-                stdout.write(store.content[int(args[-1].rsplit('/', 1)[1])])
+                aid = int(args[-1].rsplit('/', 1)[1]);downloaded.append(aid)
+                stdout.write(store.content[aid])
             env = {'GITHUB_REPOSITORY': store.repo, 'GITHUB_SHA': 'abc'}
             with patch.dict(os.environ, env), patch.object(legacy, 'ensure_converter'), patch.object(legacy, 'PACK', pack), patch.object(publish, 'OUT', output), patch.object(publish, 'STAGE', stage), patch.object(legacy.export_resources, 'scan_resources', return_value=manifest()), patch.object(legacy, 'recipe', return_value='a' * 64), patch.object(legacy, 'generate', side_effect=lambda: small_pack(pack)) as generate, patch.object(publish, 'gh', side_effect=store.gh), patch.object(publish, 'release_info', side_effect=lambda repo, tag: store.releases.get(tag)), patch.object(publish.subprocess, 'check_output', side_effect=store.download), patch.object(legacy.subprocess, 'run', side_effect=download):
                 legacy.main()
@@ -100,7 +102,10 @@ class LegacyPackTests(unittest.TestCase):
                 (pack / 'Legacy Device Pack/data/00-00000008.data').unlink()
                 legacy.main()
                 self.assertEqual(first, json.loads((output / 'legacy-resources.json').read_text()))
-                self.assertEqual(legacy.validate_pack(pack), first['pack'])
+                self.assertEqual(json.loads((pack/'pack.json').read_text()), first['pack'])
+                self.assertFalse((pack/'Legacy Device Pack/data/00-00000008.data').exists())
+                large = next(a['id'] for a in first['assets'] if a['name'] == legacy.ZIP_NAME)
+                self.assertNotIn(large, downloaded)
                 generate.assert_called_once()
                 self.assertEqual(uploads, len([c for c in store.calls if c[:2] == ('release', 'upload')]))
                 with zipfile.ZipFile(stage / legacy.ZIP_NAME) as z:
@@ -122,13 +127,13 @@ class LegacyPackTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'SHA256 mismatch'):
                 legacy.validate_pack(root)
 
-    def test_restore_rejects_unexpected_zip_paths(self):
+    def test_restore_rejects_missing_build_metadata(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with zipfile.ZipFile(root / legacy.ZIP_NAME, 'w') as z:
                 z.writestr('../escape', b'no')
             with patch.object(publish, 'STAGE', root), patch.object(legacy, 'PACK', root / 'pack'):
-                with self.assertRaisesRegex(ValueError, 'ZIP members'):
+                with self.assertRaisesRegex(ValueError, 'metadata missing'):
                     legacy.restore('owner/repo', {'assets': []})
 
     def test_publication_rejects_missing_variant_and_modified_ipa(self):

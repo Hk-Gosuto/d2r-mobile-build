@@ -64,7 +64,7 @@ Google Drive 链接直接使用 `https://drive.google.com/file/d/文件ID/view` 
 
 构建私有源码仓库时，添加 `SOURCE_TOKEN` 仓库 Secret，填写仅对该源码仓库具有 Contents 只读权限的细粒度令牌。`source_repository` 填对应的 `用户名/仓库名`，`source_ref` 填要构建的分支或标签。
 
-首次构建包含 Legacy 贴图转换，耗时较长；后续构建会复用已有资源。
+首次构建由两台 Linux 机器并行转换 Legacy 贴图，Data 与 IPA 构建流程并行处理。后续构建会复用已有资源和匹配的生成内容。
 
 ## 4. 下载和安装
 
@@ -101,6 +101,8 @@ App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Rel
 - 自动下载并校验匹配的 SPIRV-Cross、zlib-ng 和着色器翻译工具预构建包；没有匹配包时自行从源码编译，无需额外配置。
 - Data 内容相同时，Release 直接引用已有的 Data。手机上已导入的资源继续使用。
 - Legacy 转换输入和设置相同时，恢复已有的 Legacy 包。
+- 复用 Legacy 时只下载校验通过的索引和描述文件，手机使用的大贴图包保留在已有 Release。
+- 各生成阶段完成后立即缓存；两份 iOS 版本在 macOS 26 上并行编译，各自的编译缓存上限为 128MB。
 - 保留仍被 App Release 引用的旧 Data 和 Legacy Release。
 - GitHub 可能清理缓存，请保留原始压缩包；更换输入时，保持 `GAME_ARCHIVE` 中 ZIP 和校验文件的链接有效。
 

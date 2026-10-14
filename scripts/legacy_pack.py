@@ -90,8 +90,12 @@ def reference(repo, release, recipe_id):
 
 
 def restore(repo, ref):
+    """The app needs the verified index and descriptor, not the phone's 1 GB archive."""
+    selected = [a for a in ref['assets'] if a['name'] in ('pack.json', 'pack_index.tsv')]
+    if len(selected) != 2 or {a['name'] for a in selected} != {'pack.json', 'pack_index.tsv'}:
+        raise ValueError('Legacy build metadata missing or duplicated')
     PACK.mkdir(parents=True, exist_ok=True)
-    for asset in ref['assets']:
+    for asset in selected:
         path = publish.STAGE / asset['name']
         with path.open('wb') as stream:
             subprocess.run(['gh', 'api', '-H', 'Accept: application/octet-stream',
@@ -100,18 +104,10 @@ def restore(repo, ref):
             raise ValueError('Restored legacy asset SHA256 mismatch: ' + asset['name'])
         if asset['name'] in ('pack.json', 'pack_index.tsv'):
             shutil.copyfile(path, PACK / asset['name'])
-    # Only the exact phone payload may be extracted. No paths from the ZIP are trusted.
-    with zipfile.ZipFile(publish.STAGE / ZIP_NAME) as z:
-        expected = {'Legacy Device Pack/manifest.json', 'Legacy Device Pack/data/00-00000008.data'}
-        if len(z.infolist()) != len(expected) or set(z.namelist()) != expected:
-            raise ValueError('Unexpected Legacy Device Pack ZIP members')
-        for name in sorted(expected):
-            target = PACK / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(name) as src, target.open('wb') as dst:
-                shutil.copyfileobj(src, dst, 8 * 1024**2)
-    if validate_pack(PACK) != ref['pack']:
-        raise ValueError('Restored legacy payload differs from Release')
+    if json.loads((PACK / 'pack.json').read_text()) != ref['pack']:
+        raise ValueError('Restored legacy descriptor differs from Release')
+    if (PACK / 'pack_index.tsv').read_text().splitlines()[0].split('\t')[:2] != ['# pack', ref['pack']['name']]:
+        raise ValueError('Restored legacy index differs from Release')
 
 
 def generate():
@@ -138,8 +134,8 @@ def generate():
     return info
 
 
-def publish_pack(repo, recipe_id, tag):
-    info = generate()
+def publish_pack(repo, recipe_id, tag, prepared=False):
+    info = validate_pack(PACK) if prepared else generate()
     archive = publish.STAGE / ZIP_NAME
     with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_STORED, allowZip64=True) as z:
         for path in sorted((PACK / 'Legacy Device Pack').rglob('*')):
@@ -168,15 +164,30 @@ def publish_pack(repo, recipe_id, tag):
     return ref
 
 
-def main():
+def plan():
     repo = require_private()
     publish.OUT.mkdir(exist_ok=True)
     publish.STAGE.mkdir(exist_ok=True)
     ensure_converter()
-    manifest = export_resources.scan_resources(ci.GAME)
+    manifest_path = publish.OUT / 'resource-manifest.json'
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else export_resources.scan_resources(ci.GAME)
     (publish.OUT / 'resource-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     identity = recipe(manifest)
     tag = f"legacy-{ci.CONFIG['game_version']}-{identity}"
+    ref = reference(repo, publish.release_info(repo, tag), identity)
+    result = {'recipe_id': identity, 'tag': tag, 'reference': ref}
+    (publish.OUT / 'legacy-plan.json').write_text(json.dumps(result, indent=2) + '\n')
+    if os.environ.get('GITHUB_OUTPUT'):
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+            out.write(f'recipe_id={identity}\nreused={str(ref is not None).lower()}\n')
+    return result
+
+
+def main():
+    repo = require_private()
+    saved = publish.OUT / 'legacy-plan.json'
+    selected = json.loads(saved.read_text()) if saved.is_file() else plan()
+    identity, tag, ref = selected['recipe_id'], selected['tag'], selected['reference']
     ref = reference(repo, publish.release_info(repo, tag), identity)
     if ref:
         restore(repo, ref)
@@ -191,4 +202,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    plan() if sys.argv[1:] == ['plan'] else main()

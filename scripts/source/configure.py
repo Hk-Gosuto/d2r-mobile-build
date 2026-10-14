@@ -79,6 +79,9 @@ def configure(root):
     output.parent.mkdir(exist_ok=True)
     output.write_text(json.dumps(config, indent=2) + '\n')
     print('Selected source:', commit, 'build:', label)
+    if os.environ.get('GITHUB_OUTPUT'):
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+            out.write('source_commit='+commit+'\n')
     return config
 
 

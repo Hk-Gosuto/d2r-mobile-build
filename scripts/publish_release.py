@@ -322,6 +322,20 @@ def prepare_resources(repo):
     return reference
 
 
+def probe_resources():
+    repo = require_private()
+    manifest = json.loads((OUT/'resource-manifest.json').read_text())
+    export_resources.resource_identity(manifest)
+    reference = find_resources(repo, manifest)
+    if reference:
+        (OUT/'resources.json').write_text(json.dumps(reference, indent=2)+'\n')
+        write_install_guide(OUT, reference)
+        print('Reused existing Data; no archive restore, extraction, compression or upload', flush=True)
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+        out.write('reused='+str(reference is not None).lower()+'\n')
+    return reference
+
+
 def write_ipa_notes(repo, reference, legacy=None):
     path = STAGE / 'RELEASE.md'
     path.write_text(release_notes.ipa(repo, ci.CONFIG, reference, legacy))
@@ -404,4 +418,4 @@ def main(mode):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    probe_resources() if sys.argv[1] == 'probe-resources' else main(sys.argv[1])
