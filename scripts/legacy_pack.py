@@ -36,9 +36,9 @@ def ensure_converter():
                         f"{config['commit']}/{name}", path, digest)
 
 
-def recipe(manifest):
+def recipe(manifest, build_manifest_sha256=None):
     value = {'format': 1, 'resource_id': export_resources.resource_identity(manifest),
-             'build_manifest_sha256': ci.sha256(ci.GAME / 'RomFS/data/build_manifest.psv'),
+             'build_manifest_sha256': build_manifest_sha256 or ci.sha256(ci.GAME / 'RomFS/data/build_manifest.psv'),
              'encoder_sha256': ci.CONFIG['astc_encoder_sha256'], 'preset': 'thorough',
              'sources': {p: ci.sha256(CONVERTER / p) for p in CONVERTER_SOURCES}}
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -172,7 +172,11 @@ def plan():
     manifest_path = publish.OUT / 'resource-manifest.json'
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else export_resources.scan_resources(ci.GAME)
     (publish.OUT / 'resource-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    identity = recipe(manifest)
+    verified = publish.OUT / 'verified-input.json'
+    if verified.is_file():
+        identity = recipe(manifest, json.loads(verified.read_text())['build_manifest_sha256'])
+    else:
+        identity = recipe(manifest)
     tag = f"legacy-{ci.CONFIG['game_version']}-{identity}"
     ref = reference(repo, publish.release_info(repo, tag), identity)
     result = {'recipe_id': identity, 'tag': tag, 'reference': ref}

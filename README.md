@@ -96,6 +96,7 @@ The upstream source includes iCloud save synchronization. These unsigned package
 Run **Build IPA and Data** again with `source_ref` empty to build the latest official upstream Release using this project's latest build tools. Keep your existing `GAME_ARCHIVE` configuration when using the same input files.
 
 - The checksum file determines the original archive's cache key. The verified archive is cached **before extraction**, independently of the app version; completed downloads survive later extraction or compilation failures.
+- Unchanged archive checksums reuse the verified input manifest. Matching payloads then build without restoring or extracting the large archive.
 - Drive downloads retry transient failures and resume partial transfers within a running job. A stopped or failed download is not treated as a completed cache entry.
 - Rewritten game code, generated interface assets, build tools and shaders have separate caches keyed by their relevant inputs. Changes to the app runtime alone do not invalidate unchanged game rewriting or shader outputs.
 - Matching prebuilt SPIRV-Cross, zlib-ng and shader translator tools are downloaded and verified automatically. If a matching package is unavailable, the workflow compiles it from source. No additional configuration is needed.

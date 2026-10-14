@@ -13,6 +13,7 @@ import cache_keys
 import legacy_batches
 import publish_release
 from source import prepare, stages
+from source import input_metadata
 from test_resource_reuse import manifest
 
 
@@ -98,6 +99,23 @@ class PipelineCacheTests(unittest.TestCase):
             root=Path(temp);(root/'batch-plan.json').write_text(json.dumps({'index':0}))
             with self.assertRaisesRegex(ValueError,'Missing or duplicated'):
                 legacy_batches.merge([root],root/'merged','recipe')
+
+    def test_verified_input_metadata_requires_archive_digest_program_match_and_intact_record(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);cache=root/'cache.json';out=root/'step-output'
+            config=dict(ci.CONFIG,nso_sha256={'main':'a'*64})
+            value={'archive_sha256':'b'*64,'input_id':input_metadata.input_identity('https://input.invalid/file.zip','b'*64),
+                   'nso_sha256':config['nso_sha256'],'build_manifest_sha256':'c'*64,'resources':manifest()}
+            value['record_sha256']=input_metadata.checksum(value);cache.write_text(json.dumps(value))
+            with patch.object(ci,'ROOT',root),patch.object(ci,'CONFIG',config),patch.object(input_metadata,'CACHE',cache),patch.object(ci,'resource_sizes',return_value={'00-00000001.data':8}),patch.dict(os.environ,GITHUB_OUTPUT=str(out)),patch.object(input_metadata,'settings',return_value=('https://input.invalid/file.zip','b'*64)),patch.object(ci,'validate_game') as read_game:
+                self.assertTrue(input_metadata.restore())
+                read_game.assert_not_called()
+                with patch.object(input_metadata,'settings',return_value=('https://input.invalid/file.zip','')):
+                    self.assertFalse(input_metadata.restore())
+                with patch.dict(ci.CONFIG,nso_sha256={'main':'d'*64}):
+                    self.assertFalse(input_metadata.restore())
+                value['build_manifest_sha256']='e'*64;cache.write_text(json.dumps(value))
+                self.assertFalse(input_metadata.restore())
 
 
 if __name__=='__main__':unittest.main()

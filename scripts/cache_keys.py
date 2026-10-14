@@ -134,6 +134,7 @@ if __name__ == '__main__':
         chain = subprocess.check_output([sys.executable, str(upstream / 'dm/gfx/tools/nometal_run.py'),
                                          str(upstream / 'dm/gfx/tools/dmsh_chain.py')], text=True).strip().splitlines()[-1]
     result = keys(upstream, ci.CONFIG, sdk, chain)
+    result['sdk'] = sdk
     result.update(generation_keys(upstream, ci.CONFIG))
     result['payload'] = payload_key(upstream, ci.CONFIG, chain)
     for key, value in result.items():

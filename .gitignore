@@ -2,6 +2,9 @@
 .dm-work/
 .downloads/
 .game-downloads/
+.input-metadata/
+.native-ccache/
+native-build/
 .release-assets/
 upstream/
 outputs/
