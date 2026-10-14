@@ -18,6 +18,32 @@ def fingerprint(files, values):
     return h.hexdigest()
 
 
+def generation_keys(upstream, config):
+    """App-only changes must not redo NSO rewriting or native art generation."""
+    upstream = Path(upstream)
+
+    def collect(directories):
+        files = {}
+        for directory in directories:
+            path = upstream / directory
+            for item in ([path] if path.is_file() else path.rglob('*')):
+                if (item.is_file() and not any(p in ('.git', '__pycache__', 'bin', 'obj')
+                                             for p in item.parts)):
+                    files[item.relative_to(upstream).as_posix()] = item
+        return files
+
+    rewrite = collect(('dm/PRODUCT', 'dm/tools', 'dm/data'))
+    rewrite['requirements.txt'] = ci.ROOT / 'requirements.txt'
+    assets = collect(('dm/ios/tools', 'dm/ios/Sources/TouchArt/native_art_manifest.json',
+                      'dm/tools/dmx.py', 'dm/data'))
+    for name in ('requirements.txt', 'scripts/png_backend.sh'):
+        assets[name] = ci.ROOT / name
+    return {
+        'rewrite': fingerprint(rewrite, {'nso': config['nso_sha256'], 'ruleset': 'touch-run-v4'}),
+        'assets': fingerprint(assets, {'inputs': os.environ.get('INPUT_REVISION', '')}),
+    }
+
+
 def keys(upstream, config, sdk, chain=None):
     upstream = Path(upstream)
     tools = fingerprint({'tools.sh': ci.ROOT / 'scripts/tools.sh'},
@@ -53,6 +79,7 @@ if __name__ == '__main__':
         chain = subprocess.check_output([sys.executable, str(upstream / 'dm/gfx/tools/nometal_run.py'),
                                          str(upstream / 'dm/gfx/tools/dmsh_chain.py')], text=True).strip().splitlines()[-1]
     result = keys(upstream, ci.CONFIG, sdk, chain)
+    result.update(generation_keys(upstream, ci.CONFIG))
     for key, value in result.items():
         print(key + '=' + value)
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:

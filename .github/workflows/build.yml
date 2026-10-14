@@ -16,7 +16,7 @@ permissions:
   actions: write
 jobs:
   build:
-    uses: jiayx/d2r-mobile-build/.github/workflows/pack.yml@main
+    uses: jiayx/d2r-mobile-build/.github/workflows/pack.yml@feat/build-template
     with:
       source_repository: ${{ inputs.source_repository }}
       source_ref: ${{ inputs.source_ref }}

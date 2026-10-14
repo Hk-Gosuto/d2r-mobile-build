@@ -42,7 +42,7 @@ def sha256(path):
     return h.hexdigest()
 
 
-def download(url, dest, expected=None):
+def download(url, dest, expected=None, max_bytes=None):
     """Keep signed URLs out of logs; reject web landing pages."""
     if not url.startswith('https://'):
         raise ValueError('Input downloads must use HTTPS')
@@ -54,9 +54,14 @@ def download(url, dest, expected=None):
         with urllib.request.urlopen(req, timeout=120) as r:
             if 'text/html' in r.headers.get('Content-Type', '').lower():
                 raise ValueError('Download returned an HTML page; supply a direct file URL')
-            with partial.open('wb') as f:
-                shutil.copyfileobj(r, f, length=8 * 1024 * 1024)
             length = r.headers.get('Content-Length')
+            if max_bytes and length is not None and int(length) > max_bytes:
+                raise ValueError('Checksum file is too large')
+            with partial.open('wb') as f:
+                while block := r.read(8 * 1024 * 1024):
+                    f.write(block)
+                    if max_bytes and f.tell() > max_bytes:
+                        raise ValueError('Checksum file is too large')
             if length is not None and partial.stat().st_size != int(length):
                 raise ValueError('Download incomplete: ' + dest.name)
         if expected and sha256(partial) != expected.lower():

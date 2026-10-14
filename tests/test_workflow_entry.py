@@ -20,19 +20,15 @@ def entry_script():
 
 
 class WorkflowEntryTests(unittest.TestCase):
-    def test_missing_hash_uses_the_same_url_identity_as_the_downloader(self):
-        sha='a'*40
-        run={'referenced_workflows':[{'path':'jiayx/d2r-mobile-build/.github/workflows/pack.yml@main','sha':sha}]}
+    def test_input_resolution_keeps_download_urls_out_of_job_outputs(self):
         url='https://storage.invalid/input.zip?token=private'
-        for config in ({'url':url}, {'url':url,'sha256':''}, {'url':url,'sha256':None}):
+        for digest in ('', 'a'*64):
             with tempfile.TemporaryDirectory() as temp:
                 output=Path(temp)/'output'
-                env={'GITHUB_REPOSITORY':'owner/repo','GITHUB_RUN_ID':'123',
-                     'GAME_ARCHIVE':json.dumps(config),'GITHUB_OUTPUT':str(output)}
-                with patch.dict(os.environ,env), patch.object(repository_access.subprocess,'check_output',side_effect=[json.dumps({'private':True}),json.dumps(run)]):
-                    exec(compile(entry_script(),'workflow-entry','exec'),{})
+                with patch.dict(os.environ,GITHUB_OUTPUT=str(output)), patch.object(archive_input,'settings',return_value=(url,digest)):
+                    archive_input.resolve()
                 values=dict(line.split('=',1) for line in output.read_text().splitlines())
-                self.assertEqual(values['input_revision'],archive_input.input_identity(url,''))
+                self.assertEqual(values['input_revision'],archive_input.input_identity(url,digest))
                 self.assertNotIn(url,output.read_text())
 
     def test_private_caller_uses_callee_commit_and_does_not_export_a_secret(self):
@@ -48,7 +44,7 @@ class WorkflowEntryTests(unittest.TestCase):
                 exec(compile(entry_script(), 'workflow-entry', 'exec'), {})
             values=dict(line.split('=',1) for line in output.read_text().splitlines())
             self.assertEqual(values['tools_commit'],sha)
-            self.assertEqual(values['input_revision'],hashlib.sha256(digest.encode()).hexdigest())
+            self.assertNotIn('input_revision',values)
             self.assertNotIn(digest,output.read_text())
 
     def test_public_destination_fails_before_resolving_or_reading_inputs(self):

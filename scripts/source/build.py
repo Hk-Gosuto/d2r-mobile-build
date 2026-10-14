@@ -95,6 +95,7 @@ def main():
                   switch_version=ci.CONFIG['switch_version'],input_revision=os.environ.get('INPUT_REVISION'),
                   minimum_os=minimum,native_minimum_os='.'.join(map(str,native_os)),native_sha256=__import__('hashlib').sha256(native).hexdigest(),
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
+                  icloud_sync_provisioned=False,icloud_sync_verified=False,
                   xcode=run('xcodebuild','-version').strip(),sdk=run('xcrun','--sdk','iphoneos','--show-sdk-version').strip())
     (root/'outputs'/f'source{suffix}-report.json').write_text(json.dumps(report,indent=2)+'\n')
     (root/'outputs'/f'source{suffix}-SHA256SUMS.txt').write_text(f"{report['ipa_sha256']}  {name}\n")

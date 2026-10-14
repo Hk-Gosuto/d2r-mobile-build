@@ -1,54 +1,24 @@
 """Download and safely prepare one user-supplied ExeFS/RomFS archive."""
-import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
-import re
 import shutil
 import stat
 import sys
 import tarfile
-from urllib.parse import urlsplit
 import zipfile
 
 import ci
+from input_config import download_file, input_identity, settings
 
 ARCHIVE = ci.RAW / 'game-input.archive'
 MAX_EXPANDED_BYTES = 24 * 1024**3
 
 
-def settings():
-    try:
-        config = json.loads(os.environ.get('GAME_ARCHIVE', ''))
-    except ValueError:
-        raise ValueError('GAME_ARCHIVE must be a JSON object with url and optional sha256') from None
-    if not isinstance(config, dict) or not isinstance(config.get('url'), str):
-        raise ValueError('GAME_ARCHIVE must contain a download url')
-    url = config['url'].strip()
-    digest = config.get('sha256')
-    if digest is None:
-        digest = ''
-    if not isinstance(digest, str):
-        raise ValueError('sha256 must be a string or null')
-    digest = digest.strip().lower()
-    parsed = urlsplit(url)
-    if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
-        raise ValueError('url must be an HTTPS direct download URL')
-    if digest and not re.fullmatch(r'[a-f0-9]{64}', digest):
-        raise ValueError('sha256 must be empty or contain 64 hexadecimal characters')
-    return url, digest
-
-
-def input_identity(url, digest):
-    # Missing hashes must never collapse different sources into one cache entry.
-    value = digest if digest else 'url:' + url
-    return hashlib.sha256(value.encode()).hexdigest()
-
-
-def cached(url, digest):
+def cached(url, digest, verify=True):
     if not ARCHIVE.is_file():
         return False
-    if digest:
+    if digest and verify:
         return ci.sha256(ARCHIVE) == digest
     try:
         marker = json.loads(ARCHIVE.with_suffix('.json').read_text())
@@ -64,7 +34,7 @@ def download():
     if cached(url, digest):
         print('Reusing completed original archive; download skipped', flush=True)
         return
-    ci.download(url, ARCHIVE, digest or None)
+    download_file(url, ARCHIVE, digest or None)
     if ARCHIVE.stat().st_size == 0:
         raise ValueError('Downloaded archive is empty')
     marker = ARCHIVE.with_suffix('.json')
@@ -145,7 +115,7 @@ def prepare():
         ci.validate_game()
         print('Reusing verified ExeFS/RomFS; extraction skipped', flush=True)
         return
-    if not cached(url, digest):
+    if not cached(url, digest, verify=False):
         raise ValueError('Completed original archive missing; download it first')
     temporary = ci.GAME.with_name('input.partial')
     shutil.rmtree(temporary, ignore_errors=True)
@@ -171,9 +141,16 @@ def prepare():
         shutil.rmtree(temporary, ignore_errors=True)
 
 
+def resolve():
+    url, digest = settings()
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+        stream.write('input_revision=' + input_identity(url, digest) + '\n')
+    print('Input identity resolved; SHA-256 ' + ('enabled' if digest else 'not configured'))
+
+
 if __name__ == '__main__':
     try:
-        {'download': download, 'prepare': prepare}[sys.argv[1]]()
+        {'resolve': resolve, 'download': download, 'prepare': prepare}[sys.argv[1]]()
     except Exception as exc:
         # Archive member names and downloader exception strings can contain user data.
         message = str(exc) if isinstance(exc, ValueError) else type(exc).__name__

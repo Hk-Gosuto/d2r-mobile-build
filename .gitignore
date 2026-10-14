@@ -5,6 +5,7 @@
 .release-assets/
 upstream/
 outputs/
+.venv*/
 __pycache__/
 *.keys
 *.nsp

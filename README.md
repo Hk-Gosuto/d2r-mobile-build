@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Build your own IPA and Data from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source using GitHub Actions. Supply one HTTPS archive containing your own prepared ExeFS/RomFS. The workflow downloads and caches it, compiles both iOS variants, and saves the results in your private repository's Releases.
+Build your own IPA and Data from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source using GitHub Actions. Supply an archive containing your prepared ExeFS/RomFS and its SHA256SUMS file, using HTTPS download URLs or Google Drive file share links. The workflow downloads and caches the archive, compiles both iOS variants from source on macOS 26, and saves the results in your private repository's Releases. No prebuilt upstream IPA is required.
 
 ## 1. Prepare the input archive
 
@@ -23,34 +23,37 @@ RomFS/
 
 A single enclosing folder is also supported.
 
-Upload the archive to your own storage and obtain an **HTTPS URL that directly downloads the file**. For signed URLs, set an expiry that covers the entire download.
-
-Calculate the archive's SHA-256:
+Create a checksum file alongside the archive:
 
 ```sh
 # macOS
-shasum -a 256 game-input.zip
+shasum -a 256 game-input.zip > SHA256SUMS.txt
 # Linux
-sha256sum game-input.zip
+sha256sum game-input.zip > SHA256SUMS.txt
 ```
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\game-input.zip -Algorithm SHA256).Hash
+$hash = (Get-FileHash .\game-input.zip -Algorithm SHA256).Hash
+"$hash  game-input.zip" | Set-Content -Encoding ascii SHA256SUMS.txt
 ```
+
+Upload **both files** to your storage. Each URL must be downloadable without signing in. Google Drive's **Anyone with the link → Viewer** file links are supported, including large ZIP files; use file links, not folder links. For signed HTTPS URLs, set an expiry that covers the entire download. The checksum file must contain exactly one archive checksum.
 
 ## 2. Create your build repository
 
 1. Select [Use this template](https://github.com/jiayx/d2r-mobile-build/generate), choose **Create a new repository**, and set its visibility to **Private**.
-2. Open **Settings → Secrets and variables → Actions → New repository secret**. Create a secret named **`GAME_ARCHIVE`**, with this JSON as its value (replace `url` with your direct download URL and `sha256` with the checksum calculated above):
+2. Open **Settings → Secrets and variables → Actions → New repository secret**. Create a secret named **`GAME_ARCHIVE`**, with this JSON as its value. Replace `url` with the ZIP link and `sha256_url` with the link to `SHA256SUMS.txt`:
 
    ```json
    {
      "url": "https://your-storage.example/game-input.zip",
-     "sha256": "YOUR_ARCHIVE_SHA256"
+     "sha256_url": "https://your-storage.example/SHA256SUMS.txt"
    }
    ```
+
+Google Drive links can be pasted in the form `https://drive.google.com/file/d/FILE_ID/view`; no Google account authorization is needed in Actions. Store the two links in your private repository's secret.
 
 ## 3. Run the build
 
@@ -79,14 +82,20 @@ Filenames use the source tag; builds after a tag also include the source commit.
 
 When updating, keep the same app identifier, back up your saves, and install the new IPA over the existing app.
 
+### iCloud saves
+
+The upstream source includes iCloud save synchronization. These unsigned packages use the ordinary sideloading configuration and do not provision iCloud; free Apple ID signing supports local saves only. Automatic iCloud sync requires a paid Apple Developer Program account, an App ID with iCloud enabled, and a matching provisioning profile and signature. Enabling the in-game iCloud switch alone cannot grant those permissions. You can back up or transfer exported saves using iCloud Drive manually.
+
 ## Updates and reuse
 
 Run **Build IPA and Data** again with `source_ref` empty to build the latest official upstream Release using this project's latest build tools. Keep your existing `GAME_ARCHIVE` configuration when using the same input files.
 
-- The original archive is cached **before extraction**; retries reuse completed downloads.
+- The checksum file determines the original archive's cache key. The verified archive is cached **before extraction**, independently of the app version; completed downloads survive later extraction or compilation failures.
+- Drive downloads retry transient failures and resume partial transfers within a running job. A stopped or failed download is not treated as a completed cache entry.
+- Rewritten game code, generated interface assets, build tools and shaders have separate caches keyed by their relevant inputs. Changes to the app runtime alone do not invalidate unchanged game rewriting or shader outputs.
 - When Data contents match, the Release links to your existing Data. Keep using the resources already imported on your phone.
 - Matching Legacy conversion inputs and settings reuse your existing Legacy pack.
 - Retain older Data and Legacy Releases referenced by your app Releases.
-- Keep the original archive; update the URL and checksum in `GAME_ARCHIVE` when replacing the input.
+- GitHub can evict caches; retain your source archive. Keep the ZIP and checksum links in `GAME_ARCHIVE` current when replacing input files.
 
 Build tooling is licensed under [MIT](LICENSE). Upstream and third-party code retain their respective licenses.
