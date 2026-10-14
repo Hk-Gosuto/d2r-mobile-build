@@ -214,8 +214,10 @@ def licenses(destination):
                 notice.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(source, notice)
 
 
-def build(directory, spec):
+def build(directory, spec, public=False):
     subprocess.run(['bash', str(ROOT / 'scripts/build_tool.sh'), spec['kind'], str(directory)], cwd=ROOT, check=True)
+    if public and spec['kind'] == 'xlate':
+        licenses(Path(directory) / 'licenses')
     files = {p.relative_to(directory).as_posix(): sha(p) for p in Path(directory).rglob('*') if p.is_file()}
     manifest = {'identity': identity(spec), 'recipe': spec, 'files': files,
                 'tools_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
@@ -274,7 +276,7 @@ def main():
     out = ROOT / 'outputs/tools' / args.kind
     out.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as temp:
-        build(Path(temp), spec)
+        build(Path(temp), spec, public=True)
         with tarfile.open(out / 'tool.tar.gz', 'w:gz') as tf:
             for p in sorted(Path(temp).rglob('*')):
                 if p.is_file():

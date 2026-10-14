@@ -37,7 +37,7 @@ case "$KIND" in
     dotnet publish upstream/dm/gfx/tools/dmsh_xlate -c Release -o "$DEST/dmsh_xlate" -v quiet
     find "$DEST/dmsh_xlate" -name '*.pdb' -delete
     "$DEST/dmsh_xlate/dmsh_xlate" --source-sha
-    python3 scripts/prebuilt_tools.py licenses "$DEST/licenses"
+    cp upstream/LICENSE "$DEST/licenses/d2r-mobile-MIT.txt"
     ;;
   *) echo "Unknown tool: $KIND" >&2; exit 1 ;;
 esac

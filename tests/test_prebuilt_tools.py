@@ -133,6 +133,41 @@ class PrebuiltToolTests(unittest.TestCase):
         self.assertIn('contents: write', text.split('  publish:', 1)[1])
         self.assertEqual(set(tools.KINDS), {'spirv', 'png', 'xlate'})
 
+    def license_fixture(self, root, expression='MIT'):
+        entries = {'upstream/LICENSE': 'upstream notice', 'dotnet/LICENSE.txt': 'dotnet notice',
+                   'dotnet/ThirdPartyNotices.txt': 'dotnet third parties',
+                   'package/dmsh_xlate/Used.dll': 'library',
+                   'nuget/used/1.0/used.nuspec': f'<package><metadata><license type="expression">{expression}</license><copyright>Author</copyright></metadata></package>',
+                   'nuget/used/1.0/THIRD-PARTY-NOTICES.txt': 'dependency notice',
+                   'nuget/compile-only/1.0/compile-only.nuspec': '<package><metadata/></package>'}
+        for name, value in entries.items():
+            p=root/name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(value)
+        assets = {'packageFolders': {str(root/'nuget'): {}}, 'libraries': {
+            'Used/1.0': {'type': 'package', 'path': 'used/1.0'},
+            'CompileOnly/1.0': {'type': 'package', 'path': 'compile-only/1.0'}}}
+        p=root/'upstream/dm/gfx/tools/dmsh_xlate/obj/project.assets.json'
+        p.parent.mkdir(parents=True); p.write_text(json.dumps(assets))
+        deps = {'targets': {'net10.0': {'Used/1.0': {'runtime': {'lib/net10.0/Used.dll': {}}},
+                                        'CompileOnly/1.0': {'compile': {'ref/Reference.dll': {}}}}}}
+        (root/'package/dmsh_xlate/dmsh_xlate.deps.json').write_text(json.dumps(deps))
+
+    def test_public_package_includes_notices_for_deployed_dependencies_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp); self.license_fixture(root)
+            with patch.object(tools, 'ROOT', root), patch.dict(tools.os.environ, DOTNET_ROOT=str(root/'dotnet')), patch.object(tools, 'request', return_value=io.BytesIO(b'MIT text')):
+                tools.licenses(root/'package/licenses')
+            target=root/'package/licenses/nuget/Used/1.0'
+            self.assertEqual((target/'THIRD-PARTY-NOTICES.txt').read_text(), 'dependency notice')
+            self.assertIn('Author', (target/'used.nuspec').read_text())
+            self.assertFalse((root/'package/licenses/nuget/CompileOnly').exists())
+
+    def test_unreviewed_runtime_license_stops_public_package(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp); self.license_fixture(root, 'LicenseRef-Unknown')
+            with patch.object(tools, 'ROOT', root), patch.dict(tools.os.environ, DOTNET_ROOT=str(root/'dotnet')):
+                with self.assertRaisesRegex(ValueError, 'Review NuGet license'):
+                    tools.licenses(root/'package/licenses')
+
 
 if __name__ == '__main__':
     unittest.main()
