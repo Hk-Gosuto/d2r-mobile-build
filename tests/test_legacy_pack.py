@@ -37,6 +37,47 @@ class LegacyPackTests(unittest.TestCase):
         isolated.start()
         self.addCleanup(isolated.stop)
 
+    def test_converter_is_verified_and_cached_independently_of_app_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            payloads = {name: name.encode() for name in legacy.CONVERTER_SOURCES}
+            config = dict(ci.CONFIG, legacy_converter={'commit': 'a' * 40, 'sources': {
+                name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()}})
+            def download(url, path, digest):
+                name = url.split('/' + 'a' * 40 + '/', 1)[1]
+                self.assertEqual(digest, config['legacy_converter']['sources'][name])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(payloads[name])
+            with patch.object(legacy, 'CONVERTER', root), patch.object(ci, 'CONFIG', config), patch.object(ci, 'download', side_effect=download) as fetch:
+                legacy.ensure_converter()
+                self.assertEqual(fetch.call_count, 3)
+                legacy.ensure_converter()
+                self.assertEqual(fetch.call_count, 3)
+                (root / legacy.CONVERTER_SOURCES[0]).write_bytes(b'corrupt')
+                legacy.ensure_converter()
+                self.assertEqual(fetch.call_count, 4)
+
+    def test_recipe_preserves_existing_pack_identity_and_tracks_converter_inputs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            converter = root / 'converter'
+            for name in legacy.CONVERTER_SOURCES:
+                path = converter / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(name)
+            game = root / 'game'
+            (game / 'RomFS/data').mkdir(parents=True)
+            (game / 'RomFS/data/build_manifest.psv').write_text('manifest')
+            original = {'format': 1, 'resource_id': legacy.export_resources.resource_identity(manifest()),
+                        'build_manifest_sha256': ci.sha256(game / 'RomFS/data/build_manifest.psv'),
+                        'encoder_sha256': ci.CONFIG['astc_encoder_sha256'], 'preset': 'thorough',
+                        'sources': {p: ci.sha256(converter / p) for p in legacy.CONVERTER_SOURCES}}
+            expected = hashlib.sha256(json.dumps(original, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            with patch.object(legacy, 'CONVERTER', converter), patch.object(ci, 'GAME', game):
+                self.assertEqual(legacy.recipe(manifest()), expected)
+                (converter / legacy.CONVERTER_SOURCES[-1]).write_text('different reader')
+                self.assertNotEqual(legacy.recipe(manifest()), expected)
+
     def test_published_pack_is_restored_without_transcoding_or_uploading_again(self):
         store = FakeGitHub()
         with tempfile.TemporaryDirectory() as temp:
@@ -45,7 +86,7 @@ class LegacyPackTests(unittest.TestCase):
             def download(args, stdout, check):
                 stdout.write(store.content[int(args[-1].rsplit('/', 1)[1])])
             env = {'GITHUB_REPOSITORY': store.repo, 'GITHUB_SHA': 'abc'}
-            with patch.dict(os.environ, env), patch.object(legacy, 'PACK', pack), patch.object(publish, 'OUT', output), patch.object(publish, 'STAGE', stage), patch.object(legacy.export_resources, 'scan_resources', return_value=manifest()), patch.object(legacy, 'recipe', return_value='a' * 64), patch.object(legacy, 'generate', side_effect=lambda: small_pack(pack)) as generate, patch.object(publish, 'gh', side_effect=store.gh), patch.object(publish, 'release_info', side_effect=lambda repo, tag: store.releases.get(tag)), patch.object(publish.subprocess, 'check_output', side_effect=store.download), patch.object(legacy.subprocess, 'run', side_effect=download):
+            with patch.dict(os.environ, env), patch.object(legacy, 'ensure_converter'), patch.object(legacy, 'PACK', pack), patch.object(publish, 'OUT', output), patch.object(publish, 'STAGE', stage), patch.object(legacy.export_resources, 'scan_resources', return_value=manifest()), patch.object(legacy, 'recipe', return_value='a' * 64), patch.object(legacy, 'generate', side_effect=lambda: small_pack(pack)) as generate, patch.object(publish, 'gh', side_effect=store.gh), patch.object(publish, 'release_info', side_effect=lambda repo, tag: store.releases.get(tag)), patch.object(publish.subprocess, 'check_output', side_effect=store.download), patch.object(legacy.subprocess, 'run', side_effect=download):
                 legacy.main()
                 first = json.loads((output / 'legacy-resources.json').read_text())
                 self.assertIsNone(store.latest)

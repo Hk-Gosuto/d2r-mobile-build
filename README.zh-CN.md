@@ -68,11 +68,11 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 **A16 及更早设备**还需从当前 IPA Release 正文的链接下载 `Legacy-Device-Pack.zip`，解压后把整个 `Legacy Device Pack` 文件夹放进应用，与 `D2R Mobile Resources` 并排。请使用当前 IPA Release 链接的配套补充包，两种系统版本共用这一份。A17 Pro 及更新芯片和 M 系列 iPad 无需导入补充包。
 
-打开应用，点击“重试”。首次启动需等待着色器编译完成，**iPhone 17 Pro Max 参考耗时约 6 分钟**，其他机型耗时不同。当前 v1.0.9 包尚未进行真机运行验证。
+打开应用，点击“重试”。首次启动需等待着色器编译完成，**iPhone 17 Pro Max 参考耗时约 6 分钟**，其他机型耗时不同。当前 v1.0.10 包尚未进行真机运行验证。
 
 ### 4. 更新 IPA 与复用 Data
 
-**v1.0.1 或 v1.0.6 下载的 Data 可以直接用于 v1.0.9 IPA，无需重新下载。**
+**v1.0.1 或 v1.0.6 下载的 Data 可以直接用于 v1.0.10 IPA，无需重新下载。**
 
 如果手机上已经导入 `D2R Mobile Resources` 文件夹，保持应用标识不变，直接覆盖安装新版 IPA 即可，通常会保留资源和存档，无需再次导入。**不要先卸载应用，否则资源和存档会被删除。** 如果只是下载了资源、尚未导入，按上方第 2、3 步合并、解压并导入即可。
 
@@ -82,7 +82,7 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 | 项目 | 版本 |
 | --- | --- |
-| 上游 | v1.0.9 |
+| 上游 | v1.0.10 |
 | Switch 更新 | `1.0.34.0` / `v2228224` |
 | 游戏内部版本 | `3.3.94012` |
 | 所需版本 | 包含「术士君临」资料片 |

@@ -1,8 +1,8 @@
 {
   "upstream_repository": "jhaizhou-ops/d2r-mobile",
-  "upstream_commit": "dc3cc22b9b8066031ba3779e7c5b716c23c0d649",
-  "shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.9/D2RMobile-shell.ipa",
-  "shell_sha256": "be94f84ef27746351f6d31c07e07f9aeb569b194305fb7dc32c6e4eb44c539af",
+  "upstream_commit": "2e7177c08048ebf9335fea102cbd1357eaf92832",
+  "shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.10/D2RMobile-shell.ipa",
+  "shell_sha256": "ed5b1658de9f53db2095103670892034f7a0daa6e77a5fc75d7015b357825c42",
   "spirv_commit": "6c09849fe88c48eaed08413aa022aaa136a3a057",
   "hactool_commit": "1d64a83450e025622f3468c28fc4164dad2c5ef6",
   "game_version": "3.3.94012",
@@ -12,8 +12,16 @@
     "sdk": "1c9f198a91c0bcfee5cf8f5b53fb941895e91334dfb766ce79fc68576797f017",
     "subsdk0": "67a38fcf89cd13e040a021eb3d157072f38ebf6680a907874c35c7b231b5d4e2"
   },
-  "ios18_shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.9/D2RMobile-shell-ios18.ipa",
-  "ios18_shell_sha256": "0b7edf250e2052e0b2c5f701929317a9ba48d746d9d75455ac073e47e821226e",
+  "ios18_shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.10/D2RMobile-shell-ios18.ipa",
+  "ios18_shell_sha256": "d22c3798e30c4129c9c4034c1fc87462e61062052409efd86d61fa19687b9fbc",
   "astc_encoder_url": "https://github.com/ARM-software/astc-encoder/releases/download/5.2.0/astcenc-5.2.0-linux-x64.zip",
-  "astc_encoder_sha256": "b8c805b3c4a32680287ad5e5fc2a8b5ddf78c80f24cc0ec7ed1e4eb03c6cc5d2"
+  "astc_encoder_sha256": "b8c805b3c4a32680287ad5e5fc2a8b5ddf78c80f24cc0ec7ed1e4eb03c6cc5d2",
+  "legacy_converter": {
+    "commit": "dc3cc22b9b8066031ba3779e7c5b716c23c0d649",
+    "sources": {
+      "dm/tools/astc_pack.py": "ba2ea59bdc54593e49b830132942c7b0ee025484684bbb2e5533d2aca22dc8ac",
+      "dm/tools/casc_overlay.py": "13d10ddaaf92ce0f05c1a2b1b9e54e48b38fa545bd27a0da72d9e7bde84568ed",
+      "dm/ios/tools/touch_layout.py": "31b438d58b32ed724ff541c7069c9ca3a93ba78de1b699cce85f2ca932b28747"
+    }
+  }
 }

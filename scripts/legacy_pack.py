@@ -17,15 +17,29 @@ import release_notes
 PACK = ci.DM / 'build/legacy/pack'
 ZIP_NAME = 'Legacy-Device-Pack.zip'
 META_NAMES = ('pack.json', 'pack_index.tsv', 'legacy-report.json')
+CONVERTER = ci.TOOLS / 'legacy-converter'
+CONVERTER_SOURCES = ('dm/tools/astc_pack.py', 'dm/tools/casc_overlay.py',
+                     'dm/ios/tools/touch_layout.py')
+
+
+def ensure_converter():
+    """Pin offline texture conversion independently of the app's UI source."""
+    config = ci.CONFIG['legacy_converter']
+    if set(config['sources']) != set(CONVERTER_SOURCES):
+        raise ValueError('Unexpected Legacy Device Pack converter sources')
+    for name in CONVERTER_SOURCES:
+        path = CONVERTER / name
+        digest = config['sources'][name]
+        if not path.exists() or ci.sha256(path) != digest:
+            ci.download(f"https://raw.githubusercontent.com/{ci.CONFIG['upstream_repository']}/"
+                        f"{config['commit']}/{name}", path, digest)
 
 
 def recipe(manifest):
-    sources = ('dm/tools/astc_pack.py', 'dm/tools/casc_overlay.py',
-               'dm/ios/tools/touch_layout.py')
     value = {'format': 1, 'resource_id': export_resources.resource_identity(manifest),
              'build_manifest_sha256': ci.sha256(ci.GAME / 'RomFS/data/build_manifest.psv'),
              'encoder_sha256': ci.CONFIG['astc_encoder_sha256'], 'preset': 'thorough',
-             'sources': {p: ci.sha256(ci.ROOT / 'upstream' / p) for p in sources}}
+             'sources': {p: ci.sha256(CONVERTER / p) for p in CONVERTER_SOURCES}}
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
@@ -113,7 +127,7 @@ def generate():
     shutil.rmtree(PACK, ignore_errors=True)
     shutil.rmtree(work, ignore_errors=True)
     romfs = ci.GAME / 'RomFS'
-    tools = ci.ROOT / 'upstream/dm/tools'
+    tools = CONVERTER / 'dm/tools'
     for args in ([tools / 'astc_pack.py', romfs, work, '--astcenc', encoder, '--preset', 'thorough'],
                  [tools / 'casc_overlay.py', 'pack', romfs, PACK, work / 'repl.tsv', '0-8'],
                  [tools / 'astc_pack.py', 'finalize', PACK]):
@@ -157,6 +171,7 @@ def main():
     repo = os.environ['GITHUB_REPOSITORY']
     publish.OUT.mkdir(exist_ok=True)
     publish.STAGE.mkdir(exist_ok=True)
+    ensure_converter()
     manifest = export_resources.scan_resources(ci.GAME)
     (publish.OUT / 'resource-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     identity = recipe(manifest)
