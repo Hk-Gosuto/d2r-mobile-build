@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -38,9 +39,12 @@ def main():
         z.writestr(base+'dm/shell_info.txt',f'PRODUCT={product}\nCHAIN={chain}\nKIND=ios\n')
     payload=out/'source-payload.zip'
     subprocess.run([sys.executable,str(dm/'tools/d2rm_pack.py'),str(contract),str(ci.GAME),str(payload)],check=True)
-    # Native-only input required by gen_build.py, then the public runtime tables.
-    (dm/'host/dm_bright_levels.inc').write_text(run(sys.executable,dm/'tools/gen_bright_levels.py',romfs))
-    run(sys.executable,ios/'tools/shell_stubs.py','stubs',dm)
+    # Keep generated build caches untouched: runtime-table stubs only belong in the native copy.
+    native=ci.DM/'build/native-source/dm'
+    shutil.rmtree(native.parent,ignore_errors=True)
+    shutil.copytree(dm,native,ignore=shutil.ignore_patterns('.git','Gen','TouchArt','__pycache__','bin','obj'))
+    (native/'host/dm_bright_levels.inc').write_text(run(sys.executable,dm/'tools/gen_bright_levels.py',romfs))
+    run(sys.executable,ios/'tools/shell_stubs.py','stubs',native)
     source_commit=run('git','-C',up,'rev-parse','HEAD').strip()
     report={'source_repository':os.environ['SOURCE_REPOSITORY'],'source_commit':source_commit,
             'patch_sha256':ci.CONFIG.get('source_patch_sha256'), 'product':product,'shader_chain':chain,
@@ -53,7 +57,7 @@ def main():
             parts=Path(item.name).parts
             if any(p in ('.git','Gen','TouchArt','__pycache__','bin','obj') for p in parts):return None
             return item
-        tf.add(dm,arcname='upstream/dm',filter=include)
+        tf.add(native,arcname='upstream/dm',filter=include)
     print('Prepared source build inputs:',source_commit,product,chain,flush=True)
 
 
