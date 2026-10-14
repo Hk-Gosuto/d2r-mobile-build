@@ -161,10 +161,16 @@ def licenses(destination):
             target = destination / 'ryujinx' / p.relative_to(ryu)
             target.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(p, target)
     assets = json.loads((upstream / 'dm/gfx/tools/dmsh_xlate/obj/project.assets.json').read_text())
+    published = destination.parent / 'dmsh_xlate'
+    deps = json.loads((published / 'dmsh_xlate.deps.json').read_text())
+    deployed_names = {p.name for p in published.rglob('*') if p.is_file()}
+    deployed_packages = {name for target in deps['targets'].values() for name, entry in target.items()
+                         if any(Path(p).name in deployed_names for section in ('runtime', 'runtimeTargets', 'native', 'resources')
+                                for p in entry.get(section, {}))}
     roots = [Path(p) for p in assets['packageFolders']]
     standard_licenses = {}
     for package, metadata in assets['libraries'].items():
-        if metadata['type'] != 'package':
+        if metadata['type'] != 'package' or package not in deployed_packages:
             continue
         package_root = next(p / metadata['path'] for p in roots if (p / metadata['path']).is_dir())
         nuspec = next(package_root.glob('*.nuspec'))
@@ -174,6 +180,8 @@ def licenses(destination):
             # Reviewed legacy packages: never infer a redistribution license from a name.
             if package == 'Gommon/2.8.1.2' and sha(package_root / 'content/LICENSE') == '7c4d2d326bad3f254fc09dfce4db3c38a9ca8e587d1acf698f9ab65e338c3fa9':
                 license_node = ET.Element('license', type='file'); license_node.text = 'content/LICENSE'
+            elif package == 'System.CodeDom/4.4.0' and sha(package_root / 'LICENSE.TXT') == 'd7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b':
+                license_node = ET.Element('license', type='file'); license_node.text = 'LICENSE.TXT'
             elif package == 'MsgPack.Cli/1.0.1' and any(
                     n.tag.split('}')[-1] == 'licenseUrl' and n.text == 'http://www.apache.org/licenses/LICENSE-2.0'
                     for n in tree.iter()):
@@ -193,13 +201,13 @@ def licenses(destination):
                 with request(f'https://raw.githubusercontent.com/spdx/license-list-data/v3.27.0/text/{value}.txt') as response:
                     standard_licenses[value] = response.read()
             (target / 'LICENSE.txt').write_bytes(standard_licenses[value])
-            # Keep package-specific notices as well as the standard license text.
-            for source in package_root.rglob('*'):
-                if source.is_file() and source.name.upper().startswith(('LICENSE', 'COPYING', 'NOTICE', 'AUTHORS')):
-                    notice = target / source.relative_to(package_root)
-                    notice.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(source, notice)
         else:
             raise ValueError('Review NuGet license before public distribution: ' + package)
+        # Keep package-specific notices for both modern and legacy license formats.
+        for source in package_root.rglob('*'):
+            if source.is_file() and any(word in source.name.upper() for word in ('LICENSE', 'COPYING', 'NOTICE', 'AUTHORS')):
+                notice = target / source.relative_to(package_root)
+                notice.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(source, notice)
 
 
 def build(directory, spec):
