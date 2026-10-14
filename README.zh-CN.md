@@ -27,7 +27,7 @@ RomFS/
 
 把压缩包放到自己的存储服务，取得 **HTTPS 直接下载地址**。支持带有效期的签名直链，下载完成前地址必须有效。浏览器分享页、Google Drive 文件夹链接、登录页和 HTML 确认页都不是直链。Google Drive 需要能直接返回压缩包、无需交互登录的授权下载地址；工作流不会代为登录 Google 或获取游戏文件。
 
-如果需要填写可选的 `sha256`，可这样计算：
+计算压缩包的 SHA-256：
 
 ```sh
 # macOS
@@ -45,16 +45,16 @@ Windows PowerShell：
 ## 2. 创建自己的构建仓库
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，选择 **Create a new repository**，可见性选 **Private**。
-2. 打开 **Settings → Secrets and variables → Actions → New repository secret**。只创建一个名为 **`GAME_ARCHIVE`** 的 Secret，内容填写以下 JSON，并把 `url` 换成自己的压缩包直链：
+2. 打开 **Settings → Secrets and variables → Actions → New repository secret**。只创建一个名为 **`GAME_ARCHIVE`** 的 Secret，内容填写以下 JSON，将 `url` 换成自己的压缩包直链，`sha256` 换成上一步计算的校验值：
 
    ```json
    {
      "url": "https://your-storage.example/game-input.zip",
-     "sha256": ""
+     "sha256": "YOUR_ARCHIVE_SHA256"
    }
    ```
 
-   `url` 必填。`sha256` 可选：留空、填 `null` 或省略该字段，都不比对输入压缩包的 SHA-256；填写时必须为 64 位十六进制字符。解压、游戏版本检查和产物校验仍会执行。
+   `sha256` 为 64 位十六进制校验值，用于验证下载的压缩包。
 
 3. 如果组织限制了 Actions 的使用，需要允许调用本仓库的可复用工作流及其依赖的 Action。
 
@@ -95,7 +95,7 @@ IPA 未签名。自动校验不能替代真机测试。更新时保持应用标�
 - 构建会检查游戏程序和资源，拒绝不兼容或缺失的输入。
 - 相同 Data 直接复用自己仓库中的 Release，不再重复下载、压缩、分卷和上传。手机已导入的相同 Data 也不用重复导入。
 - 相同 Legacy 包从自己仓库的 Release 恢复，不重新转换或上传。
-- GitHub 可能自动淘汰缓存，请保留原始压缩包。更换输入时更新 `GAME_ARCHIVE`。填了 `sha256` 时，相同文件续期直链仍复用原缓存；未填时按完整 URL 区分缓存，换地址会建立新缓存，同一地址替换文件后需在 **Actions → Caches** 清理对应的输入缓存。
+- GitHub 可能自动淘汰缓存，请保留原始压缩包。更换输入时更新 `GAME_ARCHIVE` 中的地址和校验值。
 - 请保留仍被 App Release 引用的旧 Data 和 Legacy Release。这些资源位于自己的私有仓库，不依赖本项目 Release 下载。
 
 模板中附带工具源码供查看，但实际构建使用中央工作流固定提交的工具。个人源码修改放在所选的源码 Fork 中。
