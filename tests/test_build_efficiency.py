@@ -10,37 +10,9 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import cache_keys
 import ci
-from source import native_cache
 
 
 class BuildEfficiencyTests(unittest.TestCase):
-    def test_native_cache_tracks_compiler_contents_and_ios_target_across_runner_paths(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory)
-            source=root/'upstream/dm'; source.mkdir(parents=True)
-            (source/'runtime.c').write_text('runtime')
-            output=root/'outputs'; env=root/'env'
-            compiler=root/'compiler'; compiler.mkdir()
-            clang=compiler/'clang'; clangxx=compiler/'clang++'
-            clang.write_bytes(b'compiler'); clangxx.write_bytes(b'compiler++')
-            def command(args, **kwargs):
-                if args[0]=='xcodebuild': return 'Xcode 26.6\nBuild version 17F113\n'
-                if args[:2]==('xcrun','--find'): return str(compiler/args[2])+'\n'
-                if args[0]=='xcrun': return '23F100\n'
-                if args[0]=='ccache': return 'ccache version 4.14\nextra build information\n'
-                self.fail('Unexpected compiler identification command: '+str(args))
-            def configure(minimum):
-                output.write_text(''); env.write_text('')
-                native_cache.configure(root,minimum)
-                return dict(line.split('=',1) for line in output.read_text().splitlines())
-            with patch.dict(ci.os.environ,GITHUB_OUTPUT=str(output),GITHUB_ENV=str(env)),patch.object(native_cache.shutil,'which',return_value='ccache'),patch.object(native_cache.subprocess,'check_output',side_effect=command):
-                first=configure('26.0')
-                moved=root/'another-runner-path'; compiler.rename(moved); compiler=moved
-                self.assertEqual(first,configure('26.0'))
-                self.assertNotEqual(first['prefix'],configure('18.0')['prefix'])
-                (compiler/'clang').write_bytes(b'new compiler')
-                self.assertNotEqual(first['prefix'],configure('26.0')['prefix'])
-
     def setUp(self):
         runtime = patch.dict(ci.CONFIG, nso_sha256={'main': 'a' * 64})
         runtime.start(); self.addCleanup(runtime.stop)

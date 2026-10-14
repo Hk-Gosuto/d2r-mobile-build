@@ -103,7 +103,7 @@ Run **Build IPA and Data** again with `source_ref` empty to build the latest off
 - When Data contents match, the Release links to your existing Data. Keep using the resources already imported on your phone.
 - Matching Legacy conversion inputs and settings reuse your existing Legacy pack.
 - Legacy reuse downloads only its verified index and descriptor; the phone's texture archive stays in its existing Release.
-- Completed generation stages are cached immediately. Both iOS variants compile in parallel on macOS 26 and use separate compiler caches capped at 128 MB each.
+- Completed generation stages are cached immediately. Both iOS variants compile in parallel on macOS 26.
 - Retain older Data and Legacy Releases referenced by your app Releases.
 - GitHub can evict caches; retain your source archive. Keep the ZIP and checksum links in `GAME_ARCHIVE` current when replacing input files.
 

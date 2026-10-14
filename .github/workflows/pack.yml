@@ -700,33 +700,15 @@ jobs:
       - name: Prepare native build dependencies
         run: |
           brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
-          brew list ccache >/dev/null 2>&1 || brew install ccache
           python3 -m venv .venv
           .venv/bin/pip install PyYAML==6.0.2
           tar -xzf outputs/native-inputs.tar.gz
-      - name: Select the compiler cache namespace
-        id: native-cache
-        env:
-          MINIMUM_IOS: ${{ matrix.minimum }}
-        run: python3 scripts/source/native_cache.py
-      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        id: compiler-cache
-        with:
-          path: .native-ccache
-          key: ${{ steps.native-cache.outputs.key }}
-          restore-keys: ${{ steps.native-cache.outputs.prefix }}
       - name: Compile and verify the IPA
         env:
           MINIMUM_IOS: ${{ matrix.minimum }}
         run: |
           set -o pipefail
           .venv/bin/python scripts/source/build.py "$MINIMUM_IOS" 2>&1 | tee outputs/native-build.log
-      - name: Save the bounded compiler cache
-        if: steps.compiler-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .native-ccache
-          key: ${{ steps.native-cache.outputs.key }}
       - name: Upload the verified IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

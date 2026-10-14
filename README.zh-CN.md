@@ -103,7 +103,7 @@ App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Rel
 - Data 内容相同时，Release 直接引用已有的 Data。手机上已导入的资源继续使用。
 - Legacy 转换输入和设置相同时，恢复已有的 Legacy 包。
 - 复用 Legacy 时只下载校验通过的索引和描述文件，手机使用的大贴图包保留在已有 Release。
-- 各生成阶段完成后立即缓存；两份 iOS 版本在 macOS 26 上并行编译，各自的编译缓存上限为 128MB。
+- 各生成阶段完成后立即缓存；两份 iOS 版本在 macOS 26 上并行编译。
 - 保留仍被 App Release 引用的旧 Data 和 Legacy Release。
 - GitHub 可能清理缓存，请保留原始压缩包；更换输入时，保持 `GAME_ARCHIVE` 中 ZIP 和校验文件的链接有效。
 
