@@ -13,6 +13,7 @@ import ci
 import export_resources
 import publish_release as publish
 import release_notes
+from repository_access import require_private
 
 PACK = ci.DM / 'build/legacy/pack'
 ZIP_NAME = 'Legacy-Device-Pack.zip'
@@ -168,7 +169,7 @@ def publish_pack(repo, recipe_id, tag):
 
 
 def main():
-    repo = os.environ['GITHUB_REPOSITORY']
+    repo = require_private()
     publish.OUT.mkdir(exist_ok=True)
     publish.STAGE.mkdir(exist_ok=True)
     ensure_converter()

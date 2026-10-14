@@ -68,7 +68,7 @@ def main():
         raise ValueError('Compiled app targets wrong minimum iOS')
     if minimum=='18.0' and b'MTL4CommandQueue' in native:raise ValueError('Compatibility build references Metal 4')
     suffix='-ios18' if minimum=='18.0' else ''
-    name=f"D2RMobile-source-{report['source_commit'][:8]}{suffix}.ipa"
+    name=ci.ipa_names()[minimum=='18.0']
     destination=root/'outputs'/name
     base='Payload/DmIOS.app/'
     with zipfile.ZipFile(payload) as src, zipfile.ZipFile(destination,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as dst:
@@ -91,6 +91,8 @@ def main():
         pack=json.loads(final.read(base+'romfs_overlay_astc/pack.json'))
         if pack!=report['legacy_pack']:raise ValueError('Legacy pack mismatch')
     report.update(ipa_name=name,ipa_sha256=ci.sha256(destination),ipa_bytes=destination.stat().st_size,
+                  upstream_commit=report['source_commit'],game_version=ci.CONFIG['game_version'],
+                  switch_version=ci.CONFIG['switch_version'],input_revision=os.environ.get('INPUT_REVISION'),
                   minimum_os=minimum,native_minimum_os='.'.join(map(str,native_os)),native_sha256=__import__('hashlib').sha256(native).hexdigest(),
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
                   xcode=run('xcodebuild','-version').strip(),sdk=run('xcrun','--sdk','iphoneos','--show-sdk-version').strip())

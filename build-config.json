@@ -1,10 +1,7 @@
 {
   "upstream_repository": "jhaizhou-ops/d2r-mobile",
   "upstream_commit": "f43480dc486e9b8f6f5196057c61209e196794e2",
-  "shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.13/D2RMobile-shell.ipa",
-  "shell_sha256": "96bc4e096806870955c33e08d351d2937d77507b3a8dd8e72f1a0e98a4fd3ef1",
   "spirv_commit": "6c09849fe88c48eaed08413aa022aaa136a3a057",
-  "hactool_commit": "1d64a83450e025622f3468c28fc4164dad2c5ef6",
   "game_version": "3.3.94012",
   "switch_version": "1.0.34.0",
   "nso_sha256": {
@@ -12,8 +9,6 @@
     "sdk": "1c9f198a91c0bcfee5cf8f5b53fb941895e91334dfb766ce79fc68576797f017",
     "subsdk0": "67a38fcf89cd13e040a021eb3d157072f38ebf6680a907874c35c7b231b5d4e2"
   },
-  "ios18_shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.13/D2RMobile-shell-ios18.ipa",
-  "ios18_shell_sha256": "31fa77998c6f2bf023d53b842158f59b96fb4995c58dd4484b9d74a404d2a01f",
   "astc_encoder_url": "https://github.com/ARM-software/astc-encoder/releases/download/5.2.0/astcenc-5.2.0-linux-x64.zip",
   "astc_encoder_sha256": "b8c805b3c4a32680287ad5e5fc2a8b5ddf78c80f24cc0ec7ed1e4eb03c6cc5d2",
   "legacy_converter": {
@@ -23,5 +18,6 @@
       "dm/tools/casc_overlay.py": "13d10ddaaf92ce0f05c1a2b1b9e54e48b38fa545bd27a0da72d9e7bde84568ed",
       "dm/ios/tools/touch_layout.py": "31b438d58b32ed724ff541c7069c9ca3a93ba78de1b699cce85f2ca932b28747"
     }
-  }
+  },
+  "upstream_version": "v1.0.13"
 }

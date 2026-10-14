@@ -34,6 +34,9 @@ def small_pack(directory):
 class LegacyPackTests(unittest.TestCase):
     def setUp(self):
         # Test publication must not append fake links or paths to the real runner.
+        for module in (legacy, publish):
+            guard = patch.object(module, 'require_private', return_value='owner/repo')
+            guard.start(); self.addCleanup(guard.stop)
         isolated = patch.dict(os.environ, {'GITHUB_ENV': '', 'GITHUB_STEP_SUMMARY': ''})
         isolated.start()
         self.addCleanup(isolated.stop)
@@ -126,62 +129,6 @@ class LegacyPackTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'ZIP members'):
                     legacy.restore('owner/repo', {'assets': []})
 
-    def test_ipa_verification_checks_system_and_paired_overlay(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            info = small_pack(root / 'pack')
-            shell = root / 'shell.ipa'
-            entries = {'Payload/Game.app/dm/shell_info.txt': b'PRODUCT=test\nCHAIN=chain\nSHADER_SRC=source\n',
-                       'Payload/Game.app/dm/shell_manifest.txt': b'Frameworks/Guest.framework/\n',
-                       'Payload/Game.app/Info.plist': plistlib.dumps({'MinimumOSVersion': '18.0', 'CFBundleExecutable': 'Game'}),
-                       'Payload/Game.app/Game': struct.pack('<8I6I', 0xfeedfacf, 0x0100000c, 0, 2, 1, 24, 0, 0,
-                                                            0x32, 24, 2, 18 << 16, 18 << 16, 0)}
-            with zipfile.ZipFile(shell, 'w') as z:
-                for n, b in entries.items(): z.writestr(n, b)
-            entries.update({'Payload/Game.app/Frameworks/Guest.framework/Guest': struct.pack('<II', 0xfeedfacf, 0x0100000c),
-                            'Payload/Game.app/msl/b-chain/test_b.metallib': b'source',
-                            'Payload/Game.app/romfs_overlay_astc/pack.json': (root / 'pack/pack.json').read_bytes(),
-                            'Payload/Game.app/romfs_overlay_astc/data/a.data': b'overlay',
-                            'Payload/Game.app/romfs_overlay_astc_variants/pad/data/a.data': b'overlay'})
-            ipa = root / 'game.ipa'
-            with zipfile.ZipFile(ipa, 'w') as z:
-                for n, b in entries.items(): z.writestr(n, b)
-            report = ci.verify_ipa(ipa, shell, '18.0', root / 'pack')
-            self.assertEqual(report['minimum_os'], '18.0')
-            self.assertTrue(report['native_matches_shell'])
-            self.assertEqual(report['native_minimum_os'], '18.0.0')
-            self.assertTrue(report['compatibility_no_metal4'])
-            with self.assertRaisesRegex(ValueError, 'minimum system'):
-                ci.verify_ipa(ipa, shell, '26.0', root / 'pack')
-            (root / 'pack/pack.json').write_text(json.dumps(dict(info, sha256='0' * 64)))
-            with self.assertRaisesRegex(ValueError, 'does not match'):
-                ci.verify_ipa(ipa, shell, '18.0', root / 'pack')
-
-    def test_ipa_rejects_modified_native_or_incompatible_official_executable(self):
-        def native(minimum=18, extra=b''):
-            return struct.pack('<8I6I', 0xfeedfacf, 0x0100000c, 0, 2, 1, 24, 0, 0,
-                               0x32, 24, 2, minimum << 16, minimum << 16, 0) + extra
-
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            base = 'Payload/Game.app/'
-            entries = {base + 'Info.plist': plistlib.dumps({'MinimumOSVersion': '18.0', 'CFBundleExecutable': 'Game'}),
-                       base + 'dm/shell_info.txt': b'PRODUCT=test\nCHAIN=chain\nSHADER_SRC=source\n',
-                       base + 'dm/shell_manifest.txt': b'Frameworks/Guest.framework/\n',
-                       base + 'Frameworks/Guest.framework/Guest': struct.pack('<II', 0xfeedfacf, 0x0100000c),
-                       base + 'msl/b-chain/test_b.metallib': b'source'}
-            for official, packaged, error in (
-                    (native(), native(extra=b'changed'), 'differs from official shell'),
-                    (native(26), native(26), 'minimum system differs'),
-                    (native(extra=b'MTL4CommandQueue'), native(extra=b'MTL4CommandQueue'), 'references Metal 4')):
-                with self.subTest(error=error):
-                    for name, binary in (('shell.ipa', official), ('game.ipa', packaged)):
-                        with zipfile.ZipFile(root / name, 'w') as z:
-                            for key, value in dict(entries, **{base + 'Game': binary}).items():
-                                z.writestr(key, value)
-                    with self.assertRaisesRegex(ValueError, error):
-                        ci.verify_ipa(root / 'game.ipa', root / 'shell.ipa', '18.0')
-
     def test_publication_rejects_missing_variant_and_modified_ipa(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -189,11 +136,10 @@ class LegacyPackTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'Both verified'):
                     publish.validate_packages({'packages': []})
                 packages = []
-                for name, minimum, key in ((ci.ipa_names()[0], '26.0', 'shell_sha256'),
-                                           (ci.ipa_names()[1], '18.0', 'ios18_shell_sha256')):
+                for name, minimum in ((ci.ipa_names()[0], '26.0'), (ci.ipa_names()[1], '18.0')):
                     (root / name).write_bytes(b'ipa')
                     packages.append(dict({k: ci.CONFIG[k] for k in ('upstream_commit', 'game_version', 'switch_version')},
-                                         ipa_name=name, minimum_os=minimum, shell_sha256=ci.CONFIG[key],
+                                         ipa_name=name, minimum_os=minimum, native_built_from_source=True, payload_verified=True,
                                          ipa_bytes=3, ipa_sha256=ci.sha256(root / name)))
                 (root / 'SHA256SUMS.txt').write_text(''.join(f"{p['ipa_sha256']}  {p['ipa_name']}\n" for p in packages))
                 self.assertEqual(len(publish.validate_packages({'packages': packages})), 2)

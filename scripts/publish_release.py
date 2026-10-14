@@ -12,6 +12,7 @@ import time
 import ci
 import export_resources
 import release_notes
+from repository_access import require_private
 
 PART_BYTES = 1_900_000_000  # Strictly below GitHub's 2 GiB per-asset limit.
 OUT = ci.ROOT / 'outputs'
@@ -91,10 +92,11 @@ def release_info(repo, tag):
 
 
 def release_title():
-    return f"D2R Mobile {ci.upstream_version()} · Game {ci.CONFIG['game_version']}"
+    return f"D2R Mobile {ci.CONFIG.get('build_label', ci.upstream_version())}"
 
 
 def publish_complete(repo, tag, notes, title=None, latest=True):
+    require_private(repo)
     args = ['release', 'edit', tag, '--repo', repo, '--notes-file', notes, '--draft=false', '--latest=' + str(latest).lower()]
     if title is not None:
         args += ['--title', title]
@@ -236,6 +238,7 @@ def find_resources(repo, manifest):
 
 
 def ensure_release(repo, tag, title, notes):
+    require_private(repo)
     release = release_info(repo, tag)
     if release is None:
         gh('release', 'create', tag, '--repo', repo, '--target', os.environ['GITHUB_SHA'],
@@ -247,6 +250,7 @@ def ensure_release(repo, tag, title, notes):
 
 
 def upload_verified(repo, tag, assets):
+    require_private(repo)
     release = release_info(repo, tag)
     current = {item['name']: item for item in release['assets']}
     expected = {}
@@ -324,8 +328,7 @@ def write_ipa_notes(repo, reference, legacy=None):
 
 def validate_packages(report):
     standard, compatibility = ci.ipa_names()
-    expected = {standard: ('26.0', ci.CONFIG['shell_sha256']),
-                compatibility: ('18.0', ci.CONFIG['ios18_shell_sha256'])}
+    expected = {standard: '26.0', compatibility: '18.0'}
     packages = report.get('packages', [])
     if len(packages) != 2 or {r['ipa_name'] for r in packages} != set(expected):
         raise ValueError('Both verified IPA variants are required')
@@ -333,8 +336,8 @@ def validate_packages(report):
     for item in packages:
         validate_report(item)
         name = item['ipa_name']
-        if (item['minimum_os'], item['shell_sha256']) != expected[name]:
-            raise ValueError('IPA shell or minimum system mismatch: ' + name)
+        if item['minimum_os'] != expected[name] or not item.get('native_built_from_source') or not item.get('payload_verified'):
+            raise ValueError('IPA source build or minimum system mismatch: ' + name)
         path = OUT / name
         if path.stat().st_size != item['ipa_bytes'] or ci.sha256(path) != item['ipa_sha256']:
             raise ValueError('IPA SHA256 mismatch before publishing: ' + name)
@@ -356,7 +359,7 @@ def verify_legacy_reference(repo, report):
 
 
 def main(mode):
-    repo = os.environ['GITHUB_REPOSITORY']
+    repo = require_private()
     revision = os.environ['INPUT_REVISION']
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', revision):
         raise ValueError('Invalid input revision')
@@ -377,7 +380,7 @@ def main(mode):
     if resource_reference(repo, source, manifest) != reference:
         raise ValueError('Referenced Data is no longer complete or compatible')
     STAGE.mkdir(exist_ok=True)
-    tag = ci.upstream_version()
+    tag = ci.CONFIG.get('build_label', ci.upstream_version())
     title = release_title()
     notes = write_ipa_notes(repo, reference, legacy)
     ensure_release(repo, tag, title, notes)

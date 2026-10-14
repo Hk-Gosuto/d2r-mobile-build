@@ -14,8 +14,8 @@ def bilingual(english, chinese):
 
 def ipa(repo, config, reference, legacy=None):
     standard, compatibility = ci.ipa_names(config)
-    readme = f'https://github.com/{repo}#readme'
-    chinese_readme = f'https://github.com/{repo}/blob/main/README.zh-CN.md'
+    readme = 'https://github.com/jiayx/d2r-mobile-build#readme'
+    chinese_readme = 'https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md'
     data_url = reference['source_release']['url']
     identity = reference['resource_id']
     links = '\n'.join(f"- [{a['name']}]({a['url']})" for a in reference['assets']
@@ -36,7 +36,7 @@ def ipa(repo, config, reference, legacy=None):
         f"Game version **{config['game_version']}**, Switch update **{config['switch_version']}**.\n\n"
         f'For detailed installation and usage instructions, see the [README]({readme}).\n\n'
         f'### Install an IPA\n\nSign and install using one of these tools: {INSTALLER_LINKS}. Choose by system:\n\n'
-        f'- iOS 26 and later: `{standard}` (Metal 4).\n'
+        f'- iOS 26 and later: `{standard}`.\n'
         f'- iOS 18–25: `{compatibility}` (Metal 3 compatibility build).\n\n'
         'The variants share an app identifier, so installing one replaces the other.\n\n'
         + english_legacy +
@@ -50,7 +50,7 @@ def ipa(repo, config, reference, legacy=None):
         f"游戏版本 **{config['game_version']}**，Switch 更新 **{config['switch_version']}**。\n\n"
         f'详细使用方式请参考 [中文 README]({chinese_readme})。\n\n'
         f'### 安装 IPA\n\n可使用 {CHINESE_INSTALLER_LINKS} 签名安装，按系统选择：\n\n'
-        f'- iOS 26 及以上：`{standard}`（Metal 4）。\n'
+        f'- iOS 26 及以上：`{standard}`。\n'
         f'- iOS 18–25：`{compatibility}`（Metal 3 兼容版）。\n\n'
         '两份 IPA 使用相同应用标识，安装另一份会覆盖当前版本。\n\n'
         + chinese_legacy +
@@ -68,14 +68,14 @@ def data(repo, manifest):
         'Download all three resource parts and both checksum files, then follow '
         '`RESOURCE-INSTALL.txt` to combine and import them.\n\n'
         f"Resource ID: `{manifest['resource_id']}`.\n\n"
-        f'For detailed instructions, see the [README](https://github.com/{repo}#readme).\n\n'
+        f'For detailed instructions, see the [README](https://github.com/jiayx/d2r-mobile-build#readme).\n\n'
         'Download a matching IPA from an app Release. Multiple IPA versions can reuse this data; '
         'keep these assets available so their download links continue to work.\n')
     chinese = (
         f"游戏资源 **{manifest['game_version']}**，Switch 更新 **{manifest['switch_version']}**。\n\n"
         '下载全部三个资源分卷及两个校验文件，按 `RESOURCE-INSTALL.txt` 合并并导入。\n\n'
         f"资源标识：`{manifest['resource_id']}`。\n\n"
-        f'详细使用方式请参考 [中文 README](https://github.com/{repo}/blob/main/README.zh-CN.md)。\n\n'
+        f'详细使用方式请参考 [中文 README](https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md)。\n\n'
         '配套 IPA 在各版本 Release 中下载。此资源版本可供多个 IPA 版本复用，请保留其附件。\n')
     return bilingual(english, chinese)
 
@@ -86,10 +86,10 @@ def legacy(repo, archive='Legacy-Device-Pack.zip'):
         f'Download `{archive}`, extract it, and copy the entire `Legacy Device Pack` folder '
         'into the app beside `D2R Mobile Resources`.\n\n'
         'Use an IPA Release that links to this pack. For detailed instructions, '
-        f'see the [README](https://github.com/{repo}#readme).\n')
+        f'see the [README](https://github.com/jiayx/d2r-mobile-build#readme).\n')
     chinese = (
         'A16 及更早设备的配套贴图补充包，两种系统版本的 IPA 共用。\n\n'
         f'下载 `{archive}`，解压后把整个 `Legacy Device Pack` 文件夹与 '
         '`D2R Mobile Resources` 并排放进应用。\n\n'
-        f'请使用引用本包的 IPA。详细使用方式参考 [中文 README](https://github.com/{repo}/blob/main/README.zh-CN.md)。\n')
+        f'请使用引用本包的 IPA。详细使用方式参考 [中文 README](https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md)。\n')
     return bilingual(english, chinese)

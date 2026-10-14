@@ -39,6 +39,13 @@ def main():
         z.writestr(base+'dm/shell_info.txt',f'PRODUCT={product}\nCHAIN={chain}\nKIND=ios\n')
     payload=out/'source-payload.zip'
     subprocess.run([sys.executable,str(dm/'tools/d2rm_pack.py'),str(contract),str(ci.GAME),str(payload)],check=True)
+    # Carry the upstream and bundled third-party license notices into the final app.
+    with zipfile.ZipFile(payload, 'a', compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.write(up/'LICENSE',base+'Licenses/d2r-mobile-MIT.txt')
+        for directory in ('third_party','gfx/nvn/include'):
+            for path in (dm/directory).rglob('*'):
+                if path.is_file() and (path.name.upper().startswith(('LICENSE','COPYING','NOTICE')) or path.name=='nvn.h'):
+                    archive.write(path,base+'Licenses/'+path.relative_to(dm).as_posix())
     # Keep generated build caches untouched: runtime-table stubs only belong in the native copy.
     native=ci.DM/'build/native-source/dm'
     shutil.rmtree(native.parent,ignore_errors=True)
@@ -46,7 +53,8 @@ def main():
     (native/'host/dm_bright_levels.inc').write_text(run(sys.executable,dm/'tools/gen_bright_levels.py',romfs))
     run(sys.executable,ios/'tools/shell_stubs.py','stubs',native)
     source_commit=run('git','-C',up,'rev-parse','HEAD').strip()
-    report={'source_repository':os.environ['SOURCE_REPOSITORY'],'source_commit':source_commit,
+    report={'tools_commit':os.environ.get('TOOLS_COMMIT'), 'input_identity':os.environ.get('INPUT_REVISION'),
+            'source_repository':os.environ['SOURCE_REPOSITORY'],'source_commit':source_commit,
             'patch_sha256':ci.CONFIG.get('source_patch_sha256'), 'product':product,'shader_chain':chain,
             'payload_sha256':ci.sha256(payload),'legacy_pack':json.loads((Path(os.environ['D2RM_ASTC_PACK'])/'pack.json').read_text())}
     report['shader_source_sha16']=run(sys.executable,dm/'tools/d2rm_pack.py','--src-digest',ci.DM/'build/cache/metal_shader_cache'/('b-'+chain)).strip()

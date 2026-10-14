@@ -21,7 +21,7 @@ def fingerprint(files, values):
 def keys(upstream, config, sdk, chain=None):
     upstream = Path(upstream)
     tools = fingerprint({'tools.sh': ci.ROOT / 'scripts/tools.sh'},
-                        {k: config[k] for k in ('spirv_commit', 'hactool_commit')})
+                        {k: config[k] for k in ('spirv_commit',)})
     chain_source = upstream / 'dm/gfx/tools/dmsh_chain.py'
     tree = ast.parse(chain_source.read_text())
     assignments = [n for n in tree.body if isinstance(n, ast.Assign)

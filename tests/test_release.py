@@ -15,6 +15,10 @@ spec.loader.exec_module(module)
 
 
 class ReleaseTests(unittest.TestCase):
+    def setUp(self):
+        guard = patch.object(module, 'require_private', return_value='owner/repo')
+        guard.start(); self.addCleanup(guard.stop)
+
     def test_new_draft_lookup_retries_until_visible(self):
         draft = {'id': 123, 'draft': True, 'assets': []}
         with patch.object(module, 'release_info', side_effect=[None, None, draft]) as lookup, patch.object(module.time, 'sleep') as sleep:
