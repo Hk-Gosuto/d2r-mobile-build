@@ -120,6 +120,14 @@ jobs:
           key: generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'requirements.txt', 'scripts/tools.sh', 'scripts/png_backend.sh') }}-${{ inputs.input_revision }}-${{ inputs.prepare_only && 'tools' || 'full' }}
           restore-keys: |
             generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'requirements.txt', 'scripts/tools.sh', 'scripts/png_backend.sh') }}-${{ inputs.input_revision }}-
+      - name: Build and verify toolchain
+        run: |
+          bash scripts/tools.sh
+          python upstream/dm/gfx/tools/nometal_run.py upstream/dm/gfx/tools/dmsh_chain.py --header
+          echo "$GITHUB_WORKSPACE/.tools/bin" >> "$GITHUB_PATH"
+      - name: Compute verified shader cache key
+        id: shader-key
+        run: python scripts/cache_keys.py shaders
       - name: Restore matching shader outputs
         id: shaders
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
@@ -127,14 +135,8 @@ jobs:
           path: |
             .dm-work/build/cache/dm/dmsh
             .dm-work/build/cache/metal_shader_cache
-            .dm-work/build/gfx/dmsh_xlate
             .dm-work/build/ios/dmsh_b
-          key: shaders-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.cache-keys.outputs.shaders }}
-      - name: Build and verify toolchain
-        run: |
-          bash scripts/tools.sh
-          python upstream/dm/gfx/tools/nometal_run.py upstream/dm/gfx/tools/dmsh_chain.py --header
-          echo "$GITHUB_WORKSPACE/.tools/bin" >> "$GITHUB_PATH"
+          key: shaders-v3-${{ runner.os }}-${{ runner.arch }}-${{ steps.shader-key.outputs.shaders }}
       - name: Restore PNG compression backend
         id: png
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
@@ -238,7 +240,6 @@ jobs:
           path: |
             .dm-work/build/cache/dm/dmsh
             .dm-work/build/cache/metal_shader_cache
-            .dm-work/build/gfx/dmsh_xlate
             .dm-work/build/ios/dmsh_b
           key: ${{ steps.shaders.outputs.cache-primary-key }}
       - name: Reuse matching Data or publish it once

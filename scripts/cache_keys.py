@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import ci
 
@@ -17,7 +18,7 @@ def fingerprint(files, values):
     return h.hexdigest()
 
 
-def keys(upstream, config, sdk):
+def keys(upstream, config, sdk, chain=None):
     upstream = Path(upstream)
     tools = fingerprint({'tools.sh': ci.ROOT / 'scripts/tools.sh'},
                         {k: config[k] for k in ('spirv_commit', 'hactool_commit')})
@@ -40,13 +41,18 @@ def keys(upstream, config, sdk):
     shaders = fingerprint(files, {'spirv': config['spirv_commit'], 'sdk': sdk,
                                   'game': config['game_version'], 'switch': config['switch_version'],
                                   'nso': config['nso_sha256'], 'mode': 'no-metal',
-                                  'inputs': os.environ.get('INPUT_REVISION', '')})
+                                  'inputs': os.environ.get('INPUT_REVISION', ''), 'verified_chain': chain})
     return {'tools': tools, 'shaders': shaders}
 
 
 if __name__ == '__main__':
     sdk = subprocess.check_output(['dotnet', '--version'], text=True).strip()
-    result = keys(ci.ROOT / 'upstream', ci.CONFIG, sdk)
+    upstream = ci.ROOT / 'upstream'
+    chain = None
+    if sys.argv[1:] == ['shaders']:
+        chain = subprocess.check_output([sys.executable, str(upstream / 'dm/gfx/tools/nometal_run.py'),
+                                         str(upstream / 'dm/gfx/tools/dmsh_chain.py')], text=True).strip().splitlines()[-1]
+    result = keys(upstream, ci.CONFIG, sdk, chain)
     for key, value in result.items():
         print(key + '=' + value)
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:

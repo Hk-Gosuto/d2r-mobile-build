@@ -68,5 +68,7 @@ class BuildEfficiencyTests(unittest.TestCase):
                 self.assertEqual(first['tools'],newer['tools'])
                 (root/'dm/third_party/ryujinx/src/Shader.cs').write_text('changed translator')
                 self.assertNotEqual(newer['shaders'],cache_keys.keys(root,ci.CONFIG,'10.0.100')['shaders'])
+                self.assertNotEqual(cache_keys.keys(root,ci.CONFIG,'10.0.100','toolchain-a')['shaders'],
+                                    cache_keys.keys(root,ci.CONFIG,'10.0.100','toolchain-b')['shaders'])
                 changed=dict(ci.CONFIG,spirv_commit='new compiler')
                 self.assertNotEqual(first['tools'],cache_keys.keys(root,changed,'10.0.100')['tools'])
