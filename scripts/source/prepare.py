@@ -58,7 +58,7 @@ def main():
             'patch_sha256':ci.CONFIG.get('source_patch_sha256'), 'product':product,'shader_chain':chain,
             'payload_sha256':ci.sha256(payload),'legacy_pack':json.loads((Path(os.environ['D2RM_ASTC_PACK'])/'pack.json').read_text())}
     report['shader_source_sha16']=run(sys.executable,dm/'tools/d2rm_pack.py','--src-digest',ci.DM/'build/cache/metal_shader_cache'/('b-'+chain)).strip()
-    (out/'build-config.json').write_bytes((ci.ROOT/'build-config.json').read_bytes())
+    (out/'build-config.json').write_bytes((ci.ROOT/'config/build-pins.json').read_bytes())
     (out/'source-input-report.json').write_text(json.dumps(report,indent=2)+'\n')
     with tarfile.open(out/'native-inputs.tar.gz','w:gz') as tf:
         def include(item):

@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 TASK_ROOT="$PWD"
 mkdir -p .tools
-SPIRV_COMMIT=$(python -c 'import json; print(json.load(open("build-config.json"))["spirv_commit"])')
+SPIRV_COMMIT=$(python -c 'import json; print(json.load(open("config/build-pins.json"))["spirv_commit"])')
 if [[ ! -x .tools/bin/spirv-cross ]]; then
   TOOL_BUILD=$(mktemp -d)
   trap 'rm -rf "$TOOL_BUILD"' EXIT

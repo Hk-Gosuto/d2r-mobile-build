@@ -12,7 +12,7 @@ import sys
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = json.loads((ROOT / 'build-config.json').read_text())
+CONFIG = json.loads((ROOT / 'config/build-pins.json').read_text())
 DM = Path(os.environ.get('DM_ROOT', str(ROOT / '.dm-work')))
 GAME = DM / 'data/switch' / CONFIG['game_version'] / 'Update'
 TOOLS = ROOT / '.tools'

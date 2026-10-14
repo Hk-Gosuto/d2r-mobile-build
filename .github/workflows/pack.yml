@@ -93,7 +93,7 @@ jobs:
           persist-credentials: false
       - name: Read the default upstream commit
         id: config
-        run: python3 -c 'import json,os; c=json.load(open("build-config.json")); open(os.environ["GITHUB_OUTPUT"],"a").write("commit="+c["upstream_commit"]+"\n")'
+        run: python3 -c 'import json,os; c=json.load(open("config/build-pins.json")); open(os.environ["GITHUB_OUTPUT"],"a").write("commit="+c["upstream_commit"]+"\n")'
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: ${{ inputs.source_repository }}
@@ -172,7 +172,7 @@ jobs:
             upstream/dm/ios/Gen/assets
             upstream/dm/ios/Sources/TouchArt
             upstream/dm/ios/Sources/dm_touch_native_art.c
-          key: generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-config.json', 'requirements.txt', 'scripts/tools.sh', 'scripts/png_backend.sh') }}-${{ needs.resolve.outputs.input_revision }}
+          key: generated-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('config/build-pins.json', 'requirements.txt', 'scripts/tools.sh', 'scripts/png_backend.sh') }}-${{ needs.resolve.outputs.input_revision }}
       - name: Build and verify toolchain
         run: |
           bash scripts/tools.sh
@@ -299,7 +299,7 @@ jobs:
           python3 -m venv .venv
           .venv/bin/pip install PyYAML==6.0.2
           tar -xzf outputs/native-inputs.tar.gz
-          cp outputs/build-config.json build-config.json
+          cp outputs/build-config.json config/build-pins.json
       - name: Compile and verify the IPA
         env:
           MINIMUM_IOS: ${{ matrix.minimum }}
@@ -341,7 +341,7 @@ jobs:
           path: outputs
       - name: Publish to your private Releases
         run: |
-          cp outputs/build-config.json build-config.json
+          cp outputs/build-config.json config/build-pins.json
           python3 scripts/source/finalize.py
       - name: Delete intermediate inputs after a successful build
         run: |
