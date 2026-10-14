@@ -11,6 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import publish_release
 import repository_access
+import archive_input
 
 
 def entry_script():
@@ -19,6 +20,21 @@ def entry_script():
 
 
 class WorkflowEntryTests(unittest.TestCase):
+    def test_missing_hash_uses_the_same_url_identity_as_the_downloader(self):
+        sha='a'*40
+        run={'referenced_workflows':[{'path':'jiayx/d2r-mobile-build/.github/workflows/pack.yml@main','sha':sha}]}
+        url='https://storage.invalid/input.zip?token=private'
+        for config in ({'url':url}, {'url':url,'sha256':''}, {'url':url,'sha256':None}):
+            with tempfile.TemporaryDirectory() as temp:
+                output=Path(temp)/'output'
+                env={'GITHUB_REPOSITORY':'owner/repo','GITHUB_RUN_ID':'123',
+                     'GAME_ARCHIVE':json.dumps(config),'GITHUB_OUTPUT':str(output)}
+                with patch.dict(os.environ,env), patch.object(repository_access.subprocess,'check_output',side_effect=[json.dumps({'private':True}),json.dumps(run)]):
+                    exec(compile(entry_script(),'workflow-entry','exec'),{})
+                values=dict(line.split('=',1) for line in output.read_text().splitlines())
+                self.assertEqual(values['input_revision'],archive_input.input_identity(url,''))
+                self.assertNotIn(url,output.read_text())
+
     def test_private_caller_uses_callee_commit_and_does_not_export_a_secret(self):
         digest='1'*64
         sha='a'*40
@@ -27,7 +43,7 @@ class WorkflowEntryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             output=Path(temp)/'output'
             env={'GITHUB_REPOSITORY':'owner/repo','GITHUB_RUN_ID':'123',
-                 'GAME_ARCHIVE_SHA256':digest,'GITHUB_OUTPUT':str(output)}
+                 'GAME_ARCHIVE':json.dumps({'url':'https://storage.invalid/input.zip','sha256':digest}),'GITHUB_OUTPUT':str(output)}
             with patch.dict(os.environ,env), patch.object(repository_access.subprocess,'check_output',side_effect=[json.dumps({'private':True}),json.dumps(run)]):
                 exec(compile(entry_script(), 'workflow-entry', 'exec'), {})
             values=dict(line.split('=',1) for line in output.read_text().splitlines())

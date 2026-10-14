@@ -21,5 +21,4 @@ jobs:
       source_repository: ${{ inputs.source_repository }}
       source_ref: ${{ inputs.source_ref }}
     secrets:
-      GAME_ARCHIVE_URL: ${{ secrets.GAME_ARCHIVE_URL }}
-      GAME_ARCHIVE_SHA256: ${{ secrets.GAME_ARCHIVE_SHA256 }}
+      GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}

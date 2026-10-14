@@ -1,4 +1,5 @@
 """Download and safely prepare one user-supplied ExeFS/RomFS archive."""
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -17,23 +18,62 @@ MAX_EXPANDED_BYTES = 24 * 1024**3
 
 
 def settings():
-    url = os.environ.get('GAME_ARCHIVE_URL', '').strip()
-    digest = os.environ.get('GAME_ARCHIVE_SHA256', '').strip().lower()
+    try:
+        config = json.loads(os.environ.get('GAME_ARCHIVE', ''))
+    except ValueError:
+        raise ValueError('GAME_ARCHIVE must be a JSON object with url and optional sha256') from None
+    if not isinstance(config, dict) or not isinstance(config.get('url'), str):
+        raise ValueError('GAME_ARCHIVE must contain a download url')
+    url = config['url'].strip()
+    digest = config.get('sha256')
+    if digest is None:
+        digest = ''
+    if not isinstance(digest, str):
+        raise ValueError('sha256 must be a string or null')
+    digest = digest.strip().lower()
     parsed = urlsplit(url)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
-        raise ValueError('GAME_ARCHIVE_URL must be an HTTPS direct download URL')
-    if not re.fullmatch(r'[a-f0-9]{64}', digest):
-        raise ValueError('GAME_ARCHIVE_SHA256 must contain the archive SHA-256')
+        raise ValueError('url must be an HTTPS direct download URL')
+    if digest and not re.fullmatch(r'[a-f0-9]{64}', digest):
+        raise ValueError('sha256 must be empty or contain 64 hexadecimal characters')
     return url, digest
+
+
+def input_identity(url, digest):
+    # Missing hashes must never collapse different sources into one cache entry.
+    value = digest if digest else 'url:' + url
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def cached(url, digest):
+    if not ARCHIVE.is_file():
+        return False
+    if digest:
+        return ci.sha256(ARCHIVE) == digest
+    try:
+        marker = json.loads(ARCHIVE.with_suffix('.json').read_text())
+        return (isinstance(marker, dict) and
+                marker.get('identity') == input_identity(url, digest) and
+                marker.get('bytes') == ARCHIVE.stat().st_size and marker['bytes'] > 0)
+    except (OSError, ValueError, TypeError):
+        return False
 
 
 def download():
     url, digest = settings()
-    if ARCHIVE.is_file() and ci.sha256(ARCHIVE) == digest:
-        print('Reusing verified original archive; download skipped', flush=True)
+    if cached(url, digest):
+        print('Reusing completed original archive; download skipped', flush=True)
         return
-    ci.download(url, ARCHIVE, digest)
-    print('Original archive downloaded and verified; ready to cache before extraction', flush=True)
+    ci.download(url, ARCHIVE, digest or None)
+    if ARCHIVE.stat().st_size == 0:
+        raise ValueError('Downloaded archive is empty')
+    marker = ARCHIVE.with_suffix('.json')
+    partial = marker.with_suffix('.json.part')
+    partial.write_text(json.dumps({'identity': input_identity(url, digest),
+                                   'bytes': ARCHIVE.stat().st_size}) + '\n')
+    partial.replace(marker)
+    print('Archive downloaded; SHA-256 ' + ('verified' if digest else 'not requested') +
+          '; ready to cache before extraction', flush=True)
 
 
 def safe_members(members):
@@ -96,16 +136,17 @@ def extract(archive, target):
 
 
 def prepare():
-    _, digest = settings()
-    marker = ci.GAME / '.input-archive-sha256'
+    url, digest = settings()
+    identity = input_identity(url, digest)
+    marker = ci.GAME / '.input-archive-id'
     if ci.GAME.exists():
-        if not marker.is_file() or marker.read_text().strip() != digest:
+        if not marker.is_file() or marker.read_text().strip() != identity:
             raise ValueError('Prepared game cache belongs to different input')
         ci.validate_game()
         print('Reusing verified ExeFS/RomFS; extraction skipped', flush=True)
         return
-    if not ARCHIVE.is_file() or ci.sha256(ARCHIVE) != digest:
-        raise ValueError('Verified original archive missing; download it first')
+    if not cached(url, digest):
+        raise ValueError('Completed original archive missing; download it first')
     temporary = ci.GAME.with_name('input.partial')
     shutil.rmtree(temporary, ignore_errors=True)
     try:
@@ -121,7 +162,7 @@ def prepare():
         ci.GAME.mkdir()
         for name in ('ExeFS', 'RomFS'):
             shutil.move(str(game / name), str(ci.GAME / name))
-        marker.write_text(digest + '\n')
+        marker.write_text(identity + '\n')
         print('ExeFS/RomFS extracted and validated; original archive retained', flush=True)
     except Exception:
         shutil.rmtree(ci.GAME, ignore_errors=True)

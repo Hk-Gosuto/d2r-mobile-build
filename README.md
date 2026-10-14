@@ -27,7 +27,7 @@ A single enclosing folder is also supported. The phone's 18 Data archives alone 
 
 Store the archive on your own storage and obtain an **HTTPS direct download URL**. Signed URLs are supported; keep the URL valid until the download finishes. A browser sharing page, Google Drive folder link, login page, or HTML confirmation page is not a direct download. For Google Drive, use an authorized direct download URL that returns the archive without an interactive login. This workflow does not perform Google login or obtain game files for you.
 
-Calculate the archive's SHA-256:
+If you want to fill in the optional `sha256`, calculate it with:
 
 ```sh
 # macOS
@@ -45,12 +45,16 @@ Windows PowerShell:
 ## 2. Create your build repository
 
 1. Select [Use this template](https://github.com/jiayx/d2r-mobile-build/generate), choose **Create a new repository**, and set its visibility to **Private**.
-2. Open **Settings → Secrets and variables → Actions → New repository secret** and add:
+2. Open **Settings → Secrets and variables → Actions → New repository secret**. Create one secret named **`GAME_ARCHIVE`**, with this JSON as its value (replace `url` with your direct download URL):
 
-   | Secret | Value |
-   |---|---|
-   | `GAME_ARCHIVE_URL` | Your HTTPS direct download URL |
-   | `GAME_ARCHIVE_SHA256` | The archive's 64-character SHA-256 |
+   ```json
+   {
+     "url": "https://your-storage.example/game-input.zip",
+     "sha256": ""
+   }
+   ```
+
+   `url` is required. `sha256` is optional: leave it empty, set it to `null`, or omit it to skip the input archive's SHA-256 comparison. When supplied, it must contain 64 hexadecimal characters. Archive extraction, game-version checks, and output verification still run.
 
 3. If your organization restricts Actions, allow this repository's reusable workflow and the actions it calls.
 
@@ -85,13 +89,13 @@ The IPA is unsigned. Automated verification does not replace testing on your dev
 
 ## Updates and reuse
 
-Your build entry calls the centrally maintained workflow on `main`. A newly started run uses its current tools and supported release; you do not need to copy updated scripts into your repository. Your secrets remain in your repository. Interface changes, if any, are documented here.
+Your build entry calls the centrally maintained workflow on `main`. A newly started run uses its current tools and supported release; you do not need to copy updated scripts into your repository. Your `GAME_ARCHIVE` secret remains in your repository. Interface changes, if any, are documented here.
 
-- The verified original archive is cached **before extraction**, so extraction or compilation failures do not require another download while the cache is available.
+- The completed original archive is cached **before extraction**, so extraction or compilation failures do not require another download while the cache is available.
 - Game program and resource checks reject incompatible or incomplete input.
 - Matching Data is reused from your own Releases without downloading, compressing, splitting, or uploading it again. Existing phone Data can remain when its contents are unchanged.
 - Matching Legacy packs are restored from your own Releases without converting or uploading them again.
-- GitHub can evict caches. Keep your source archive available. For replacement input, update both secrets; an expired URL can be renewed without changing the hash when the file is identical.
+- GitHub can evict caches. Keep your source archive available. Update `GAME_ARCHIVE` when replacing the input. With `sha256` set, renewing the URL for an identical file retains the same cache. Without `sha256`, the full URL identifies the cache: changing the URL creates a new cache; replacing the file at the same URL requires clearing its input cache under **Actions → Caches**.
 - Retain older Data and Legacy Releases referenced by your app Releases. They are private to your repository and do not depend on downloads from this project's Releases.
 
 The template includes the tool source for reference, but the build executes the tools from the central workflow's exact commit. Personal source modifications belong in the selected source fork.

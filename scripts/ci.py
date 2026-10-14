@@ -56,6 +56,9 @@ def download(url, dest, expected=None):
                 raise ValueError('Download returned an HTML page; supply a direct file URL')
             with partial.open('wb') as f:
                 shutil.copyfileobj(r, f, length=8 * 1024 * 1024)
+            length = r.headers.get('Content-Length')
+            if length is not None and partial.stat().st_size != int(length):
+                raise ValueError('Download incomplete: ' + dest.name)
         if expected and sha256(partial) != expected.lower():
             raise ValueError('Download SHA256 mismatch: ' + dest.name)
         partial.replace(dest)
