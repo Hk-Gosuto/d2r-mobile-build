@@ -136,6 +136,18 @@ class LegacyPackTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'metadata missing'):
                     legacy.restore('owner/repo', {'assets': []})
 
+    def test_metadata_restore_works_in_a_fresh_job_without_a_large_pack(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);info={'name':'00-00000008.data','size':1000000000,'sha256':'a'*64}
+            data={'pack.json':json.dumps(info).encode(),'pack_index.tsv':b'# pack\t00-00000008.data\ntexture\tindex\n'}
+            assets=[{'id':i,'name':name,'bytes':len(value),'sha256':hashlib.sha256(value).hexdigest()}
+                    for i,(name,value) in enumerate(data.items())]
+            def download(args,stdout,check):stdout.write(data[assets[int(args[-1].rsplit('/',1)[1])]['name']])
+            with patch.object(legacy,'PACK',root/'pack'),patch.object(publish,'STAGE',root/'fresh-stage'),patch.object(legacy.subprocess,'run',side_effect=download):
+                legacy.restore('owner/repo',{'assets':assets,'pack':info})
+            self.assertEqual(json.loads((root/'pack/pack.json').read_text()),info)
+            self.assertFalse((root/'pack/Legacy Device Pack').exists())
+
     def test_publication_rejects_missing_variant_and_modified_ipa(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -94,6 +94,7 @@ def restore(repo, ref):
     selected = [a for a in ref['assets'] if a['name'] in ('pack.json', 'pack_index.tsv')]
     if len(selected) != 2 or {a['name'] for a in selected} != {'pack.json', 'pack_index.tsv'}:
         raise ValueError('Legacy build metadata missing or duplicated')
+    publish.STAGE.mkdir(parents=True, exist_ok=True)
     PACK.mkdir(parents=True, exist_ok=True)
     for asset in selected:
         path = publish.STAGE / asset['name']
