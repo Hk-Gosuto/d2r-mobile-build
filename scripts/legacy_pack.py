@@ -32,7 +32,7 @@ def ensure_converter():
         path = CONVERTER / name
         digest = config['sources'][name]
         if not path.exists() or ci.sha256(path) != digest:
-            ci.download(f"https://raw.githubusercontent.com/{ci.CONFIG['upstream_repository']}/"
+            ci.download(f"https://raw.githubusercontent.com/{config['repository']}/"
                         f"{config['commit']}/{name}", path, digest)
 
 

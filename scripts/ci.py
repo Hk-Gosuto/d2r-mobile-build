@@ -20,17 +20,17 @@ WORK = ROOT / '.downloads'
 RAW = ROOT / '.game-downloads'
 
 
-def upstream_version(config=None):
+def build_label(config=None):
     config = CONFIG if config is None else config
-    version = config['upstream_version']
-    if not re.fullmatch(r'v\d+\.\d+\.\d+', version):
-        raise ValueError('Expected a stable upstream version tag')
-    return version
+    label = config.get('build_label', '')
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', label):
+        raise ValueError('Resolve the selected source before naming build outputs')
+    return label
 
 
 def ipa_names(config=None):
     config = CONFIG if config is None else config
-    label = config.get('build_label', upstream_version(config))
+    label = build_label(config)
     return (f'D2RMobile-{label}.ipa', f'D2RMobile-{label}-ios18.ipa')
 
 

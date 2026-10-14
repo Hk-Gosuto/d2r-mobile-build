@@ -54,9 +54,9 @@ Windows PowerShell：
 
 ## 3. 执行构建
 
-在自己的仓库打开 **Actions → Build IPA and Data → Run workflow**。保持源码参数默认，即构建当前支持的上游正式版本。
+在自己的仓库打开 **Actions → Build IPA and Data → Run workflow**。`source_ref` 留空，即自动获取并构建上游最新正式 Release。
 
-测试其他源码时，`source_repository` 填上游仓库或自己的公开 Fork，`source_ref` 填分支、标签或提交。选择与游戏输入版本匹配的源码。
+测试最新开发代码时，`source_ref` 填 `main`；也可以填其他分支、标签或提交。构建自己的修改时，`source_repository` 填自己的公开 Fork。选择与游戏输入版本匹配的源码。
 
 首次构建包含 Legacy 贴图转换，耗时较长；后续构建会复用已有资源。
 
@@ -70,7 +70,7 @@ Windows PowerShell：
 | `D2RMobile-<版本>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`、`build-report.json` | 校验值与构建详情 |
 
-自定义源码构建会在文件名中加入源码提交。Release 正文提供配套 Data 与 Legacy Device Pack 的下载链接。
+文件名使用源码标签；标签之后的构建会附带源码提交，没有版本标签时使用提交。Release 正文提供配套 Data 与 Legacy Device Pack 的下载链接。
 
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装对应 IPA。
 2. 从正文链接的 Data Release 下载全部三个 `D2R-Mobile-Resources.zip.001`–`.003` 分卷，按 `RESOURCE-INSTALL.txt` 合并、解压，再通过 Finder 或“文件”App 将 `D2R Mobile Resources` 文件夹导入应用。
@@ -81,7 +81,7 @@ Windows PowerShell：
 
 ## 更新与复用
 
-后续在自己的仓库再次运行 **Build IPA and Data**，即可使用本项目 `main` 上更新后的构建工具和支持版本。输入文件保持相同时，沿用已有的 `GAME_ARCHIVE` 配置。
+后续在自己的仓库再次运行 **Build IPA and Data**，将 `source_ref` 留空，即可使用最新构建工具打包上游最新正式 Release。输入文件保持相同时，沿用已有的 `GAME_ARCHIVE` 配置。
 
 - 原始压缩包**先缓存，再解压**，重试时复用已完成的下载。
 - Data 内容相同时，Release 直接引用已有的 Data。手机上已导入的资源继续使用。

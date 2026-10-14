@@ -33,6 +33,8 @@ def small_pack(directory):
 
 class LegacyPackTests(unittest.TestCase):
     def setUp(self):
+        runtime = patch.dict(ci.CONFIG, upstream_commit='a' * 40, build_label='v1.0.20')
+        runtime.start(); self.addCleanup(runtime.stop)
         # Test publication must not append fake links or paths to the real runner.
         for module in (legacy, publish):
             guard = patch.object(module, 'require_private', return_value='owner/repo')
@@ -45,7 +47,7 @@ class LegacyPackTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             payloads = {name: name.encode() for name in legacy.CONVERTER_SOURCES}
-            config = dict(ci.CONFIG, legacy_converter={'commit': 'a' * 40, 'sources': {
+            config = dict(ci.CONFIG, legacy_converter={'repository': 'jhaizhou-ops/d2r-mobile', 'commit': 'a' * 40, 'sources': {
                 name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()}})
             def download(url, path, digest):
                 name = url.split('/' + 'a' * 40 + '/', 1)[1]

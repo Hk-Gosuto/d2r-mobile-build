@@ -1,5 +1,5 @@
 name: Build IPA and Data
-run-name: Source build · ${{ inputs.source_ref || 'supported release' }}
+run-name: Source build · ${{ inputs.source_ref || 'latest release' }}
 on:
   workflow_dispatch:
     inputs:
@@ -8,7 +8,7 @@ on:
         type: string
         default: jhaizhou-ops/d2r-mobile
       source_ref:
-        description: Branch, tag or commit (empty uses the supported release)
+        description: Branch, tag or commit (empty uses the latest release)
         type: string
         default: ''
 permissions:

@@ -54,9 +54,9 @@ Windows PowerShell:
 
 ## 3. Run the build
 
-In your repository, open **Actions → Build IPA and Data → Run workflow**. Leave the source fields unchanged to build the supported release.
+In your repository, open **Actions → Build IPA and Data → Run workflow**. Leave `source_ref` empty to automatically build the latest official upstream Release.
 
-To test another source revision, set `source_repository` to the upstream repository or a public fork, and `source_ref` to a branch, tag, or commit. Choose a source revision compatible with your game input.
+To test the latest development code, set `source_ref` to `main`. You can also enter another branch, tag, or commit, or set `source_repository` to your public fork. Choose a source revision compatible with your game input.
 
 The first build includes Legacy texture conversion and takes longer. Subsequent builds reuse existing resources.
 
@@ -70,7 +70,7 @@ After a successful run, open **Releases in your own repository**. The latest app
 | `D2RMobile-<version>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`, `build-report.json` | Checksums and build details |
 
-Custom source builds include the source commit in the filename. The Release description links to your matching Data and Legacy Device Pack.
+Filenames use the source tag; builds after a tag also include the source commit. Sources without a version tag use the commit. The Release description links to your matching Data and Legacy Device Pack.
 
 1. Sign and install the matching IPA using [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/).
 2. Download all three `D2R-Mobile-Resources.zip.001`–`.003` parts from your linked Data Release. Follow `RESOURCE-INSTALL.txt` to join them, extract the ZIP, and copy the `D2R Mobile Resources` folder into the app using Finder or Files.
@@ -81,7 +81,7 @@ When updating, keep the same app identifier, back up your saves, and install the
 
 ## Updates and reuse
 
-Run **Build IPA and Data** again in your repository to use the updated build tools and supported release from this project's `main`. Keep your existing `GAME_ARCHIVE` configuration when using the same input files.
+Run **Build IPA and Data** again with `source_ref` empty to build the latest official upstream Release using this project's latest build tools. Keep your existing `GAME_ARCHIVE` configuration when using the same input files.
 
 - The original archive is cached **before extraction**; retries reuse completed downloads.
 - When Data contents match, the Release links to your existing Data. Keep using the resources already imported on your phone.

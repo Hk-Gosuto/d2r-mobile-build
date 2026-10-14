@@ -13,6 +13,10 @@ spec.loader.exec_module(module)
 
 
 class ResourceExportTests(unittest.TestCase):
+    def setUp(self):
+        runtime = patch.dict(module.ci.CONFIG, upstream_commit='a' * 40)
+        runtime.start(); self.addCleanup(runtime.stop)
+
     def test_exports_only_required_archives_and_round_trips_bytes(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

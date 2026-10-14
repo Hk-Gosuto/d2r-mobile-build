@@ -92,7 +92,7 @@ def release_info(repo, tag):
 
 
 def release_title():
-    return f"D2R Mobile {ci.CONFIG.get('build_label', ci.upstream_version())}"
+    return f"D2R Mobile {ci.build_label()}"
 
 
 def publish_complete(repo, tag, notes, title=None, latest=True):
@@ -380,7 +380,7 @@ def main(mode):
     if resource_reference(repo, source, manifest) != reference:
         raise ValueError('Referenced Data is no longer complete or compatible')
     STAGE.mkdir(exist_ok=True)
-    tag = ci.CONFIG.get('build_label', ci.upstream_version())
+    tag = ci.build_label()
     title = release_title()
     notes = write_ipa_notes(repo, reference, legacy)
     ensure_release(repo, tag, title, notes)

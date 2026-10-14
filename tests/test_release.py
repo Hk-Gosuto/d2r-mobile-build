@@ -16,6 +16,8 @@ spec.loader.exec_module(module)
 
 class ReleaseTests(unittest.TestCase):
     def setUp(self):
+        runtime = patch.dict(module.ci.CONFIG, upstream_commit='a' * 40, build_label='v1.0.20')
+        runtime.start(); self.addCleanup(runtime.stop)
         guard = patch.object(module, 'require_private', return_value='owner/repo')
         guard.start(); self.addCleanup(guard.stop)
 

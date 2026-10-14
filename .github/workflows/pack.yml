@@ -91,13 +91,17 @@ jobs:
           repository: jiayx/d2r-mobile-build
           ref: ${{ needs.resolve.outputs.tools_commit }}
           persist-credentials: false
-      - name: Read the default upstream commit
-        id: config
-        run: python3 -c 'import json,os; c=json.load(open("config/build-pins.json")); open(os.environ["GITHUB_OUTPUT"],"a").write("commit="+c["upstream_commit"]+"\n")'
+      - name: Select the latest release or requested source
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: python3 scripts/source/resolve.py
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: ${{ inputs.source_repository }}
-          ref: ${{ inputs.source_ref || steps.config.outputs.commit }}
+          ref: ${{ steps.source.outputs.ref }}
+          fetch-depth: 0
           path: upstream
           persist-credentials: false
       - name: Record the selected source and patches

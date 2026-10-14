@@ -13,7 +13,7 @@ import ci
 
 
 class BuildEfficiencyTests(unittest.TestCase):
-    def test_shader_cache_depends_on_shader_inputs_not_release_pins(self):
+    def test_shader_cache_depends_on_shader_inputs_not_app_version(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             entries = {'dm/gfx/tools/dmsh_chain.py': "FILES = ['tools/dmsh_chain.py', 'tools/kernel.py']\n",
@@ -24,7 +24,7 @@ class BuildEfficiencyTests(unittest.TestCase):
                 p=root/name; p.parent.mkdir(parents=True,exist_ok=True); p.write_text(data)
             with patch.dict(ci.os.environ, {'INPUT_REVISION':'game-v1'}):
                 first=cache_keys.keys(root,ci.CONFIG,'10.0.100')
-                changed=dict(ci.CONFIG,upstream_commit='different',shell_url='different',shell_sha256='different')
+                changed=dict(ci.CONFIG, upstream_commit='different', build_label='v1.0.20')
                 self.assertEqual(first,cache_keys.keys(root,changed,'10.0.100'))
                 self.assertNotEqual(first['shaders'],cache_keys.keys(root,changed,'10.0.101')['shaders'])
                 (root/'dm/gfx/tools/kernel.py').write_text('changed generation')

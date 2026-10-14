@@ -102,6 +102,8 @@ def legacy_bundle(store):
 
 class ResourceReuseTests(unittest.TestCase):
     def setUp(self):
+        runtime = patch.dict(publish.ci.CONFIG, upstream_commit='a' * 40, build_label='v1.0.20')
+        runtime.start(); self.addCleanup(runtime.stop)
         # Test publication must not append fake links or paths to the real runner.
         guard = patch.object(publish, 'require_private', return_value='owner/repo')
         guard.start(); self.addCleanup(guard.stop)
@@ -217,7 +219,7 @@ class ResourceReuseTests(unittest.TestCase):
                 with patch.object(publish, 'verify_legacy_reference', return_value=None):
                     release = publish.main('ipa')
                 self.assertEqual(store.latest, release['tag_name'])
-                self.assertEqual(release['tag_name'], publish.ci.upstream_version())
+                self.assertEqual(release['tag_name'], 'v1.0.20')
                 notes = (stage / 'RELEASE.md').read_text()
                 for name in publish.ci.ipa_names():
                     self.assertIn(name, notes)
