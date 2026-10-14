@@ -13,6 +13,10 @@ import ci
 
 
 class BuildEfficiencyTests(unittest.TestCase):
+    def setUp(self):
+        runtime = patch.dict(ci.CONFIG, nso_sha256={'main': 'a' * 64})
+        runtime.start(); self.addCleanup(runtime.stop)
+
     def test_runtime_only_changes_reuse_generation_but_generator_changes_invalidate_it(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)

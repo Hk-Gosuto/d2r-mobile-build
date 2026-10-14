@@ -7,6 +7,25 @@ import re
 import subprocess
 
 
+def expected_programs(upstream):
+    """Read the selected source's checksum table without executing its setup script."""
+    source = (upstream / 'setup.sh').read_text()
+    tables = re.findall(r"(?ms)^done[ \t]+<<-?[ \t]*['\"]?SUMS['\"]?[ \t]*\n(.*?)^SUMS[ \t]*$", source)
+    if len(tables) != 1:
+        raise ValueError('Cannot read the upstream ExeFS checksum table in setup.sh')
+    checksums = {}
+    for line in tables[0].splitlines():
+        if not line.strip() or line.lstrip().startswith('#'):
+            continue
+        match = re.fullmatch(r'\s*([a-fA-F0-9]{64})\s+(main|sdk|subsdk0)\s*', line)
+        if not match or match[2] in checksums:
+            raise ValueError('Invalid upstream ExeFS checksum table in setup.sh')
+        checksums[match[2]] = match[1].lower()
+    if set(checksums) != {'main', 'sdk', 'subsdk0'}:
+        raise ValueError('Incomplete upstream ExeFS checksum table in setup.sh')
+    return checksums
+
+
 def source_identity(upstream):
     def git(*args):
         return subprocess.check_output(['git', '-C', str(upstream), *args],
@@ -36,12 +55,13 @@ def configure(root):
         subprocess.run(['git', '-C', str(upstream), 'apply', '--check', str(patch)], check=True)
         subprocess.run(['git', '-C', str(upstream), 'apply', str(patch)], check=True)
         digest.update(patch.name.encode() + b'\0' + patch.read_bytes())
-    path = root / 'config/build-pins.json'
+    path = root / 'build-config.json'
     config = json.loads(path.read_text())
     for key in ('upstream_version', 'upstream_commit', 'source_patch_sha256',
                 'build_label', 'release_tag', 'build_number', 'app_version'):
         config.pop(key, None)
     config['upstream_commit'] = commit
+    config['nso_sha256'] = expected_programs(upstream)
     if patches:
         config['source_patch_sha256'] = digest.hexdigest()
         label += '-patch-' + digest.hexdigest()[:12]
@@ -55,7 +75,7 @@ def configure(root):
         raise ValueError('Invalid GitHub build number or attempt')
     config['build_number'] = number + '.' + attempt if number else '1'
     config['release_tag'] = label + '-build.' + config['build_number'] if number else label
-    output = root / 'outputs/build-config.json'
+    output = root / 'outputs/build-context.json'
     output.parent.mkdir(exist_ok=True)
     output.write_text(json.dumps(config, indent=2) + '\n')
     print('Selected source:', commit, 'build:', label)

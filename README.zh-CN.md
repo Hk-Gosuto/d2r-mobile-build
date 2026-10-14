@@ -62,6 +62,8 @@ Google Drive 链接直接使用 `https://drive.google.com/file/d/文件ID/view` 
 
 测试最新开发代码时，`source_ref` 填 `main`；也可以填其他分支、标签或提交。构建自己的修改时，`source_repository` 填自己的公开 Fork。选择与游戏输入版本匹配的源码。
 
+构建私有源码仓库时，添加 `SOURCE_TOKEN` 仓库 Secret，填写仅对该源码仓库具有 Contents 只读权限的细粒度令牌。`source_repository` 填对应的 `用户名/仓库名`，`source_ref` 填要构建的分支或标签。
+
 首次构建包含 Legacy 贴图转换，耗时较长；后续构建会复用已有资源。
 
 ## 4. 下载和安装
@@ -76,7 +78,7 @@ Google Drive 链接直接使用 `https://drive.google.com/file/d/文件ID/view` 
 
 文件名使用源码标签；标签之后的构建会附带源码提交，没有版本标签时使用提交。Release 正文提供配套 Data 与 Legacy Device Pack 的下载链接。
 
-App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Release，例如 `v1.0.14-build.7.1`、`v1.0.14-build.7.2`；`7.2` 表示第 7 次工作流运行的第 2 次尝试。同一上游版本可以反复构建，不覆盖旧包，也不会与不可变 Release 冲突；IPA 文件名保留源码版本。
+App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Release 和 IPA 文件名，例如 `v1.0.14-build.7.1`、`v1.0.14-build.7.2`；`7.2` 表示第 7 次工作流运行的第 2 次尝试。同一上游版本可以反复构建，分别下载并保留各次构建的包。连续触发的任务会排队，依次执行。
 
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装对应 IPA。
 2. 从正文链接的 Data Release 下载全部三个 `D2R-Mobile-Resources.zip.001`–`.003` 分卷，按 `RESOURCE-INSTALL.txt` 合并、解压，再通过 Finder 或“文件”App 将 `D2R Mobile Resources` 文件夹导入应用。
@@ -92,8 +94,6 @@ App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Rel
 ## 更新与复用
 
 后续在自己的仓库再次运行 **Build IPA and Data**，将 `source_ref` 留空，即可使用最新构建工具打包上游最新正式 Release。输入文件保持相同时，沿用已有的 `GAME_ARCHIVE` 配置。
-
-用户无需修改 `config/build-pins.json`，它由项目维护，保存游戏兼容性校验和工具版本。本次源码版本、提交及构建号自动确定，单独记录在 `outputs/build-config.json` 和发布的构建报告中。
 
 - 根据校验文件确定原始压缩包的缓存键，与 App 版本无关；验证下载后**先缓存，再解压**，后续解压或编译失败不会丢掉已完成的下载。
 - Drive 下载遇到临时网络故障会重试，并在当前任务中续传；中断或失败的下载不会被当成完整缓存。

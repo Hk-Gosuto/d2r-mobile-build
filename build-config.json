@@ -2,11 +2,6 @@
   "spirv_commit": "6c09849fe88c48eaed08413aa022aaa136a3a057",
   "game_version": "3.3.94012",
   "switch_version": "1.0.34.0",
-  "nso_sha256": {
-    "main": "55fd909bb7230b002357e5b0d8499c11f06888f345c49e69eb4734df44a27d0e",
-    "sdk": "1c9f198a91c0bcfee5cf8f5b53fb941895e91334dfb766ce79fc68576797f017",
-    "subsdk0": "67a38fcf89cd13e040a021eb3d157072f38ebf6680a907874c35c7b231b5d4e2"
-  },
   "astc_encoder_url": "https://github.com/ARM-software/astc-encoder/releases/download/5.2.0/astcenc-5.2.0-linux-x64.zip",
   "astc_encoder_sha256": "b8c805b3c4a32680287ad5e5fc2a8b5ddf78c80f24cc0ec7ed1e4eb03c6cc5d2",
   "legacy_converter": {

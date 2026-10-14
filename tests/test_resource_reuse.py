@@ -242,9 +242,14 @@ class ResourceReuseTests(unittest.TestCase):
                               'release_tag':'v1.0.20-build.'+number}
                     report.update(identity)
                     for package in packages:package.update(identity)
-                    (output/'build-report.json').write_text(json.dumps(report))
                     before=len(store.calls)
                     with patch.dict(publish.ci.CONFIG,identity), patch.object(publish,'verify_legacy_reference',return_value=None):
+                        for package, name in zip(packages, publish.ci.ipa_names()):
+                            package['ipa_name'] = name
+                            (output / name).write_bytes(content)
+                        (output/'build-report.json').write_text(json.dumps(report))
+                        (output/'SHA256SUMS.txt').write_text(''.join(
+                            f"{digest}  {p['ipa_name']}\n" for p in packages))
                         repeated=publish.main('ipa')
                     self.assertEqual(repeated['tag_name'],identity['release_tag'])
                     self.assertEqual(store.latest,identity['release_tag'])

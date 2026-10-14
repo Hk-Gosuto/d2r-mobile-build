@@ -11,11 +11,14 @@ on:
     secrets:
       GAME_ARCHIVE:
         required: true
+      SOURCE_TOKEN:
+        required: false
 permissions:
   contents: write
   actions: write
 concurrency:
   group: d2r-build
+  queue: max
   cancel-in-progress: false
 jobs:
   resolve:
@@ -90,12 +93,13 @@ jobs:
       - name: Select the latest release or requested source
         id: source
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SOURCE_TOKEN || github.token }}
           SOURCE_REF: ${{ inputs.source_ref }}
         run: python3 scripts/source/resolve.py
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: ${{ inputs.source_repository }}
+          token: ${{ secrets.SOURCE_TOKEN || github.token }}
           ref: ${{ steps.source.outputs.ref }}
           fetch-depth: 0
           path: upstream
@@ -268,11 +272,12 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: native-source-inputs
+          overwrite: true
           path: |
             outputs/native-inputs.tar.gz
             outputs/source-payload.zip
             outputs/source-input-report.json
-            outputs/build-config.json
+            outputs/build-context.json
           retention-days: 3
           compression-level: 0
           if-no-files-found: error
@@ -280,8 +285,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: build-metadata
+          overwrite: true
           path: |
-            outputs/build-config.json
+            outputs/build-context.json
             outputs/resource-manifest.json
             outputs/resources.json
             outputs/legacy-resources.json
@@ -326,6 +332,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: IPA-ios${{ matrix.minimum }}
+          overwrite: true
           path: |
             outputs/D2RMobile-*.ipa
             outputs/source*-report.json

@@ -12,8 +12,8 @@ import sys
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = json.loads((ROOT / 'config/build-pins.json').read_text())
-CONTEXT = ROOT / 'outputs/build-config.json'
+CONFIG = json.loads((ROOT / 'build-config.json').read_text())
+CONTEXT = ROOT / 'outputs/build-context.json'
 if CONTEXT.is_file():
     CONFIG.update(json.loads(CONTEXT.read_text()))
 DM = Path(os.environ.get('DM_ROOT', str(ROOT / '.dm-work')))
@@ -33,8 +33,16 @@ def build_label(config=None):
 
 def ipa_names(config=None):
     config = CONFIG if config is None else config
-    label = build_label(config)
+    label = release_tag(config)
     return (f'D2RMobile-{label}.ipa', f'D2RMobile-{label}-ios18.ipa')
+
+
+def release_tag(config=None):
+    config = CONFIG if config is None else config
+    label = config.get('release_tag') or build_label(config)
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', label):
+        raise ValueError('Resolve the selected source before naming build outputs')
+    return label
 
 
 def sha256(path):
@@ -94,14 +102,14 @@ def validate_game(game=GAME):
     for name, expected in CONFIG['nso_sha256'].items():
         path = game / 'ExeFS' / name
         if not path.is_file() or sha256(path) != expected:
-            raise ValueError(f'ExeFS/{name} is not the original 3.3.94012 program')
+            raise ValueError(f'ExeFS/{name} does not match the program required by the selected upstream source')
     for name, length in resource_sizes().items():
         path = game / 'RomFS/data' / name
         if not path.is_file() or path.stat().st_size != length:
             raise ValueError(f'Resource missing or incomplete: {name}')
     if not (game / 'RomFS/data/build_manifest.psv').is_file():
         raise ValueError('RomFS/data/build_manifest.psv missing')
-    print('Game verified: 3 original NSO hashes and 18 archive sizes match 3.3.94012')
+    print('Game verified: ExeFS checksums and resource sizes match the selected upstream source')
 
 
 def run(args, logfile, env=None):

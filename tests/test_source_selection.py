@@ -10,11 +10,14 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 from source.configure import configure
+from source.configure import expected_programs
 from source.resolve import resolve_ref
 
 
 class SourceSelectionTests(unittest.TestCase):
     def setUp(self):
+        env = patch.dict('os.environ', GITHUB_RUN_NUMBER='', GITHUB_RUN_ATTEMPT='1')
+        env.start(); self.addCleanup(env.stop)
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
@@ -25,8 +28,10 @@ class SourceSelectionTests(unittest.TestCase):
         self.git('config', 'user.email', 'build@example.invalid')
         self.git('config', 'commit.gpgsign', 'false')
         self.git('config', 'tag.gpgsign', 'false')
-        (self.root / 'config').mkdir()
-        (self.root / 'config/build-pins.json').write_text(json.dumps(ci.CONFIG))
+        (self.root / 'build-config.json').write_text(json.dumps(ci.CONFIG))
+        self.checksums = {'main': 'a' * 64, 'sdk': 'b' * 64, 'subsdk0': 'c' * 64}
+        table = '\n'.join(f'{digest} {name}' for name, digest in self.checksums.items())
+        (self.upstream / 'setup.sh').write_text('done <<SUMS\n' + table + '\nSUMS\n')
         (self.upstream / 'source.txt').write_text('first\n')
         self.commit('first')
 
@@ -50,7 +55,7 @@ class SourceSelectionTests(unittest.TestCase):
 
     def test_release_version_and_repeat_builds_have_independent_identities(self):
         self.git('tag','v1.0.20')
-        static=self.root/'config/build-pins.json'
+        static=self.root/'build-config.json'
         original=static.read_bytes()
         results=[]
         for number,attempt in (('7','1'),('7','2'),('8','1')):
@@ -60,10 +65,32 @@ class SourceSelectionTests(unittest.TestCase):
             self.assertEqual(config['build_number'],number+'.'+attempt)
             self.assertEqual(config['release_tag'],'v1.0.20-build.'+number+'.'+attempt)
             self.assertEqual(static.read_bytes(),original)
-            self.assertEqual(json.loads((self.root/'outputs/build-config.json').read_text()),config)
+            self.assertEqual(json.loads((self.root/'outputs/build-context.json').read_text()),config)
             results.append(config)
         self.assertEqual(len({c['release_tag'] for c in results}),3)
-        self.assertEqual(len({ci.ipa_names(c) for c in results}),1)
+        self.assertEqual(len({ci.ipa_names(c) for c in results}),3)
+        self.assertEqual(ci.ipa_names(results[0])[0], 'D2RMobile-v1.0.20-build.7.1.ipa')
+
+    def test_program_checksums_follow_the_selected_source_and_do_not_change_defaults(self):
+        original = (self.root / 'build-config.json').read_bytes()
+        first = configure(self.root)
+        self.assertEqual(first['nso_sha256'], self.checksums)
+        setup = self.upstream / 'setup.sh'
+        setup.write_text(setup.read_text().replace('a' * 64, 'd' * 64))
+        self.commit('support another program')
+        second = configure(self.root)
+        self.assertEqual(second['nso_sha256']['main'], 'd' * 64)
+        self.assertEqual((self.root / 'build-config.json').read_bytes(), original)
+
+    def test_missing_malformed_or_duplicate_upstream_checksums_are_rejected(self):
+        setup = self.upstream / 'setup.sh'
+        original = setup.read_text()
+        for data in ('', original.replace('b' * 64, 'wrong'),
+                     original.replace('sdk\n', 'main\n'),
+                     original.replace('c' * 64 + ' subsdk0\n', '')):
+            setup.write_text(data)
+            with self.subTest(data=data), self.assertRaisesRegex(ValueError, 'checksum table'):
+                expected_programs(self.upstream)
 
     def test_invalid_ci_identity_is_rejected_and_commits_without_tags_are_labelled(self):
         for number,attempt in (('bad','1'),('1','0'),('1','bad')):
@@ -114,7 +141,7 @@ class SourceSelectionTests(unittest.TestCase):
         self.assertEqual(configure(self.root)['build_label'], 'v1.0.20')
 
     def test_fork_without_tags_uses_commit_and_discards_old_version_metadata(self):
-        path = self.root / 'config/build-pins.json'
+        path = self.root / 'build-config.json'
         config = json.loads(path.read_text())
         config.update(upstream_version='v1.0.13', upstream_commit='old-source',
                       build_label='v1.0.13', source_patch_sha256='old-patch')

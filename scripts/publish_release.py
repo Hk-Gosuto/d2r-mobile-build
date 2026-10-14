@@ -386,7 +386,7 @@ def main(mode):
     if resource_reference(repo, source, manifest) != reference:
         raise ValueError('Referenced Data is no longer complete or compatible')
     STAGE.mkdir(exist_ok=True)
-    tag = ci.CONFIG.get('release_tag', ci.build_label())
+    tag = ci.release_tag()
     title = release_title()
     notes = write_ipa_notes(repo, reference, legacy)
     ensure_release(repo, tag, title, notes)

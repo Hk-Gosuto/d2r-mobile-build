@@ -17,13 +17,13 @@ class InputVerificationTests(unittest.TestCase):
         source=(Path(__file__).parents[1]/'scripts/ci.py').read_text()
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
-            (root/'config').mkdir();(root/'outputs').mkdir()
-            static=root/'config/build-pins.json'
+            (root/'outputs').mkdir()
+            static=root/'build-config.json'
             static.write_text(json.dumps({'game_version':'test-game','spirv_commit':'fixed-tool'}))
             original=static.read_bytes()
             for number in ('7.1','7.2'):
                 context={'upstream_commit':'selected-source','app_version':'1.0.20','build_number':number}
-                (root/'outputs/build-config.json').write_text(json.dumps(context))
+                (root/'outputs/build-context.json').write_text(json.dumps(context))
                 namespace={'__file__':str(root/'scripts/ci.py'),'__name__':'test_build_context'}
                 exec(compile(source,'ci-context','exec'),namespace)
                 self.assertEqual(namespace['CONFIG']['build_number'],number)
@@ -47,8 +47,9 @@ class InputVerificationTests(unittest.TestCase):
             game = Path(temp)
             (game / 'ExeFS').mkdir()
             (game / 'ExeFS/main').write_bytes(b'wrong-version')
-            with self.assertRaisesRegex(ValueError, 'original 3.3.94012'):
-                ci.validate_game(game)
+            with patch.dict(ci.CONFIG, nso_sha256={'main': 'a' * 64}):
+                with self.assertRaisesRegex(ValueError, 'selected upstream source'):
+                    ci.validate_game(game)
 
     def test_rejects_truncated_resource(self):
         with tempfile.TemporaryDirectory() as temp:
