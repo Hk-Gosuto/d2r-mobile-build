@@ -48,6 +48,32 @@ class SourceSelectionTests(unittest.TestCase):
         self.git('tag', 'v1.0.21')
         self.assertEqual(configure(self.root)['build_label'], 'v1.0.21')
 
+    def test_release_version_and_repeat_builds_have_independent_identities(self):
+        self.git('tag','v1.0.20')
+        static=self.root/'config/build-pins.json'
+        original=static.read_bytes()
+        results=[]
+        for number,attempt in (('7','1'),('7','2'),('8','1')):
+            with patch.dict('os.environ',GITHUB_RUN_NUMBER=number,GITHUB_RUN_ATTEMPT=attempt):
+                config=configure(self.root)
+            self.assertEqual(config['app_version'],'1.0.20')
+            self.assertEqual(config['build_number'],number+'.'+attempt)
+            self.assertEqual(config['release_tag'],'v1.0.20-build.'+number+'.'+attempt)
+            self.assertEqual(static.read_bytes(),original)
+            self.assertEqual(json.loads((self.root/'outputs/build-config.json').read_text()),config)
+            results.append(config)
+        self.assertEqual(len({c['release_tag'] for c in results}),3)
+        self.assertEqual(len({ci.ipa_names(c) for c in results}),1)
+
+    def test_invalid_ci_identity_is_rejected_and_commits_without_tags_are_labelled(self):
+        for number,attempt in (('bad','1'),('1','0'),('1','bad')):
+            with patch.dict('os.environ',GITHUB_RUN_NUMBER=number,GITHUB_RUN_ATTEMPT=attempt):
+                with self.assertRaisesRegex(ValueError,'build number'):configure(self.root)
+        with patch.dict('os.environ',GITHUB_RUN_NUMBER='9',GITHUB_RUN_ATTEMPT='1'):
+            config=configure(self.root)
+        self.assertEqual(config['app_version'],'0.0.0')
+        self.assertTrue(config['release_tag'].startswith('src-'))
+
     def test_default_looks_up_the_latest_release_on_every_run(self):
         replies = [json.dumps({'tag_name': tag, 'draft': False, 'prerelease': False})
                    for tag in ('v1.0.20', 'v1.0.21')]

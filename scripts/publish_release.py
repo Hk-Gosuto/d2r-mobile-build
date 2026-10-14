@@ -92,7 +92,10 @@ def release_info(repo, tag):
 
 
 def release_title():
-    return f"D2R Mobile {ci.build_label()}"
+    title = f"D2R Mobile {ci.build_label()}"
+    if 'build_number' in ci.CONFIG:
+        title += ' · build ' + ci.CONFIG['build_number']
+    return title
 
 
 def publish_complete(repo, tag, notes, title=None, latest=True):
@@ -338,6 +341,9 @@ def validate_packages(report):
         name = item['ipa_name']
         if item['minimum_os'] != expected[name] or not item.get('native_built_from_source') or not item.get('payload_verified'):
             raise ValueError('IPA source build or minimum system mismatch: ' + name)
+        for key in ('app_version', 'build_number', 'release_tag'):
+            if key in ci.CONFIG and item.get(key) != ci.CONFIG[key]:
+                raise ValueError('IPA build identity mismatch: ' + key)
         path = OUT / name
         if path.stat().st_size != item['ipa_bytes'] or ci.sha256(path) != item['ipa_sha256']:
             raise ValueError('IPA SHA256 mismatch before publishing: ' + name)
@@ -380,7 +386,7 @@ def main(mode):
     if resource_reference(repo, source, manifest) != reference:
         raise ValueError('Referenced Data is no longer complete or compatible')
     STAGE.mkdir(exist_ok=True)
-    tag = ci.build_label()
+    tag = ci.CONFIG.get('release_tag', ci.build_label())
     title = release_title()
     notes = write_ipa_notes(repo, reference, legacy)
     ensure_release(repo, tag, title, notes)

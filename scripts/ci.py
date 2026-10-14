@@ -13,6 +13,9 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / 'config/build-pins.json').read_text())
+CONTEXT = ROOT / 'outputs/build-config.json'
+if CONTEXT.is_file():
+    CONFIG.update(json.loads(CONTEXT.read_text()))
 DM = Path(os.environ.get('DM_ROOT', str(ROOT / '.dm-work')))
 GAME = DM / 'data/switch' / CONFIG['game_version'] / 'Update'
 TOOLS = ROOT / '.tools'

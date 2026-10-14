@@ -234,6 +234,25 @@ class ResourceReuseTests(unittest.TestCase):
                     export.assert_not_called()
                     split.assert_not_called()
                 self.assertEqual(uploads_before, len([c for c in store.calls if c[:2] == ('release', 'upload')]))
+                # A repeated source version can publish even if the previous Release is immutable.
+                previous=release
+                for number in ('2.1','2.2','3.1'):
+                    previous['immutable']=True
+                    identity={'app_version':'1.0.20','build_number':number,
+                              'release_tag':'v1.0.20-build.'+number}
+                    report.update(identity)
+                    for package in packages:package.update(identity)
+                    (output/'build-report.json').write_text(json.dumps(report))
+                    before=len(store.calls)
+                    with patch.dict(publish.ci.CONFIG,identity), patch.object(publish,'verify_legacy_reference',return_value=None):
+                        repeated=publish.main('ipa')
+                    self.assertEqual(repeated['tag_name'],identity['release_tag'])
+                    self.assertEqual(store.latest,identity['release_tag'])
+                    self.assertNotEqual(previous['id'],repeated['id'])
+                    uploads=[c for c in store.calls[before:] if c[:2]==('release','upload')]
+                    self.assertTrue(all(c[2]!=previous['tag_name'] for c in uploads))
+                    self.assertFalse(any(Path(c[3]).name in publish.RESOURCE_PART_NAMES for c in uploads))
+                    previous=repeated
 
 
 if __name__ == '__main__':

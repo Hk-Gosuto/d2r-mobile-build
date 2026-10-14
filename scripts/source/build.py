@@ -42,11 +42,15 @@ def main():
                      'CODE_SIGNING_ALLOWED':'NO','CODE_SIGNING_REQUIRED':'NO',
                      'CLANG_ENABLE_MODULES':'YES','IPHONEOS_DEPLOYMENT_TARGET':minimum,
                      'TARGETED_DEVICE_FAMILY':'1,2','OTHER_CFLAGS':cflags,
-                     'OTHER_LDFLAGS':'$(inherited) $(DM_FRAMEWORKS)','DM_BUILD_NUMBER':'1'})
+                     'OTHER_LDFLAGS':'$(inherited) $(DM_FRAMEWORKS)',
+                     'DM_BUILD_NUMBER':ci.CONFIG['build_number'],
+                     'CURRENT_PROJECT_VERSION':ci.CONFIG['build_number'],
+                     'MARKETING_VERSION':ci.CONFIG['app_version']})
     props=target['info']['properties']
     for key in list(props):
         if key.startswith('BA'):props.pop(key)
-    props.update(CFBundleVersion='1',CFBundleShortVersionString='1.0',SWUpdateURL='')
+    props.update(CFBundleVersion=ci.CONFIG['build_number'],
+                 CFBundleShortVersionString=ci.CONFIG['app_version'],SWUpdateURL='')
     sources=[{'path':'Sources','excludes':['Info.plist','*.entitlements','TouchArt']},
              {'path':'Gen/src'},{'path':'Gen/main/main.c','compilerFlags':'-Dmain=dm_main'}]
     if (ios/'Assets.xcassets').exists():sources.append({'path':'Assets.xcassets'})
@@ -66,6 +70,9 @@ def main():
     native_os=ci.macho_minimum_os(native)
     if plist['MinimumOSVersion']!=minimum or native_os!=(int(minimum.split('.')[0]),0,0):
         raise ValueError('Compiled app targets wrong minimum iOS')
+    if (plist['CFBundleVersion']!=ci.CONFIG['build_number'] or
+            plist['CFBundleShortVersionString']!=ci.CONFIG['app_version']):
+        raise ValueError('Compiled app version differs from selected source')
     if minimum=='18.0' and b'MTL4CommandQueue' in native:raise ValueError('Compatibility build references Metal 4')
     suffix='-ios18' if minimum=='18.0' else ''
     name=ci.ipa_names()[minimum=='18.0']
@@ -94,6 +101,8 @@ def main():
                   upstream_commit=report['source_commit'],game_version=ci.CONFIG['game_version'],
                   switch_version=ci.CONFIG['switch_version'],input_revision=os.environ.get('INPUT_REVISION'),
                   minimum_os=minimum,native_minimum_os='.'.join(map(str,native_os)),native_sha256=__import__('hashlib').sha256(native).hexdigest(),
+                  app_version=ci.CONFIG['app_version'],build_number=ci.CONFIG['build_number'],
+                  release_tag=ci.CONFIG['release_tag'],
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
                   icloud_sync_provisioned=False,icloud_sync_verified=False,
                   xcode=run('xcodebuild','-version').strip(),sdk=run('xcrun','--sdk','iphoneos','--show-sdk-version').strip())

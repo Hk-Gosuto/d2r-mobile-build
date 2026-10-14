@@ -76,6 +76,8 @@ After a successful run, open **Releases in your own repository**. The latest app
 
 Filenames use the source tag; builds after a tag also include the source commit. Sources without a version tag use the commit. The Release description links to your matching Data and Legacy Device Pack.
 
+The app's version follows the upstream source version. Every run and rerun gets its own Release, for example `v1.0.14-build.7.1` and `v1.0.14-build.7.2`; `7.2` identifies workflow run 7, attempt 2. You can rebuild the same upstream version without overwriting a previous build or conflicting with immutable Releases. The IPA filenames retain the source version.
+
 1. Sign and install the matching IPA using [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/).
 2. Download all three `D2R-Mobile-Resources.zip.001`–`.003` parts from your linked Data Release. Follow `RESOURCE-INSTALL.txt` to join them, extract the ZIP, and copy the `D2R Mobile Resources` folder into the app using Finder or Files.
 3. **A16 and earlier devices** also need the linked `Legacy-Device-Pack.zip`. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
@@ -90,6 +92,8 @@ The upstream source includes iCloud save synchronization. These unsigned package
 ## Updates and reuse
 
 Run **Build IPA and Data** again with `source_ref` empty to build the latest official upstream Release using this project's latest build tools. Keep your existing `GAME_ARCHIVE` configuration when using the same input files.
+
+You do not need to edit `config/build-pins.json`: it holds the maintained game compatibility checks and tool versions. Source versions, commit IDs and build numbers are resolved for each run and recorded separately in `outputs/build-config.json` and the published build report.
 
 - The checksum file determines the original archive's cache key. The verified archive is cached **before extraction**, independently of the app version; completed downloads survive later extraction or compilation failures.
 - Drive downloads retry transient failures and resume partial transfers within a running job. A stopped or failed download is not treated as a completed cache entry.

@@ -13,6 +13,23 @@ spec.loader.exec_module(ci)
 
 
 class InputVerificationTests(unittest.TestCase):
+    def test_build_context_is_loaded_without_changing_static_defaults(self):
+        source=(Path(__file__).parents[1]/'scripts/ci.py').read_text()
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            (root/'config').mkdir();(root/'outputs').mkdir()
+            static=root/'config/build-pins.json'
+            static.write_text(json.dumps({'game_version':'test-game','spirv_commit':'fixed-tool'}))
+            original=static.read_bytes()
+            for number in ('7.1','7.2'):
+                context={'upstream_commit':'selected-source','app_version':'1.0.20','build_number':number}
+                (root/'outputs/build-config.json').write_text(json.dumps(context))
+                namespace={'__file__':str(root/'scripts/ci.py'),'__name__':'test_build_context'}
+                exec(compile(source,'ci-context','exec'),namespace)
+                self.assertEqual(namespace['CONFIG']['build_number'],number)
+                self.assertEqual(namespace['CONFIG']['spirv_commit'],'fixed-tool')
+                self.assertEqual(static.read_bytes(),original)
+
     def test_macho_minimum_rejects_wrong_platform_and_malformed_commands(self):
         def binary(platform=2, count=1, size=24, command_size=24):
             return struct.pack('<8I6I', 0xfeedfacf, 0x0100000c, 0, 2, count, size, 0, 0,

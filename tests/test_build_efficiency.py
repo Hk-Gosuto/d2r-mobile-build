@@ -26,7 +26,8 @@ class BuildEfficiencyTests(unittest.TestCase):
             with patch.dict(ci.os.environ,INPUT_REVISION='input-one'):
                 first=cache_keys.generation_keys(root,ci.CONFIG)
                 (root/'dm/ios/Sources/cloud_ios.m').write_text('fixed sync')
-                changed=dict(ci.CONFIG,upstream_commit='new',build_label='v1.0.99')
+                changed=dict(ci.CONFIG,upstream_commit='new',build_label='v1.0.99',
+                             build_number='7.2',release_tag='v1.0.99-build.7.2')
                 self.assertEqual(first,cache_keys.generation_keys(root,changed))
                 (root/'dm/ios/tools/gen_assets.py').write_text('fixed generator')
                 second=cache_keys.generation_keys(root,changed)
