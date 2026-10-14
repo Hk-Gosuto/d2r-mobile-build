@@ -44,7 +44,8 @@ $hash = (Get-FileHash .\game-input.zip -Algorithm SHA256).Hash
 ## 2. 创建自己的构建仓库
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，选择 **Create a new repository**，可见性选 **Private**。
-2. 打开 **Settings → Secrets and variables → Actions → New repository secret**。创建一个名为 **`GAME_ARCHIVE`** 的 Secret，填写以下 JSON：`url` 是 ZIP 的链接，`sha256_url` 是 `SHA256SUMS.txt` 的链接：
+2. 将本页的[构建入口工作流](.github/workflows/build.yml)复制到自己私有仓库的 `.github/workflows/build.yml`，已有旧入口时替换它。入口调用维护中的源码构建工作流，后续 App 版本更新无需重复复制构建脚本。
+3. 打开 **Settings → Secrets and variables → Actions → New repository secret**。创建一个名为 **`GAME_ARCHIVE`** 的 Secret，填写以下 JSON：`url` 是 ZIP 的链接，`sha256_url` 是 `SHA256SUMS.txt` 的链接：
 
    ```json
    {

@@ -44,7 +44,8 @@ Upload **both files** to your storage. Each URL must be downloadable without sig
 ## 2. Create your build repository
 
 1. Select [Use this template](https://github.com/jiayx/d2r-mobile-build/generate), choose **Create a new repository**, and set its visibility to **Private**.
-2. Open **Settings → Secrets and variables → Actions → New repository secret**. Create a secret named **`GAME_ARCHIVE`**, with this JSON as its value. Replace `url` with the ZIP link and `sha256_url` with the link to `SHA256SUMS.txt`:
+2. Copy the [build entry workflow](.github/workflows/build.yml) from this page into `.github/workflows/build.yml` in your private repository, replacing an older entry if present. It calls the maintained source-build workflow, so you do not need to copy updated build scripts for each app version.
+3. Open **Settings → Secrets and variables → Actions → New repository secret**. Create a secret named **`GAME_ARCHIVE`**, with this JSON as its value. Replace `url` with the ZIP link and `sha256_url` with the link to `SHA256SUMS.txt`:
 
    ```json
    {
