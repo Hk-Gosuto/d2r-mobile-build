@@ -171,7 +171,15 @@ def licenses(destination):
         tree = ET.parse(nuspec)
         license_node = next((n for n in tree.iter() if n.tag.split('}')[-1] == 'license'), None)
         if license_node is None:
-            raise ValueError('Missing NuGet license: ' + package)
+            # Reviewed legacy packages: never infer a redistribution license from a name.
+            if package == 'Gommon/2.8.1.2' and sha(package_root / 'content/LICENSE') == '7c4d2d326bad3f254fc09dfce4db3c38a9ca8e587d1acf698f9ab65e338c3fa9':
+                license_node = ET.Element('license', type='file'); license_node.text = 'content/LICENSE'
+            elif package == 'MsgPack.Cli/1.0.1' and any(
+                    n.tag.split('}')[-1] == 'licenseUrl' and n.text == 'http://www.apache.org/licenses/LICENSE-2.0'
+                    for n in tree.iter()):
+                license_node = ET.Element('license', type='expression'); license_node.text = 'Apache-2.0'
+            else:
+                raise ValueError('Review missing NuGet license: ' + package)
         target = destination / 'nuget' / package
         target.mkdir(parents=True, exist_ok=True); shutil.copy2(nuspec, target / nuspec.name)
         value = license_node.text.strip()
@@ -206,7 +214,7 @@ def build(directory, spec):
     validate(directory, spec)
 
 
-def ensure(spec):
+def ensure(spec, require_prebuilt=False):
     cache = ROOT / '.tools/packages' / tag(spec)
     try:
         validate(cache, spec)
@@ -219,6 +227,8 @@ def ensure(spec):
                 restore(stage, spec)
                 print('Using verified prebuilt tool:', spec['kind'], flush=True)
             except (OSError, ValueError, KeyError, tarfile.TarError) as error:
+                if require_prebuilt:
+                    raise
                 print(f'Prebuilt {spec["kind"]} unavailable ({type(error).__name__}); compiling from source', flush=True)
                 shutil.rmtree(stage); stage.mkdir(); build(stage, spec)
             shutil.rmtree(cache, ignore_errors=True); shutil.copytree(stage, cache)
@@ -236,6 +246,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('command', choices=('ensure', 'build', 'licenses'))
     parser.add_argument('kind')
+    parser.add_argument('--require-prebuilt', action='store_true')
     args = parser.parse_args()
     if args.command == 'licenses':
         licenses(args.kind); return
@@ -245,7 +256,7 @@ def main():
     config = json.loads((ROOT / 'build-config.json').read_text())
     spec = recipe(args.kind, config, ROOT / 'upstream', sdk)
     if args.command == 'ensure':
-        ensure(spec); return
+        ensure(spec, args.require_prebuilt); return
     if platform.system() != 'Linux' or platform.machine() not in ('x86_64', 'AMD64'):
         raise ValueError('Publish tools on Ubuntu 24.04 x64')
     out = ROOT / 'outputs/tools' / args.kind

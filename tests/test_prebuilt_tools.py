@@ -72,6 +72,13 @@ class PrebuiltToolTests(unittest.TestCase):
                 tools.ensure(spec); tools.ensure(spec)
                 build.assert_called_once()
 
+    def test_download_smoke_test_cannot_silently_fall_back_to_compiling(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(tools, 'ROOT', Path(temp)):
+            with patch.object(tools, 'restore', side_effect=OSError('offline')), patch.object(tools, 'build') as build:
+                with self.assertRaises(OSError):
+                    tools.ensure({'kind': 'spirv', 'schema': 1}, require_prebuilt=True)
+                build.assert_not_called()
+
     def test_public_release_checksum_is_checked_before_extraction(self):
         spec = self.spec()
         asset = {'name': 'tool.tar.gz', 'digest': 'sha256:' + '0' * 64,
