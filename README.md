@@ -10,6 +10,8 @@ Build unsigned IPAs and the required game data with GitHub Actions, using the **
 
 Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**. Download an IPA from **Assets**, then use the links in the release notes to download the required game data:
 
+**Already have game data installed?** Read [Updating and reusing game data](#4-updating-and-reusing-game-data) before downloading it again.
+
 | File | Where | Purpose |
 | --- | --- | --- |
 | `D2RMobile-unsigned.ipa` | Assets | iOS 26+; sign and install with a tool listed below |
@@ -40,7 +42,7 @@ Follow the tool's official setup instructions, import the selected IPA, and comp
 
 ### 2. Combine and extract the game data
 
-Place all three parts and both checksum files in the same directory.
+Download all three parts and both checksum files from the same resource Release, then place them in the same directory. Do not mix parts or checksums from different Releases.
 
 On macOS, open a terminal in that directory and run:
 
@@ -68,7 +70,15 @@ For **A16 and earlier devices**, also download `Legacy-Device-Pack.zip` from the
 
 Open the app and tap **Retry**. On the first launch, wait for shader compilation to finish. The reference time is **about 6 minutes on iPhone 17 Pro Max**; other devices vary. The current v1.0.9 package has not yet been verified on a physical device.
 
-When updating the IPA, keep the existing game data if the resource version is unchanged. Installing over an existing installation with the same app identifier usually preserves resources and saves. **Uninstalling the app deletes them.**
+### 4. Updating and reusing game data
+
+**An IPA update does not automatically require new game data.** The resources provided with v1.0.1 and v1.0.6 work with the v1.0.9 IPA: all 18 `.data` files have identical names, sizes and SHA256 hashes. If you already imported them, just update the IPA. For future updates, check the new Release's resource requirements; the IPA version number alone does not determine resource compatibility.
+
+**Different ZIP hashes do not necessarily mean different game data.** The v1.0.1 and v1.0.6 resource ZIPs record different file timestamps, so their ZIP and part SHA256 hashes differ even though the extracted `.data` files are identical. Use the checksum files from the resource Release you downloaded to verify its parts and ZIP. When comparing game data across Releases, compare the `.data` entries in `resources-report.json` or `resource-manifest.json`.
+
+This reuse applies to the `D2R Mobile Resources` folder. If your device needs a Legacy Device Pack, use the pack linked in the IPA Release.
+
+Installing over an existing installation with the same app identifier usually preserves resources and saves. **Uninstalling the app deletes them.**
 
 ## Matching versions
 

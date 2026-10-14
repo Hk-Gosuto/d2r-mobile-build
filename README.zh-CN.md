@@ -10,6 +10,8 @@
 
 进入 **[最新 Release](https://github.com/jiayx/d2r-mobile-build/releases/latest)**：IPA 从 **Assets 附件**下载，Data 从 Release 正文的**配套 Data**中直接点击下载链接。
 
+**手机上已经有 Data？** 请先看[更新 IPA 与复用 Data](#4-更新-ipa-与复用-data)，确认是否需要重新下载。
+
 | 文件 | 下载位置 | 用途 |
 | --- | --- | --- |
 | `D2RMobile-unsigned.ipa` | Assets 附件 | iOS 26 及以上，使用下方工具签名安装 |
@@ -40,7 +42,7 @@
 
 ### 2. 合并并解压 Data
 
-将三个分卷和两个校验文件放在同一目录。
+从同一个资源 Release 下载三个分卷和两个校验文件，放在同一目录。不要混用不同 Release 的分卷或校验文件。
 
 macOS：在该目录打开终端，执行：
 
@@ -68,7 +70,15 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 打开应用，点击“重试”。首次启动需等待着色器编译完成，**iPhone 17 Pro Max 参考耗时约 6 分钟**，其他机型耗时不同。当前 v1.0.9 包尚未进行真机运行验证。
 
-更新 IPA 时，配套资源版本不变就可以继续使用已有 Data。应用标识不变时，覆盖安装通常保留资源和存档；**卸载应用会删除它们**。
+### 4. 更新 IPA 与复用 Data
+
+**更新 IPA 不一定需要更新 Data。** v1.0.1、v1.0.6 提供的资源可以用于 v1.0.9 IPA：18 个 `.data` 文件的名称、大小和 SHA256 全部一致。如果已经导入，直接更新 IPA 即可。后续升级时，请查看新 Release 的资源要求，不能仅凭 IPA 版本号判断是否需要更换 Data。
+
+**ZIP 哈希不同，不一定代表游戏数据不同。** v1.0.1 和 v1.0.6 的资源 ZIP 记录了不同的文件时间戳，因此 ZIP 和分卷的 SHA256 不同，但解压后的 `.data` 文件完全相同。校验下载是否完整，请使用该资源 Release 提供的校验文件；比较不同 Release 的游戏数据是否一致，请对照 `resources-report.json` 或 `resource-manifest.json` 中的 `.data` 文件清单。
+
+以上复用指的是 `D2R Mobile Resources` 文件夹。需要老设备补充包的机型，请使用当前 IPA Release 链接的配套补充包。
+
+应用标识不变时，覆盖安装通常保留资源和存档；**卸载应用会删除它们**。
 
 ## 配套版本
 
