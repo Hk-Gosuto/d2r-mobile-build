@@ -68,6 +68,8 @@ The first build includes Legacy texture conversion on two parallel Linux workers
 
 ## 4. Download and install
 
+Hardware requirements: A14 / M1 or later, with at least 6 GB of RAM.
+
 After a successful run, open **Releases in your own repository**. The latest app Release contains:
 
 | File | Use |
@@ -82,7 +84,7 @@ The app's version follows the upstream source version. Every run and rerun gets 
 
 1. Sign and install the matching IPA using [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/).
 2. Download all three `D2R-Mobile-Resources.zip.001`–`.003` parts from your linked Data Release. Follow `RESOURCE-INSTALL.txt` to join them, extract the ZIP, and copy the `D2R Mobile Resources` folder into the app using Finder or Files.
-3. **A16 and earlier devices** also need the linked `Legacy-Device-Pack.zip`. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
+3. **A14–A16 devices** also need the linked `Legacy-Device-Pack.zip`. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
 4. Open the app and import/select the resource folder. Initial shader compilation takes several minutes; approximately 6 minutes is a reference for iPhone 17 Pro Max.
 
 When updating, keep the same app identifier, back up your saves, and install the new IPA over the existing app.

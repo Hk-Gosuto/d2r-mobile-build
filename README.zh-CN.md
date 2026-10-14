@@ -68,6 +68,8 @@ Google Drive 链接直接使用 `https://drive.google.com/file/d/文件ID/view` 
 
 ## 4. 下载和安装
 
+设备要求：A14 / M1 及更新芯片，至少 6 GB 内存。
+
 构建成功后，打开**自己仓库的 Releases**。最新 App Release 包含：
 
 | 文件 | 用途 |
@@ -82,7 +84,7 @@ App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Rel
 
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装对应 IPA。
 2. 从正文链接的 Data Release 下载全部三个 `D2R-Mobile-Resources.zip.001`–`.003` 分卷，按 `RESOURCE-INSTALL.txt` 合并、解压，再通过 Finder 或“文件”App 将 `D2R Mobile Resources` 文件夹导入应用。
-3. **A16 及更早设备**还需下载正文链接的 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片和 M 系列 iPad 使用标准 Data 即可。
+3. **A14–A16 设备**还需下载正文链接的 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片和 M 系列 iPad 使用标准 Data 即可。
 4. 打开应用并导入或选择资源文件夹。首次编译着色器需要数分钟，iPhone 17 Pro Max 可参考约 6 分钟。
 
 更新时保持应用标识一致，提前备份存档，再覆盖安装新版 IPA。
