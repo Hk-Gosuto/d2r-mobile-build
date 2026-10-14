@@ -15,6 +15,26 @@ on:
         description: Game input cache revision (change when replacing source files)
         type: string
         default: game-3.3.94012-v1
+  workflow_call:
+    inputs:
+      publish_release:
+        type: boolean
+        default: true
+      prepare_only:
+        type: boolean
+        default: false
+      input_revision:
+        type: string
+        default: game-3.3.94012-v1
+      native_build:
+        type: boolean
+        default: false
+      source_repository:
+        type: string
+        default: jhaizhou-ops/d2r-mobile
+      source_ref:
+        type: string
+        default: ''
 permissions:
   contents: write
 concurrency:
@@ -25,6 +45,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     env:
+      SOURCE_BUILD: ${{ inputs.native_build && '1' || '0' }}
+      SOURCE_REPOSITORY: ${{ inputs.source_repository || 'jhaizhou-ops/d2r-mobile' }}
       DM_ROOT: ${{ github.workspace }}/.dm-work
       INPUT_REVISION: ${{ inputs.input_revision }}
       D2RM_NO_METAL: '1'
@@ -45,10 +67,13 @@ jobs:
       - name: Checkout matching upstream release
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          repository: jhaizhou-ops/d2r-mobile
-          ref: f43480dc486e9b8f6f5196057c61209e196794e2
+          repository: ${{ inputs.source_repository || 'jhaizhou-ops/d2r-mobile' }}
+          ref: ${{ inputs.source_ref || 'f43480dc486e9b8f6f5196057c61209e196794e2' }}
           path: upstream
           persist-credentials: false
+      - name: Record selected source and apply local test patches
+        if: inputs.native_build
+        run: python scripts/source/configure.py
       - name: Make room for game extraction on the disposable runner
         run: |
           # Only remove unrelated preinstalled SDKs on GitHub's temporary VM.
@@ -191,7 +216,11 @@ jobs:
         if: ${{ !inputs.prepare_only }}
         run: |
           export LD_PRELOAD="$GITHUB_WORKSPACE/.tools/png-zlib-ng-2.3.2/lib/libz.so.1"
-          python -u scripts/build_ipas.py
+          if [[ "$SOURCE_BUILD" == 1 ]]; then
+            python -u scripts/source/prepare.py
+          else
+            python -u scripts/build_ipas.py
+          fi
       - name: Save generated build cache
         if: success() && steps.generated.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -213,12 +242,25 @@ jobs:
             .dm-work/build/ios/dmsh_b
           key: ${{ steps.shaders.outputs.cache-primary-key }}
       - name: Reuse matching Data or publish it once
-        if: ${{ !inputs.prepare_only && inputs.publish_release }}
+        if: ${{ !inputs.prepare_only && inputs.publish_release && !inputs.native_build }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: python -u scripts/publish_release.py prepare-resources
+      - name: Upload native source build inputs
+        if: inputs.native_build && !inputs.prepare_only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-source-inputs
+          path: |
+            outputs/native-inputs.tar.gz
+            outputs/source-payload.zip
+            outputs/source-input-report.json
+            outputs/legacy-resources.json
+            outputs/build-config.json
+          retention-days: 3
+          compression-level: 0
       - name: Upload IPA and verification report
-        if: ${{ !inputs.prepare_only }}
+        if: ${{ !inputs.prepare_only && !inputs.native_build }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: D2RMobile-${{ steps.ipas.outputs.version }}-${{ github.run_number }}
@@ -234,7 +276,7 @@ jobs:
           retention-days: 3
           compression-level: 0
       - name: Automatically publish IPA with matching Data links
-        if: ${{ !inputs.prepare_only && inputs.publish_release }}
+        if: ${{ !inputs.prepare_only && inputs.publish_release && !inputs.native_build }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: python -u scripts/publish_release.py ipa
@@ -266,12 +308,15 @@ jobs:
           GENERATED_CACHE_HIT: ${{ steps.generated.outputs.cache-hit }}
           SHADER_CACHE_HIT: ${{ steps.shaders.outputs.cache-hit }}
           PUBLISH_RELEASE: ${{ inputs.publish_release }}
+          SOURCE_BUILD: ${{ inputs.native_build }}
         run: |
           python - <<'PY'
           import os
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
               if os.environ['PREPARE_ONLY'] == 'true':
                   f.write('Toolchain verified and cached. **No game IPA was built in this preparation run.**\n')
+              elif os.environ['SOURCE_BUILD'] == 'true':
+                  f.write('Matching game payload and native source inputs verified; macOS compiles the App next.\n')
               else:
                   f.write('Unsigned IPA built and verified; see the artifact and build-report.json.\n')
                   f.write('Game cache hit: ' + os.environ['GAME_CACHE_HIT'] + '\n\n')

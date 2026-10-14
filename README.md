@@ -136,3 +136,12 @@ Keep the releases and assets that host the referenced game data and Legacy Devic
 The Actions run summary also links to the IPAs and game data. The IPA artifact contains both installation packages, resource download information (`resources.json` and `legacy-resources.json`), and import instructions, and is retained for **3 days**.
 
 Compiled tools and shader outputs are cached by their own dependencies. Updating the app version alone does not invalidate them. Both IPA variants share one generated game payload; each retains its own official executable and minimum iOS version.
+
+
+## Test changes from source
+
+Open **Actions → Build from source (test) → Run workflow**. `source_repository` accepts the upstream repository or your fork; `source_ref` accepts a branch, tag or commit. Leave the ref empty to use the pinned release. To test local patches, commit `*.patch` files under `source-patches/` in this build repository and run the workflow from that branch; patches are applied to the selected source before generating and compiling anything.
+
+This workflow generates matching game content on Linux, then compiles both native App variants on **macOS 26**, requiring an Xcode with **iOS 26.4 or later SDK**. It does not download an upstream shell IPA. Game inputs use the same Secret configuration above; compatible Data and Legacy Device Pack are reused. Shaders are supplied as source and compiled on the phone, as with the release packages.
+
+Download the `D2RMobile-source-ios26.0-*` or `D2RMobile-source-ios18.0-*` artifact from the run, then sign and install the IPA over the existing app. The artifacts are retained for 7 days. Reports record the source commit, patch digest and build environment. Source tests do not publish a Release and have not been verified on a physical device.

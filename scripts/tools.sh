@@ -22,7 +22,7 @@ if [[ ! -x .tools/bin/spirv-cross || ! -x .tools/bin/hactool ]]; then
   cp "$TOOL_BUILD/hactool/hactool" .tools/bin/
 fi
 export PATH="$TASK_ROOT/.tools/bin:$PATH"
-python scripts/ci.py shell
+if [[ "${SOURCE_BUILD:-0}" != 1 ]]; then python scripts/ci.py shell; fi
 mkdir -p "$DM_ROOT/build/gfx/dmsh_xlate"
 dotnet publish upstream/dm/gfx/tools/dmsh_xlate -c Release \
   -o "$DM_ROOT/build/gfx/dmsh_xlate" -v quiet

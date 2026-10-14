@@ -136,3 +136,12 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 Actions 运行摘要中也有 IPA 和 Data 的下载入口。IPA 构建附件内包含两份安装包、资源下载信息（`resources.json`、`legacy-resources.json`）和导入说明，保留期为 **3 天**。
 
 编译工具和着色器按各自依赖缓存，单独更新应用版本不会使这些缓存失效。两份 IPA 共用一次生成的游戏内容，各自保留对应官方主程序和最低系统版本。
+
+
+## 测试源码修改
+
+打开 **Actions → Build from source (test) → Run workflow**。`source_repository` 填上游仓库或自己的 fork；`source_ref` 填分支、标签或提交，留空使用当前固定版本。如果要直接在本构建仓库维护补丁，将 `*.patch` 放入 `source-patches/` 并提交，从该分支运行工作流；补丁会先应用到所选源码，再生成内容和编译。
+
+工作流在 Linux 上生成匹配的游戏内容，再在 **macOS 26** 上编译两份 App，要求 Xcode 带 **iOS 26.4 或更新 SDK**，不会下载上游的壳 IPA。游戏输入沿用上面的 Secret 配置，兼容的 Data 和 Legacy Device Pack 继续复用。着色器仍以源码放入包中，在手机上编译，与正式包相同。
+
+运行完成后下载 `D2RMobile-source-ios26.0-*` 或 `D2RMobile-source-ios18.0-*` 附件，签名后覆盖安装其中的 IPA。附件保留 7 天；报告记录源码提交、补丁摘要和构建环境。源码测试不会发布 Release，产物尚未进行真机验证。
