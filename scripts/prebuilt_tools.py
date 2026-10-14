@@ -42,7 +42,8 @@ def translator_sources(upstream):
 
 def recipe(kind, config, upstream, sdk):
     result = {'schema': 1, 'kind': kind, 'platform': PLATFORM,
-              'builder_sha256': sha(ROOT / 'scripts/build_tool.sh')}
+              'builder_sha256': sha(ROOT / 'scripts/build_tool.sh'),
+              'packager_sha256': sha(ROOT / 'scripts/prebuilt_tools.py')}
     if kind == 'spirv':
         result['source'] = {'repository': 'KhronosGroup/SPIRV-Cross', 'commit': config['spirv_commit']}
     elif kind == 'png':
@@ -155,6 +156,9 @@ def licenses(destination):
     destination = Path(destination); destination.mkdir(parents=True, exist_ok=True)
     upstream = ROOT / 'upstream'
     shutil.copy2(upstream / 'LICENSE', destination / 'd2r-mobile-MIT.txt')
+    dotnet_root = Path(os.environ.get('DOTNET_ROOT') or Path(shutil.which('dotnet')).resolve().parent)
+    shutil.copy2(dotnet_root / 'LICENSE.txt', destination / 'dotnet-MIT.txt')
+    shutil.copy2(dotnet_root / 'ThirdPartyNotices.txt', destination / 'dotnet-ThirdPartyNotices.txt')
     ryu = upstream / 'dm/third_party/ryujinx'
     for p in ryu.rglob('*'):
         if p.is_file() and p.name.upper().startswith(('LICENSE', 'COPYING', 'NOTICE')):
