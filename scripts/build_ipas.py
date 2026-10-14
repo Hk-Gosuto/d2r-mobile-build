@@ -90,6 +90,7 @@ def main():
     (output / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     (output / 'SHA256SUMS.txt').write_text(''.join(
         f"{r['ipa_sha256']}  {r['ipa_name']}\n" for r in reports))
+    print('Build report:', json.dumps(report, sort_keys=True), flush=True)
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
             f.write(f'version={ci.upstream_version()}\n')
