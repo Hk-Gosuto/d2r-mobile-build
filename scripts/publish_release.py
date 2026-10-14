@@ -8,7 +8,6 @@ import re
 import subprocess
 import sys
 import time
-from urllib.parse import unquote, urlparse
 
 import ci
 import export_resources
@@ -92,8 +91,7 @@ def release_info(repo, tag):
 
 
 def release_title():
-    upstream_version = unquote(urlparse(ci.CONFIG['shell_url']).path.split('/releases/download/', 1)[1].split('/', 1)[0])
-    return f"D2R Mobile {upstream_version} · Game {ci.CONFIG['game_version']}"
+    return f"D2R Mobile {ci.upstream_version()} · Game {ci.CONFIG['game_version']}"
 
 
 def publish_complete(repo, tag, notes, title=None, latest=True):
@@ -121,6 +119,7 @@ def wait_for_created_release(repo, tag):
 
 def write_install_guide(destination, reference=None):
     path = destination / 'RESOURCE-INSTALL.txt'
+    standard, compatibility = ci.ipa_names()
     source = ('配套 Data 下载：' + reference['source_release']['url'] + '\n\n') if reference else ''
     path.write_text(
         source + '下载配套 Data 的全部 D2R-Mobile-Resources.zip.00* 分卷及两个 Resources 校验文件。\n\n'
@@ -133,7 +132,7 @@ def write_install_guide(destination, reference=None):
         '解压后将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
         '打开应用点击重试，等待首次着色器编译完成。配套 Data 不变时无需重新导入。\n'
         'IPA 可使用 Sideloadly、iloader、AltStore Classic 或 SideStore 签名安装，工具链接见 README。\n'
-        'D2RMobile-unsigned.ipa 用于 iOS 26+；D2RMobile-ios18-unsigned.ipa 用于 iOS 18–25。\n'
+        f'{standard} 用于 iOS 26+；{compatibility} 用于 iOS 18–25。\n'
         'A16 及更早设备还需下载本 IPA Release 正文链接的 Legacy-Device-Pack.zip，解压后将 Legacy Device Pack 文件夹与 D2R Mobile Resources 并排导入。\n'
         '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
     return path
@@ -324,8 +323,9 @@ def write_ipa_notes(repo, reference, legacy=None):
 
 
 def validate_packages(report):
-    expected = {'D2RMobile-unsigned.ipa': ('26.0', ci.CONFIG['shell_sha256']),
-                'D2RMobile-ios18-unsigned.ipa': ('18.0', ci.CONFIG['ios18_shell_sha256'])}
+    standard, compatibility = ci.ipa_names()
+    expected = {standard: ('26.0', ci.CONFIG['shell_sha256']),
+                compatibility: ('18.0', ci.CONFIG['ios18_shell_sha256'])}
     packages = report.get('packages', [])
     if len(packages) != 2 or {r['ipa_name'] for r in packages} != set(expected):
         raise ValueError('Both verified IPA variants are required')
@@ -377,7 +377,7 @@ def main(mode):
     if resource_reference(repo, source, manifest) != reference:
         raise ValueError('Referenced Data is no longer complete or compatible')
     STAGE.mkdir(exist_ok=True)
-    tag = f"d2r-{ci.CONFIG['game_version']}-{ci.CONFIG['upstream_commit'][:8]}-{revision}"
+    tag = ci.upstream_version()
     title = release_title()
     notes = write_ipa_notes(repo, reference, legacy)
     ensure_release(repo, tag, title, notes)

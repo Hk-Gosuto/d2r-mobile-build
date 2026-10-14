@@ -1,5 +1,7 @@
 """English-first, bilingual descriptions for IPA and resource Releases."""
 
+import ci
+
 
 INSTALLER_LINKS = '[Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), and [SideStore](https://sidestore.io/)'
 CHINESE_INSTALLER_LINKS = '[Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore)、[SideStore](https://sidestore.io/)'
@@ -11,6 +13,7 @@ def bilingual(english, chinese):
 
 
 def ipa(repo, config, reference, legacy=None):
+    standard, compatibility = ci.ipa_names(config)
     readme = f'https://github.com/{repo}#readme'
     chinese_readme = f'https://github.com/{repo}/blob/main/README.zh-CN.md'
     data_url = reference['source_release']['url']
@@ -33,8 +36,8 @@ def ipa(repo, config, reference, legacy=None):
         f"Game version **{config['game_version']}**, Switch update **{config['switch_version']}**.\n\n"
         f'For detailed installation and usage instructions, see the [README]({readme}).\n\n'
         f'### Install an IPA\n\nSign and install using one of these tools: {INSTALLER_LINKS}. Choose by system:\n\n'
-        '- iOS 26 and later: `D2RMobile-unsigned.ipa` (Metal 4).\n'
-        '- iOS 18–25: `D2RMobile-ios18-unsigned.ipa` (Metal 3 compatibility build).\n\n'
+        f'- iOS 26 and later: `{standard}` (Metal 4).\n'
+        f'- iOS 18–25: `{compatibility}` (Metal 3 compatibility build).\n\n'
         'The variants share an app identifier, so installing one replaces the other.\n\n'
         + english_legacy +
         f'### Game data\n\n[Download the required game data]({data_url}). Download all three parts '
@@ -47,8 +50,8 @@ def ipa(repo, config, reference, legacy=None):
         f"游戏版本 **{config['game_version']}**，Switch 更新 **{config['switch_version']}**。\n\n"
         f'详细使用方式请参考 [中文 README]({chinese_readme})。\n\n'
         f'### 安装 IPA\n\n可使用 {CHINESE_INSTALLER_LINKS} 签名安装，按系统选择：\n\n'
-        '- iOS 26 及以上：`D2RMobile-unsigned.ipa`（Metal 4）。\n'
-        '- iOS 18–25：`D2RMobile-ios18-unsigned.ipa`（Metal 3 兼容版）。\n\n'
+        f'- iOS 26 及以上：`{standard}`（Metal 4）。\n'
+        f'- iOS 18–25：`{compatibility}`（Metal 3 兼容版）。\n\n'
         '两份 IPA 使用相同应用标识，安装另一份会覆盖当前版本。\n\n'
         + chinese_legacy +
         f'### 配套 Data\n\n[下载配套 Data]({data_url})。下载全部三个分卷和两个校验文件，'

@@ -14,8 +14,8 @@ Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/l
 
 | File | Where | Purpose |
 | --- | --- | --- |
-| `D2RMobile-unsigned.ipa` | Assets | iOS 26+; sign and install with a tool listed below |
-| `D2RMobile-ios18-unsigned.ipa` | Assets | iOS 18–25, Metal 3 compatibility build |
+| `D2RMobile-v1.0.10.ipa` | Assets | iOS 26+; sign and install with a tool listed below |
+| `D2RMobile-v1.0.10-ios18.ipa` | Assets | iOS 18–25, Metal 3 compatibility build |
 | `Legacy-Device-Pack.zip` | Legacy Device Pack link in the release notes | Additional textures for A16 and earlier devices; about 1 GB |
 | `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Game data links in the release notes | Download all three resource parts, totaling about 5.42 GB |
 | `Resources-Parts-SHA256SUMS.txt`, `Resources-SHA256SUMS.txt` | Game data links in the release notes | Verify the parts and combined ZIP |
@@ -25,7 +25,7 @@ The `Source code` archives are build scripts, not the installation package.
 
 ### 1. Install the IPA
 
-Choose by system: **iOS 26+** uses `D2RMobile-unsigned.ipa`; **iOS 18–25** uses `D2RMobile-ios18-unsigned.ipa`. The compatibility build can also be tested on iOS 26+ when investigating graphics problems; it is not a confirmed fix for system crashes.
+Choose by system: **iOS 26+** uses `D2RMobile-v1.0.10.ipa`; **iOS 18–25** uses `D2RMobile-v1.0.10-ios18.ipa`. The compatibility build can also be tested on iOS 26+ when investigating graphics problems; it is not a confirmed fix for system crashes.
 
 Both packages support **A17 Pro and newer chips, M-series iPads, and A16 and earlier chips with the matching Legacy Device Pack**. Older devices still need enough memory; support does not guarantee every model runs reliably.
 

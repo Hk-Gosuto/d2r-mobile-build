@@ -172,6 +172,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python -u scripts/legacy_pack.py
       - name: Generate both unsigned IPA variants
+        id: ipas
         if: ${{ !inputs.prepare_only }}
         run: |
           export LD_PRELOAD="$GITHUB_WORKSPACE/.tools/png-zlib-ng-2.3.2/lib/libz.so.1"
@@ -197,10 +198,9 @@ jobs:
         if: ${{ !inputs.prepare_only }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: D2RMobile-unsigned-${{ github.run_number }}
+          name: D2RMobile-${{ steps.ipas.outputs.version }}-${{ github.run_number }}
           path: |
-            outputs/D2RMobile-unsigned.ipa
-            outputs/D2RMobile-ios18-unsigned.ipa
+            outputs/D2RMobile-*.ipa
             outputs/legacy-resources.json
             outputs/build-report.json
             outputs/SHA256SUMS.txt

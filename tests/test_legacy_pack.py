@@ -158,8 +158,8 @@ class LegacyPackTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'Both verified'):
                     publish.validate_packages({'packages': []})
                 packages = []
-                for name, minimum, key in (('D2RMobile-unsigned.ipa', '26.0', 'shell_sha256'),
-                                           ('D2RMobile-ios18-unsigned.ipa', '18.0', 'ios18_shell_sha256')):
+                for name, minimum, key in ((ci.ipa_names()[0], '26.0', 'shell_sha256'),
+                                           (ci.ipa_names()[1], '18.0', 'ios18_shell_sha256')):
                     (root / name).write_bytes(b'ipa')
                     packages.append(dict({k: ci.CONFIG[k] for k in ('upstream_commit', 'game_version', 'switch_version')},
                                          ipa_name=name, minimum_os=minimum, shell_sha256=ci.CONFIG[key],

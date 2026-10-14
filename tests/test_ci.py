@@ -12,6 +12,14 @@ spec.loader.exec_module(ci)
 
 
 class InputVerificationTests(unittest.TestCase):
+    def test_ipa_names_follow_the_pinned_upstream_release(self):
+        for version in ('v1.0.9', 'v1.0.10'):
+            config = dict(ci.CONFIG, shell_url=f'https://github.com/owner/repo/releases/download/{version}/shell.ipa')
+            self.assertEqual(ci.upstream_version(config), version)
+            self.assertEqual(ci.ipa_names(config), (f'D2RMobile-{version}.ipa', f'D2RMobile-{version}-ios18.ipa'))
+        with self.assertRaises(ValueError):
+            ci.upstream_version(dict(ci.CONFIG, shell_url='https://github.com/owner/repo/releases/download/v1.0.11-rc1/shell.ipa'))
+
     def test_official_public_shell_is_copied_byte_for_byte(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

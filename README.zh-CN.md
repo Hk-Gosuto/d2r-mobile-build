@@ -14,8 +14,8 @@
 
 | 文件 | 下载位置 | 用途 |
 | --- | --- | --- |
-| `D2RMobile-unsigned.ipa` | Assets 附件 | iOS 26 及以上，使用下方工具签名安装 |
-| `D2RMobile-ios18-unsigned.ipa` | Assets 附件 | iOS 18–25，Metal 3 兼容版 |
+| `D2RMobile-v1.0.10.ipa` | Assets 附件 | iOS 26 及以上，使用下方工具签名安装 |
+| `D2RMobile-v1.0.10-ios18.ipa` | Assets 附件 | iOS 18–25，Metal 3 兼容版 |
 | `Legacy-Device-Pack.zip` | 正文的老设备补充包链接 | A16 及更早设备需要的额外贴图，约 1GB |
 | `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 正文的配套 Data 链接 | 三个资源分卷，必须全部下载，总计约 5.42GB |
 | `Resources-Parts-SHA256SUMS.txt`、`Resources-SHA256SUMS.txt` | 正文的配套 Data 链接 | 校验分卷与合并后的 ZIP |
@@ -25,7 +25,7 @@
 
 ### 1. 安装 IPA
 
-按系统选择：**iOS 26 及以上**使用 `D2RMobile-unsigned.ipa`；**iOS 18–25**使用 `D2RMobile-ios18-unsigned.ipa`。排查图形问题时，也可以在 iOS 26 及以上测试兼容版，但它并非已确认的系统崩溃修复。
+按系统选择：**iOS 26 及以上**使用 `D2RMobile-v1.0.10.ipa`；**iOS 18–25**使用 `D2RMobile-v1.0.10-ios18.ipa`。排查图形问题时，也可以在 iOS 26 及以上测试兼容版，但它并非已确认的系统崩溃修复。
 
 两份安装包均支持 **A17 Pro 或更新芯片、M 系列 iPad，以及导入配套老设备补充包的 A16 及更早芯片**。老设备仍需足够内存，不代表每种机型都已验证能稳定运行。
 

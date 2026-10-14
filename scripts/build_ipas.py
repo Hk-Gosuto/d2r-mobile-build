@@ -8,10 +8,9 @@ import sys
 
 import ci
 
-VARIANTS = (
-    ('D2RMobile-unsigned.ipa', 'D2RMobile-shell.ipa', '26.0'),
-    ('D2RMobile-ios18-unsigned.ipa', 'D2RMobile-shell-ios18.ipa', '18.0'),
-)
+VARIANTS = tuple(zip(ci.ipa_names(),
+                     ('D2RMobile-shell.ipa', 'D2RMobile-shell-ios18.ipa'),
+                     ('26.0', '18.0')))
 
 
 def main():
@@ -31,6 +30,9 @@ def main():
     (output / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     (output / 'SHA256SUMS.txt').write_text(''.join(
         f"{r['ipa_sha256']}  {r['ipa_name']}\n" for r in reports))
+    if os.environ.get('GITHUB_OUTPUT'):
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f'version={ci.upstream_version()}\n')
 
 
 if __name__ == '__main__':

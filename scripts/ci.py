@@ -11,6 +11,7 @@ import subprocess
 import sys
 import urllib.request
 import zipfile
+from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / 'build-config.json').read_text())
@@ -21,6 +22,20 @@ WORK = ROOT / '.downloads'
 RAW = ROOT / '.game-downloads'
 SHELL = TOOLS / 'D2RMobile-shell.ipa'
 PUBLIC_SHELL = DM / 'build/pack/D2RMobile-public-shell.ipa'
+
+
+def upstream_version(config=None):
+    config = CONFIG if config is None else config
+    path = unquote(urlparse(config['shell_url']).path)
+    version = path.split('/releases/download/', 1)[1].split('/', 1)[0]
+    if not re.fullmatch(r'v\d+\.\d+(?:\.\d+)?', version):
+        raise ValueError('Expected a stable upstream version tag')
+    return version
+
+
+def ipa_names(config=None):
+    version = upstream_version(config)
+    return (f'D2RMobile-{version}.ipa', f'D2RMobile-{version}-ios18.ipa')
 
 
 def sha256(path):
@@ -406,7 +421,7 @@ def extract_packages(key_text):
 
 
 def verify_ipa(output=None, shell_path=SHELL, minimum_os=None, legacy_pack=None):
-    output = Path(output or ROOT / 'outputs/D2RMobile-unsigned.ipa')
+    output = Path(output or ROOT / 'outputs' / ipa_names()[0])
     info = shell_info(shell_path)
     with zipfile.ZipFile(shell_path) as shell, zipfile.ZipFile(output) as z:
         corrupt = z.testzip()
