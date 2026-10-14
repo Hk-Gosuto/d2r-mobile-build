@@ -7,6 +7,7 @@ import plistlib
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import urllib.request
@@ -420,6 +421,34 @@ def extract_packages(key_text):
         title_keys.unlink(missing_ok=True)
 
 
+def macho_minimum_os(data):
+    """Read the iOS minimum from a thin ARM64 executable's load commands."""
+    if len(data) < 32 or struct.unpack_from('<II', data) != (0xfeedfacf, 0x0100000c):
+        raise ValueError('Native executable is not Mach-O arm64')
+    count, size = struct.unpack_from('<II', data, 16)
+    end = 32 + size
+    if end > len(data) or count > size // 8:
+        raise ValueError('Truncated Mach-O load commands')
+    offset, versions = 32, []
+    for _ in range(count):
+        if offset + 8 > end:
+            raise ValueError('Truncated Mach-O load command')
+        command, length = struct.unpack_from('<II', data, offset)
+        if length < 8 or length % 8 or offset + length > end:
+            raise ValueError('Invalid Mach-O load command size')
+        if command == 0x32:  # LC_BUILD_VERSION
+            if length < 24:
+                raise ValueError('Truncated Mach-O build version')
+            platform, minimum = struct.unpack_from('<II', data, offset + 8)
+            if platform != 2:
+                raise ValueError('Native executable does not target iOS')
+            versions.append((minimum >> 16, (minimum >> 8) & 255, minimum & 255))
+        offset += length
+    if offset != end or len(versions) != 1:
+        raise ValueError('Missing or ambiguous Mach-O build version')
+    return versions[0]
+
+
 def verify_ipa(output=None, shell_path=SHELL, minimum_os=None, legacy_pack=None):
     output = Path(output or ROOT / 'outputs' / ipa_names()[0])
     info = shell_info(shell_path)
@@ -432,9 +461,24 @@ def verify_ipa(output=None, shell_path=SHELL, minimum_os=None, legacy_pack=None)
             raise ValueError('Shell app path ambiguous')
         base = bases[0]
         members = set(z.namelist())
-        actual_os = plistlib.loads(z.read(base + 'Info.plist'))['MinimumOSVersion']
+        plist = plistlib.loads(z.read(base + 'Info.plist'))
+        actual_os = plist['MinimumOSVersion']
         if minimum_os is not None and actual_os != minimum_os:
             raise ValueError('IPA minimum system mismatch: ' + actual_os)
+        shell_plist = plistlib.loads(shell.read(base + 'Info.plist'))
+        if (actual_os != shell_plist['MinimumOSVersion'] or
+                plist['CFBundleExecutable'] != shell_plist['CFBundleExecutable']):
+            raise ValueError('IPA executable metadata differs from official shell')
+        executable = base + shell_plist['CFBundleExecutable']
+        native = z.read(executable)
+        if native != shell.read(executable):
+            raise ValueError('IPA native executable differs from official shell')
+        native_os = macho_minimum_os(native)
+        plist_os = tuple(map(int, actual_os.split('.')))
+        if native_os != plist_os + (0,) * (3 - len(plist_os)):
+            raise ValueError('Native executable minimum system differs from Info.plist')
+        if native_os[0] == 18 and b'MTL4CommandQueue' in native:
+            raise ValueError('iOS 18 compatibility executable references Metal 4')
         if legacy_pack is not None:
             expected_pack = (Path(legacy_pack) / 'pack.json').read_bytes()
             if z.read(base + 'romfs_overlay_astc/pack.json') != expected_pack:
@@ -455,7 +499,7 @@ def verify_ipa(output=None, shell_path=SHELL, minimum_os=None, legacy_pack=None)
             if not (any(n.startswith(target) for n in members) if item.endswith('/') else target in members):
                 raise ValueError('Missing IPA content: ' + item)
         guest = z.read(base + 'Frameworks/Guest.framework/Guest')
-        if guest[:4] != bytes.fromhex('cffaedfe'):
+        if len(guest) < 8 or struct.unpack_from('<II', guest) != (0xfeedfacf, 0x0100000c):
             raise ValueError('Guest dynamic library is not Mach-O arm64')
         # The packer itself checks the complete shader-source digest against the shell.
         shader_files = [n for n in members if '/msl/b-' + info['CHAIN'] + '/' in n and n.endswith('_b.metallib')]
@@ -464,6 +508,9 @@ def verify_ipa(output=None, shell_path=SHELL, minimum_os=None, legacy_pack=None)
     digest = sha256(output)
     (output.parent / 'SHA256SUMS.txt').write_text(f'{digest}  {output.name}\n')
     report = {'upstream_commit': CONFIG['upstream_commit'], 'game_version': CONFIG['game_version'], 'switch_version': CONFIG['switch_version'], 'input_revision': os.environ.get('INPUT_REVISION'), 'shell_sha256': sha256(shell_path), 'minimum_os': actual_os, 'ipa_name': output.name, 'product': info['PRODUCT'], 'shader_chain': info['CHAIN'], 'shader_source_sha16': info['SHADER_SRC'], 'ipa_sha256': digest, 'ipa_bytes': output.stat().st_size, 'shader_libraries': len(shader_files), 'signed': False, 'startup_prefetch': False, 'startup_prefetch_reason': 'The pinned official public shell omits the unpublished bootlist; the host supports no prefetch when absent.'}
+    report.update(native_matches_shell=True, native_sha256=hashlib.sha256(native).hexdigest(),
+                  native_minimum_os='.'.join(map(str, native_os)), guest_arm64=True,
+                  compatibility_no_metal4=(b'MTL4CommandQueue' not in native) if native_os[0] == 18 else None)
     (output.parent / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print('IPA verified:', output.name, output.stat().st_size, 'bytes;', len(shader_files), 'shader libraries', flush=True)
     return report

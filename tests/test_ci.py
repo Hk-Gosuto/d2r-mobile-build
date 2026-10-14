@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import struct
 from pathlib import Path
 import tempfile
 import unittest
@@ -12,6 +13,17 @@ spec.loader.exec_module(ci)
 
 
 class InputVerificationTests(unittest.TestCase):
+    def test_macho_minimum_rejects_wrong_platform_and_malformed_commands(self):
+        def binary(platform=2, count=1, size=24, command_size=24):
+            return struct.pack('<8I6I', 0xfeedfacf, 0x0100000c, 0, 2, count, size, 0, 0,
+                               0x32, command_size, platform, 18 << 16, 18 << 16, 0)
+        self.assertEqual(ci.macho_minimum_os(binary()), (18, 0, 0))
+        for data in (binary(platform=7), binary(size=32), binary(count=2),
+                     binary(command_size=0), binary(command_size=16), binary()[:40],
+                     bytes(56)):
+            with self.subTest(data=data.hex()), self.assertRaises(ValueError):
+                ci.macho_minimum_os(data)
+
     def test_ipa_names_follow_the_pinned_upstream_release(self):
         for version in ('v1.0.9', 'v1.0.10'):
             config = dict(ci.CONFIG, shell_url=f'https://github.com/owner/repo/releases/download/{version}/shell.ipa')

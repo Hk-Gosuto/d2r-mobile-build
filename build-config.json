@@ -1,8 +1,8 @@
 {
   "upstream_repository": "jhaizhou-ops/d2r-mobile",
-  "upstream_commit": "944e199c8a4833853ce6c6e7c73751fa5840811c",
-  "shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.12/D2RMobile-shell.ipa",
-  "shell_sha256": "1d9ce9d216dde32086bda3c0081ea4a678d81b64d206fff871a629ffb195bd87",
+  "upstream_commit": "f43480dc486e9b8f6f5196057c61209e196794e2",
+  "shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.13/D2RMobile-shell.ipa",
+  "shell_sha256": "96bc4e096806870955c33e08d351d2937d77507b3a8dd8e72f1a0e98a4fd3ef1",
   "spirv_commit": "6c09849fe88c48eaed08413aa022aaa136a3a057",
   "hactool_commit": "1d64a83450e025622f3468c28fc4164dad2c5ef6",
   "game_version": "3.3.94012",
@@ -12,8 +12,8 @@
     "sdk": "1c9f198a91c0bcfee5cf8f5b53fb941895e91334dfb766ce79fc68576797f017",
     "subsdk0": "67a38fcf89cd13e040a021eb3d157072f38ebf6680a907874c35c7b231b5d4e2"
   },
-  "ios18_shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.12/D2RMobile-shell-ios18.ipa",
-  "ios18_shell_sha256": "3d44fdb95ae6375f2847cb98b16588a577c6d4db2bb6673e4b83e35a54b3f800",
+  "ios18_shell_url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.13/D2RMobile-shell-ios18.ipa",
+  "ios18_shell_sha256": "31fa77998c6f2bf023d53b842158f59b96fb4995c58dd4484b9d74a404d2a01f",
   "astc_encoder_url": "https://github.com/ARM-software/astc-encoder/releases/download/5.2.0/astcenc-5.2.0-linux-x64.zip",
   "astc_encoder_sha256": "b8c805b3c4a32680287ad5e5fc2a8b5ddf78c80f24cc0ec7ed1e4eb03c6cc5d2",
   "legacy_converter": {

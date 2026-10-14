@@ -14,8 +14,8 @@ Open the **[latest Release](https://github.com/jiayx/d2r-mobile-build/releases/l
 
 | File | Where | Purpose |
 | --- | --- | --- |
-| `D2RMobile-v1.0.12.ipa` | Assets | iOS 26+; sign and install with a tool listed below |
-| `D2RMobile-v1.0.12-ios18.ipa` | Assets | iOS 18–25, Metal 3 compatibility build |
+| `D2RMobile-v1.0.13.ipa` | Assets | iOS 26+; sign and install with a tool listed below |
+| `D2RMobile-v1.0.13-ios18.ipa` | Assets | iOS 18–25, Metal 3 compatibility build |
 | `Legacy-Device-Pack.zip` | Legacy Device Pack link in the release notes | Additional textures for A16 and earlier devices; about 1 GB |
 | `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | Game data links in the release notes | Download all three resource parts, totaling about 5.42 GB |
 | `Resources-Parts-SHA256SUMS.txt`, `Resources-SHA256SUMS.txt` | Game data links in the release notes | Verify the parts and combined ZIP |
@@ -25,7 +25,7 @@ The `Source code` archives are build scripts, not the installation package.
 
 ### 1. Install the IPA
 
-Choose by system: **iOS 26+** uses `D2RMobile-v1.0.12.ipa`; **iOS 18–25** uses `D2RMobile-v1.0.12-ios18.ipa`. The compatibility build can also be tested on iOS 26+ when investigating graphics problems; it is not a confirmed fix for system crashes.
+Choose by system: **iOS 26+** uses `D2RMobile-v1.0.13.ipa`; **iOS 18–25** uses `D2RMobile-v1.0.13-ios18.ipa`. The compatibility build can also be tested on iOS 26+ when investigating graphics problems; it is not a confirmed fix for system crashes.
 
 Both packages support **A17 Pro and newer chips, M-series iPads, and A16 and earlier chips with the matching Legacy Device Pack**. Older devices still need enough memory; support does not guarantee every model runs reliably.
 
@@ -68,11 +68,11 @@ Connect your iPhone by cable. In **Finder → iPhone → Files → D2R Mobile**,
 
 For **A16 and earlier devices**, also download `Legacy-Device-Pack.zip` from the link in this IPA Release. Extract it and copy the entire `Legacy Device Pack` folder beside `D2R Mobile Resources` inside the app. Use the pack linked by your IPA Release; both system variants share that pack. A17 Pro and newer devices and M-series iPads do not need it.
 
-Open the app and tap **Retry**. On the first launch, wait for shader compilation to finish. The reference time is **about 6 minutes on iPhone 17 Pro Max**; other devices vary. The current v1.0.12 package has not yet been verified on a physical device.
+Open the app and tap **Retry**. On the first launch, wait for shader compilation to finish. The reference time is **about 6 minutes on iPhone 17 Pro Max**; other devices vary. The current v1.0.13 package has not yet been verified on a physical device.
 
 ### 4. Updating and reusing game data
 
-**Game data downloaded with v1.0.1 or v1.0.6 can be reused with the v1.0.12 IPA. You do not need to download it again.**
+**Game data downloaded with v1.0.1 or v1.0.6 can be reused with the v1.0.13 IPA. You do not need to download it again.**
 
 If the `D2R Mobile Resources` folder is already imported on your phone, just install the new IPA over the existing app with the same app identifier. Your resources and saves are usually preserved; no resource import is needed. **Do not uninstall the app first, as this deletes them.** If you have only downloaded the resources, combine, extract and import them using steps 2 and 3 above.
 
@@ -82,7 +82,7 @@ For future updates, check the new Release's resource requirements before replaci
 
 | Component | Version |
 | --- | --- |
-| Upstream | v1.0.12 |
+| Upstream | v1.0.13 |
 | Switch update | `1.0.34.0` / `v2228224` |
 | Internal game version | `3.3.94012` |
 | Required edition | Includes Reign of the Warlock |
