@@ -98,6 +98,7 @@ Run **Build IPA and Data** again with `source_ref` empty to build the latest off
 - The checksum file determines the original archive's cache key. The verified archive is cached **before extraction**, independently of the app version; completed downloads survive later extraction or compilation failures.
 - Drive downloads retry transient failures and resume partial transfers within a running job. A stopped or failed download is not treated as a completed cache entry.
 - Rewritten game code, generated interface assets, build tools and shaders have separate caches keyed by their relevant inputs. Changes to the app runtime alone do not invalidate unchanged game rewriting or shader outputs.
+- Matching prebuilt SPIRV-Cross, zlib-ng and shader translator tools are downloaded and verified automatically. If a matching package is unavailable, the workflow compiles it from source. No additional configuration is needed.
 - When Data contents match, the Release links to your existing Data. Keep using the resources already imported on your phone.
 - Matching Legacy conversion inputs and settings reuse your existing Legacy pack.
 - Retain older Data and Legacy Releases referenced by your app Releases.

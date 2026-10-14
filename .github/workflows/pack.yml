@@ -211,7 +211,7 @@ jobs:
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .tools/png-zlib-ng-2.3.2
-          key: png-backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/png_backend.sh') }}
+          key: png-backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/png_backend.sh', 'scripts/build_tool.sh', 'scripts/prebuilt_tools.py') }}
       - name: Pin the verified PNG compression backend
         run: |
           bash scripts/png_backend.sh

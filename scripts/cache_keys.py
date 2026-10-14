@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 import ci
+import prebuilt_tools
 
 
 def fingerprint(files, values):
@@ -46,8 +47,10 @@ def generation_keys(upstream, config):
 
 def keys(upstream, config, sdk, chain=None):
     upstream = Path(upstream)
-    tools = fingerprint({'tools.sh': ci.ROOT / 'scripts/tools.sh'},
-                        {k: config[k] for k in ('spirv_commit',)})
+    tools = fingerprint({name: ci.ROOT / name for name in
+                         ('scripts/tools.sh', 'scripts/prebuilt_tools.py', 'scripts/build_tool.sh')},
+                        {kind: prebuilt_tools.recipe(kind, config, upstream, sdk)
+                         for kind in prebuilt_tools.KINDS})
     chain_source = upstream / 'dm/gfx/tools/dmsh_chain.py'
     tree = ast.parse(chain_source.read_text())
     assignments = [n for n in tree.body if isinstance(n, ast.Assign)
