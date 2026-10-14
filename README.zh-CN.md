@@ -14,8 +14,8 @@
 
 | 文件 | 下载位置 | 用途 |
 | --- | --- | --- |
-| `D2RMobile-v1.0.11.ipa` | Assets 附件 | iOS 26 及以上，使用下方工具签名安装 |
-| `D2RMobile-v1.0.11-ios18.ipa` | Assets 附件 | iOS 18–25，Metal 3 兼容版 |
+| `D2RMobile-v1.0.12.ipa` | Assets 附件 | iOS 26 及以上，使用下方工具签名安装 |
+| `D2RMobile-v1.0.12-ios18.ipa` | Assets 附件 | iOS 18–25，Metal 3 兼容版 |
 | `Legacy-Device-Pack.zip` | 正文的老设备补充包链接 | A16 及更早设备需要的额外贴图，约 1GB |
 | `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 正文的配套 Data 链接 | 三个资源分卷，必须全部下载，总计约 5.42GB |
 | `Resources-Parts-SHA256SUMS.txt`、`Resources-SHA256SUMS.txt` | 正文的配套 Data 链接 | 校验分卷与合并后的 ZIP |
@@ -25,7 +25,7 @@
 
 ### 1. 安装 IPA
 
-按系统选择：**iOS 26 及以上**使用 `D2RMobile-v1.0.11.ipa`；**iOS 18–25**使用 `D2RMobile-v1.0.11-ios18.ipa`。排查图形问题时，也可以在 iOS 26 及以上测试兼容版，但它并非已确认的系统崩溃修复。
+按系统选择：**iOS 26 及以上**使用 `D2RMobile-v1.0.12.ipa`；**iOS 18–25**使用 `D2RMobile-v1.0.12-ios18.ipa`。排查图形问题时，也可以在 iOS 26 及以上测试兼容版，但它并非已确认的系统崩溃修复。
 
 两份安装包均支持 **A17 Pro 或更新芯片、M 系列 iPad，以及导入配套老设备补充包的 A16 及更早芯片**。老设备仍需足够内存，不代表每种机型都已验证能稳定运行。
 
@@ -68,11 +68,11 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 **A16 及更早设备**还需从当前 IPA Release 正文的链接下载 `Legacy-Device-Pack.zip`，解压后把整个 `Legacy Device Pack` 文件夹放进应用，与 `D2R Mobile Resources` 并排。请使用当前 IPA Release 链接的配套补充包，两种系统版本共用这一份。A17 Pro 及更新芯片和 M 系列 iPad 无需导入补充包。
 
-打开应用，点击“重试”。首次启动需等待着色器编译完成，**iPhone 17 Pro Max 参考耗时约 6 分钟**，其他机型耗时不同。当前 v1.0.11 包尚未进行真机运行验证。
+打开应用，点击“重试”。首次启动需等待着色器编译完成，**iPhone 17 Pro Max 参考耗时约 6 分钟**，其他机型耗时不同。当前 v1.0.12 包尚未进行真机运行验证。
 
 ### 4. 更新 IPA 与复用 Data
 
-**v1.0.1 或 v1.0.6 下载的 Data 可以直接用于 v1.0.11 IPA，无需重新下载。**
+**v1.0.1 或 v1.0.6 下载的 Data 可以直接用于 v1.0.12 IPA，无需重新下载。**
 
 如果手机上已经导入 `D2R Mobile Resources` 文件夹，保持应用标识不变，直接覆盖安装新版 IPA 即可，通常会保留资源和存档，无需再次导入。**不要先卸载应用，否则资源和存档会被删除。** 如果只是下载了资源、尚未导入，按上方第 2、3 步合并、解压并导入即可。
 
@@ -82,7 +82,7 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 | 项目 | 版本 |
 | --- | --- |
-| 上游 | v1.0.11 |
+| 上游 | v1.0.12 |
 | Switch 更新 | `1.0.34.0` / `v2228224` |
 | 游戏内部版本 | `3.3.94012` |
 | 所需版本 | 包含「术士君临」资料片 |
