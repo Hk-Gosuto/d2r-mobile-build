@@ -123,6 +123,7 @@ Open **Actions → Build D2R Mobile IPA → Run workflow**, select `main`, and u
 
 | Input | Setting |
 | --- | --- |
+| `publish_release` | `true` for a Release; uncheck for an Actions-only test build |
 | `prepare_only` | `false` — leave unchecked |
 | `input_revision` | `game-3.3.94012-v1` — change when replacing game files or editing the torrent download entry |
 
@@ -133,3 +134,5 @@ After success, open **Releases in your own repository**. The release notes provi
 Keep the releases and assets that host the referenced game data and Legacy Device Pack so the download links remain available.
 
 The Actions run summary also links to the IPAs and game data. The IPA artifact contains both installation packages, resource download information (`resources.json` and `legacy-resources.json`), and import instructions, and is retained for **3 days**.
+
+Compiled tools and shader outputs are cached by their own dependencies. Updating the app version alone does not invalidate them. Both IPA variants share one generated game payload; each retains its own official executable and minimum iOS version.

@@ -123,6 +123,7 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 | 参数 | 填写内容 |
 | --- | --- |
+| `publish_release` | 正式发布保持 `true`；仅测试打包时取消勾选，产物只保存在 Actions |
 | `prepare_only` | `false`，不勾选 |
 | `input_revision` | `game-3.3.94012-v1`；更换游戏文件或修改种子下载项时更换 |
 
@@ -133,3 +134,5 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 请保留配套 Data 和老设备补充包所在的 Release 及其附件，确保下载链接持续可用。
 
 Actions 运行摘要中也有 IPA 和 Data 的下载入口。IPA 构建附件内包含两份安装包、资源下载信息（`resources.json`、`legacy-resources.json`）和导入说明，保留期为 **3 天**。
+
+编译工具和着色器按各自依赖缓存，单独更新应用版本不会使这些缓存失效。两份 IPA 共用一次生成的游戏内容，各自保留对应官方主程序和最低系统版本。
