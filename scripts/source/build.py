@@ -111,6 +111,8 @@ def main():
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
                   icloud_sync_provisioned=False,icloud_sync_verified=False,
                   xcode=run('xcodebuild','-version').strip(),sdk=run('xcrun','--sdk','iphoneos','--show-sdk-version').strip())
+    if os.environ.get('CCACHE_DIR'):
+        report['compiler_cache_stats'] = dict(line.split('\t',1) for line in run('ccache','--print-stats').splitlines() if '\t' in line)
     (root/'outputs'/f'source{suffix}-report.json').write_text(json.dumps(report,indent=2)+'\n')
     (root/'outputs'/f'source{suffix}-SHA256SUMS.txt').write_text(f"{report['ipa_sha256']}  {name}\n")
     print(json.dumps(report,indent=2))

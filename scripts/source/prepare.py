@@ -80,6 +80,9 @@ def main():
             'patch_sha256':ci.CONFIG.get('source_patch_sha256'), 'product':product,'shader_chain':chain,
             'payload_sha256':ci.sha256(payload),'legacy_pack':json.loads((Path(os.environ['D2RM_ASTC_PACK'])/'pack.json').read_text()),
             'shader_source_sha16':shader_digest,'payload_reused':cached is not None}
+    validation=out/'legacy-validation.json'
+    if validation.is_file():
+        report['legacy_conversion_validation']=json.loads(validation.read_text())
     (out/'build-context.json').write_text(json.dumps(ci.CONFIG,indent=2)+'\n')
     (out/'source-input-report.json').write_text(json.dumps(report,indent=2)+'\n')
     with tarfile.open(out/'native-inputs.tar.gz','w:gz') as tf:

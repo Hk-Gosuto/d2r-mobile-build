@@ -20,7 +20,7 @@ permissions:
   contents: write
   actions: write
 concurrency:
-  group: d2r-build
+  group: d2r-build-${{ inputs.validate_legacy && 'validation' || 'release' }}
   queue: max
   cancel-in-progress: false
 jobs:
