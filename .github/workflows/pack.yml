@@ -105,7 +105,9 @@ jobs:
       - name: Make room for game extraction on the disposable runner
         run: |
           # Only remove unrelated preinstalled SDKs on GitHub's temporary VM.
-          sudo rm -rf /usr/local/lib/android /usr/share/swift /usr/local/.ghcup /opt/ghc
+          sudo rm -rf /usr/local/lib/android /usr/share/swift /usr/local/.ghcup /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/lib/jvm /usr/share/dotnet
+          # setup-dotnet below installs only the .NET 10 SDK used by this build.
           df -h "$GITHUB_WORKSPACE"
           python - <<'PYCODE'
           import shutil
