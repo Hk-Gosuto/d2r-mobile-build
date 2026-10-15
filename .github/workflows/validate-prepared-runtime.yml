@@ -71,12 +71,19 @@ jobs:
         env:
           SOURCE_REPOSITORY: jhaizhou-ops/d2r-mobile
         run: python scripts/source/configure.py
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .tools/png-zlib-ng-2.3.2
+          key: png-backend-Linux-X64-de36b50f9835da2b2e986c78e2cad72cb4205fff047625df49188bc876543ee8
+          fail-on-cache-miss: true
       - name: Migrate existing prepared packages and generate current interface
         env:
+          LD_PRELOAD: ${{ github.workspace }}/.tools/png-zlib-ng-2.3.2/lib/libz.so.1
           SOURCE_REPOSITORY: jhaizhou-ops/d2r-mobile
           TOOLS_COMMIT: ${{ github.sha }}
         run: python -u .github/scripts/validate_prepared_runtime.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() && hashFiles('outputs/D2RMobile-Prepared.zip') != '' }}
         with:
           name: runtime-prepared-packages
           path: |

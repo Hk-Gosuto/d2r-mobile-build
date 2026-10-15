@@ -88,8 +88,23 @@ jobs:
         with:
           path: .prepared-downloads
           key: ${{ steps.archive.outputs.cache-primary-key }}
+      - name: Restore the upstream PNG compressor
+        id: png
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .tools/png-zlib-ng-2.3.2
+          key: png-backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/png_backend.sh') }}
+      - name: Prepare the upstream PNG compressor
+        run: bash scripts/png_backend.sh
+      - name: Cache the PNG compressor
+        if: steps.png.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .tools/png-zlib-ng-2.3.2
+          key: ${{ steps.png.outputs.cache-primary-key }}
       - name: Verify compatibility and prepare current native sources
         env:
+          LD_PRELOAD: ${{ github.workspace }}/.tools/png-zlib-ng-2.3.2/lib/libz.so.1
           TOOLS_COMMIT: ${{ steps.tools.outputs.tools_commit }}
           INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
         run: python scripts/source/prepared.py prepare
