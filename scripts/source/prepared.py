@@ -23,6 +23,8 @@ GENERATED = ('host/dm_vault_tab.h', 'host/dm_hud_exp.h', 'host/dm_bright_levels.
 FORMAT = 'd2r-mobile-prepared'
 FILES = {'source-payload.zip', 'shader-chain.lock', 'resource-manifest.json',
          *('generated/' + p for p in GENERATED)}
+RUNTIME_FILES = {'source-payload.zip', 'shader-chain.lock', 'resource-manifest.json',
+                 'romfs-inputs.zip', 'legacy/pack.json', 'legacy/pack_index.tsv'}
 
 
 def read(path):
@@ -36,9 +38,10 @@ def write(path, value):
 def verify_directory(directory):
     directory = Path(directory)
     info = read(directory / 'prepared.json')
-    if info.get('format') != FORMAT or info.get('schema_version') != 1:
-        raise ValueError('Expected a d2r-mobile prepared input package (schema 1)')
-    if not FILES <= set(info['files']) <= FILES | {'resources.json', 'legacy-resources.json'}:
+    if info.get('format') != FORMAT or info.get('schema_version') not in (1, 2):
+        raise ValueError('Expected a d2r-mobile prepared input package (schema 1 or 2)')
+    required = RUNTIME_FILES if info['schema_version'] == 2 else FILES
+    if not required <= set(info['files']) <= required | {'resources.json', 'legacy-resources.json'}:
         raise ValueError('Prepared package file manifest is incomplete')
     actual = {p.relative_to(directory).as_posix() for p in directory.rglob('*') if p.is_file()}
     if actual != set(info['files']) | {'prepared.json'}:
@@ -64,7 +67,8 @@ def verify_directory(directory):
                     or stat.S_IFMT(item.external_attr >> 16) not in (0, stat.S_IFREG, stat.S_IFDIR)
                     or relative in ('DmIOS', 'embedded.mobileprovision') or '_CodeSignature' in relative.split('/')):
                 raise ValueError('Unexpected path in prepared payload')
-        pack = json.loads(z.read('Payload/DmIOS.app/romfs_overlay_astc/pack.json'))
+        pack = (read(directory / 'legacy/pack.json') if info['schema_version'] == 2
+                else json.loads(z.read('Payload/DmIOS.app/romfs_overlay_astc/pack.json')))
         if pack != report['legacy_pack']:
             raise ValueError('Prepared Legacy descriptor differs from the payload')
         guest = z.read('Payload/DmIOS.app/Frameworks/Guest.framework/Guest')
@@ -86,7 +90,7 @@ def verify_source(directory, info, upstream, config):
     dm = upstream / 'dm'
     if (dm / 'PRODUCT').read_text().strip() != info['payload']['product']:
         raise ValueError('Selected source requires a different prepared game product')
-    verify_generation(upstream, info['producer']['source_commit'])
+    verify_generation(upstream, info['producer']['source_commit'], heavy=info['schema_version'] == 2)
     shutil.copy2(directory / 'shader-chain.lock', dm / 'gfx/tools/dmsh_chain.lock')
     chain = subprocess.check_output([sys.executable, str(dm / 'gfx/tools/dmsh_chain.py'), '--header'], text=True).strip()
     if chain != info['payload']['shader_chain']:
@@ -134,14 +138,19 @@ def prepare(root=ci.ROOT):
     verify_source(directory, info, upstream, ci.CONFIG)
     ci.CONFIG.update(game_version=info['game_version'], switch_version=info['switch_version'])
     dm = upstream / 'dm'
-    for name in GENERATED:
-        destination = dm / name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(directory / 'generated' / name, destination)
-    subprocess.run([sys.executable, str(dm / 'ios/tools/shell_stubs.py'), 'stubs', str(dm)], check=True)
     out = root / 'outputs'
     out.mkdir(exist_ok=True)
-    shutil.copy2(directory / 'source-payload.zip', out / 'source-payload.zip')
+    generation_seconds = None
+    if info['schema_version'] == 2:
+        from source.runtime_assets import ios_payload
+        generation_seconds = ios_payload(directory, info, dm, out / 'source-payload.zip', root / '.runtime-inputs')
+    else:
+        for name in GENERATED:
+            destination = dm / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(directory / 'generated' / name, destination)
+        shutil.copy2(directory / 'source-payload.zip', out / 'source-payload.zip')
+    subprocess.run([sys.executable, str(dm / 'ios/tools/shell_stubs.py'), 'stubs', str(dm)], check=True)
     allowed = ('product', 'shader_chain', 'shader_source_chain', 'payload_sha256', 'legacy_pack',
                'shader_source_sha16', 'metal_precompiled', 'metal_libraries', 'metal_unique_libraries',
                'metal_toolchain', 'phone_shader_compilation_required')
@@ -149,9 +158,13 @@ def prepare(root=ci.ROOT):
     report.update(source_repository=os.environ['SOURCE_REPOSITORY'], source_commit=ci.CONFIG['upstream_commit'],
                   tools_commit=os.environ.get('TOOLS_COMMIT'),
                   input_revision=os.environ['INPUT_REVISION'], prepared_input=True,
-                  prepared_schema_version=1, prepared_archive_sha256=ci.sha256(archive),
+                  prepared_schema_version=info['schema_version'], prepared_archive_sha256=ci.sha256(archive),
                   prepared_from_source=info['producer']['source_commit'],
                   resource_manifest_sha256=ci.sha256(directory / 'resource-manifest.json'))
+    report['payload_sha256'] = ci.sha256(out / 'source-payload.zip')
+    if generation_seconds is not None:
+        report['runtime_generation_seconds'] = generation_seconds
+    verify_payload(out / 'source-payload.zip', report)
     write(out / 'build-context.json', ci.CONFIG)
     write(out / 'source-input-report.json', report)
     with tarfile.open(out / 'native-inputs.tar.gz', 'w:gz') as tf:

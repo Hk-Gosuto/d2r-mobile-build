@@ -1,0 +1,33 @@
+name: Validate prepared runtime inputs
+on:
+  push:
+    branches: [experiment/prepared-runtime-validation]
+    paths: [.github/workflows/validate-prepared-runtime.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Reserve space on the disposable runner
+        run: sudo rm -rf /usr/local/lib/android /usr/share/swift /usr/local/.ghcup /opt/ghc
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .game-downloads
+          key: downloads-Linux-game-3.3.94012-v1
+          fail-on-cache-miss: true
+      - name: Inspect retained original input format
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import json,zipfile
+          for p in Path('.game-downloads').iterdir():
+              print(p.name,p.stat().st_size,'zip',zipfile.is_zipfile(p))
+              if p.suffix=='.json':
+                  print('metadata fields',list(json.loads(p.read_text()).keys()))
+          PYCODE

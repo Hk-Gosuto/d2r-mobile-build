@@ -20,7 +20,7 @@ def git(upstream, *args):
                                    stderr=subprocess.DEVNULL).decode()
 
 
-def generation_paths(upstream, revision):
+def generation_paths(upstream, revision, *, heavy=False):
     if revision:
         names = set(git(upstream, 'ls-tree', '-r', '--name-only', '-z', revision).split('\0')) - {''}
     else:
@@ -30,8 +30,12 @@ def generation_paths(upstream, revision):
     def read(name):
         return git(upstream, 'show', revision + ':' + name) if revision else (upstream / name).read_text()
 
-    paths = {n for n in names if any(n == p or n.startswith(p + '/') for p in ROOTS)}
-    pending = [n for n in SCRIPTS if n in names]
+    roots = ('dm/PRODUCT',) if heavy else ROOTS
+    paths = {n for n in names if any(n == p or n.startswith(p + '/') for p in roots)}
+    if heavy:
+        paths.update(n for n in names if n.startswith('dm/data/bootlist_'))
+    scripts = ('dm/tools/patch_nso.py', 'dm/tools/guest_dylib.py') if heavy else SCRIPTS
+    pending = [n for n in scripts if n in names]
     while pending:
         name = pending.pop()
         if name in paths:
@@ -64,7 +68,7 @@ def generation_paths(upstream, revision):
     return paths
 
 
-def verify_generation(upstream, baseline):
+def verify_generation(upstream, baseline, *, heavy=False):
     upstream = Path(upstream)
     if not isinstance(baseline, str) or not re.fullmatch('[a-f0-9]{40}', baseline):
         raise ValueError('Prepared package source commit is invalid')
@@ -77,7 +81,7 @@ def verify_generation(upstream, baseline):
     changed.discard('')
     if not changed:
         return
-    dependencies = generation_paths(upstream, baseline) | generation_paths(upstream, None)
+    dependencies = generation_paths(upstream, baseline, heavy=heavy) | generation_paths(upstream, None, heavy=heavy)
     affected = sorted(changed & dependencies)
     if affected:
         raise ValueError('Selected source changed generation inputs (' + ', '.join(affected[:5]) +

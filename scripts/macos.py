@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci
 from archive_input import extract
 from input_config import input_identity, settings
-from source.compatibility import generation_paths
+from source.compatibility import generation_paths, verify_generation
 from source.game_input import download, unpack
 from source.publish import publish_assets
 from source.prepared import download as download_prepared
@@ -54,10 +54,13 @@ def plan():
 def load_prepared():
     cache = ci.ROOT / '.macos-prepared'
     info = json.loads((cache / 'manifest.json').read_text())
-    if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') != 1:
-        raise ValueError('Expected a macOS prepared package (schema 1)')
+    if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') not in (1, 2):
+        raise ValueError('Expected a macOS prepared package (schema 1 or 2)')
     expected = os.environ.get('MACOS_PREPARED_KEY')
-    if expected is None:
+    if expected is None and info['schema_version'] == 2:
+        verify_generation(ci.ROOT / 'upstream', info['source_commit'], heavy=True)
+        expected = info['key']
+    elif expected is None:
         expected = generation_key(ci.ROOT / 'upstream', info['input_revision'], info['toolchain'])
     if info['key'] != expected:
         raise ValueError('Mac preparation cache belongs to different inputs')
@@ -130,6 +133,15 @@ def prepare():
             'files': {p.relative_to(stage).as_posix(): ci.sha256(p)
                       for p in sorted(stage.rglob('*')) if p.is_file()}}
     write(stage / 'manifest.json', info)
+    from source.romfs_input import create
+    create(game.parent, stage / 'romfs-inputs.zip')
+    shutil.rmtree(stage / 'romfs_overlay')
+    shutil.rmtree(stage / 'romfs_overlay_variants', ignore_errors=True)
+    shutil.rmtree(stage / 'generated')
+    info['schema_version'] = 2
+    info['files'] = {p.relative_to(stage).as_posix(): ci.sha256(p)
+                     for p in sorted(stage.rglob('*')) if p.is_file() and p.name != 'manifest.json'}
+    write(stage / 'manifest.json', info)
     shutil.rmtree(cache, ignore_errors=True)
     stage.rename(cache)
     print('Mac preparation completed and verified; original archive retained', flush=True)
@@ -187,20 +199,25 @@ def build():
     dm = root / 'upstream/dm'
     cache = root / '.macos-prepared'
     info = load_prepared()
-    for name in HEADERS:
-        shutil.copyfile(cache / 'generated' / name, dm / 'host' / name)
+    workspace = root / '.macos-runtime'
+    generation_seconds = None
+    if info['schema_version'] == 2:
+        from source.runtime_assets import generate
+        generation_seconds = generate(dm, cache / 'romfs-inputs.zip', workspace, macos=True)
+    else:
+        for name in HEADERS:
+            shutil.copyfile(cache / 'generated' / name, dm / 'host' / name)
     shutil.copyfile(cache / 'shader-chain.lock', dm / 'gfx/tools/dmsh_chain.lock')
     shutil.copyfile(cache / 'c1_full.tsv', dm / 'gfx/nvn/c1_full.tsv')
     if run(sys.executable, dm / 'gfx/tools/dmsh_chain.py', '--header') != info['shader_chain']:
         raise ValueError('Mac shader chain differs from the selected source')
-    workspace = root / '.macos-runtime'
     product = workspace / 'build/cache/dm/out' / (info['product'] + '-touch')
     shutil.rmtree(product, ignore_errors=True)
     shutil.copytree(cache / 'product', product)
     out = root / 'outputs'
     out.mkdir(exist_ok=True)
     environment = dict(os.environ, DM_ROOT=str(workspace), DM_MAC_LINK='0',
-                       DM_MAC_OVERLAY=str(cache / 'romfs_overlay'), DM_MSL_DIR=str(cache / 'msl'),
+                       DM_MAC_OVERLAY=str((workspace if info['schema_version'] == 2 else cache) / 'romfs_overlay'), DM_MSL_DIR=str(cache / 'msl'),
                        DM_MAC_VERSION=ci.CONFIG['app_version'], DM_MAC_BUILD=ci.CONFIG['build_number'],
                        MACOS_MIN='26.0', MACOS_MIN_M3='15.0')
     # Compile both upstream targets together; make shares header dependencies safely.
@@ -243,6 +260,7 @@ def build():
               'metal_libraries': info['metal_libraries'], 'metal_minimum_os': info['metal_minimum_os'],
               'prepared_cache_hit': os.environ.get('MACOS_PREPARED_CACHE_HIT') == 'true',
               'native_build_seconds': round(time.monotonic() - started, 2),
+              'runtime_generation_seconds': generation_seconds,
               'native_built_from_source': True, 'portable': True, 'device_tested': False,
               'xcode': run('xcodebuild', '-version'), 'sdk': run('xcrun', '--sdk', 'macosx', '--show-sdk-version'),
               'packages': packages}

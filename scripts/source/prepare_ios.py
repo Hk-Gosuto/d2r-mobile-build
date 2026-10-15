@@ -183,6 +183,9 @@ def prepare():
                       for p in sorted(stage.rglob('*')) if p.is_file()}}
     write(stage / 'prepared.json', info)
     verify_directory(stage)
+    from source.upgrade_prepared import upgrade
+    upgrade(stage, game.parent, legacy / 'pack_index.tsv', upstream)
+    info = verify_directory(stage)
     verify_source(stage, info, upstream, ci.CONFIG)
     target = root / '.ios-prepared'
     shutil.rmtree(target, ignore_errors=True)
