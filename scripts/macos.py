@@ -116,7 +116,6 @@ def load_prepared():
     return info
 
 
-
 def verify():
     try:
         load_prepared()
@@ -189,7 +188,6 @@ def prepare():
     print('Mac preparation completed and verified; original archive retained', flush=True)
 
 
-
 def plan_prepared():
     url, digest = settings('MACOS_PREPARED_INPUT')
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
@@ -240,6 +238,7 @@ def export_prepared():
                     '将此 ZIP 作为 MACOS_PREPARED_INPUT 使用。\n')
     publish_assets(require_private(), info['key'], 'macOS prepared input', body, [package, sums])
     print('Mac prepared archive SHA256:', digest, flush=True)
+
 
 def build():
     root = ci.ROOT
