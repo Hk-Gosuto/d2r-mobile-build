@@ -4,29 +4,35 @@
 
 Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source with GitHub Actions. Each run defaults to the latest official upstream Release and publishes to your private repository.
 
-## Build for iOS
+## Configure and build
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
 2. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret and paste the following JSON as its value:
 
    ```json
    {
-     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
-     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+     "ios": {
+       "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+       "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+     },
+     "macos": {
+       "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+       "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
+     }
    }
    ```
 
-   The prepared package in this configuration is provided by a community contributor.
+   The prepared packages in this configuration are provided by community contributors.
 
-3. Open **Actions → Build IPA → Run workflow**. Building and publishing typically takes **2–3 minutes**.
+3. Under **Actions**, choose **Build IPA** for iOS or **Build macOS** for Mac, then click **Run workflow**. Building and publishing typically takes **2–3 minutes**.
 
 - Run with the defaults to compile the latest official upstream Release.
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
 - To test your changes, set `source_repository` to your fork and `source_ref` to its branch. For private source repositories, add a **`SOURCE_TOKEN`** Secret with Contents read access to that repository.
 
-The build entry automatically uses the latest build logic maintained by this project. The workflow downloads and verifies the prepared package, checks source compatibility, then compiles and packages both IPAs. Completed downloads and native compiler modules are cached for later builds. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
+The build entry automatically uses the latest build logic maintained by this project. The workflow downloads and verifies the prepared package, checks source compatibility, then compiles and packages two system variants for the selected platform. Completed downloads and build caches are reused on later runs. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
 
-## Download and use
+## Download and use on iOS
 
 After the build, download from your repository’s **Releases**:
 
@@ -56,36 +62,22 @@ Run **Build IPA** again to build the latest official upstream Release. Back up s
 
 Ordinary native code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer prepared package and update `PREPARED_INPUT`.
 
-## Build for macOS
+## Download and use on macOS
 
-1. In your private repository, add a **`MACOS_PREPARED_INPUT`** Secret containing the Mac prepared package’s download configuration:
-
-   ```json
-   {
-     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
-     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
-   }
-   ```
-
-   The prepared package in this configuration is provided by a community contributor.
-
-2. Open **Actions → Build macOS → Run workflow**. Building and publishing typically takes **2–3 minutes**. The source selection fields work the same way as for iOS.
-
-The workflow downloads and verifies the Mac prepared package, compiles the current native source for both system versions, and publishes the apps. Prepared downloads are cached for later builds. The package contains the rewritten game programs, Mac interface resources and precompiled macOS Metal libraries. See the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md).
-
-Download from your repository’s **Releases**:
+Run **Build macOS** with the shared `PREPARED_INPUT` configuration above. After the build, download the ZIP matching your Mac from your repository’s **Releases**:
 
 | File | Purpose |
 |---|---|
-| `D2RMobile-<version>-build.<run>.<attempt>-macos26.zip` | Apple silicon Macs running macOS 26 or later |
-| `D2RMobile-<version>-build.<run>.<attempt>-macos15.zip` | Apple silicon Macs running macOS 15–25 |
+| `D2RMobile-<version>-build.<run>.<attempt>-macos26.zip` | Apple silicon Macs running macOS 26 or later; contains `D2R Mobile.app` |
+| `D2RMobile-<version>-build.<run>.<attempt>-macos15.zip` | Apple silicon Macs running macOS 15–25; contains `D2R Mobile M3.app` |
 | `Mac-SHA256SUMS.txt`, `macos-build-report.json` | Checksums and build details |
 
-Extract the ZIP and move the app to **Applications**. Reuse the Data downloaded above:
+1. Extract the ZIP and drag the `.app` into **Applications**. Keep the accompanying `Mac Resource Metadata` folder for the next steps.
+2. Download Data from the [game resource folder](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA). Download all three split parts and open `.001` to extract the entire `D2R Mobile Resources` folder. Keep it in a stable location, such as your Games folder. Existing iOS Data can be reused here.
+3. In Finder, press **⌘⇧.** to show hidden files. Copy `build_manifest.psv` and `.build.config` from `Mac Resource Metadata/data` into `D2R Mobile Resources/data`, alongside the 18 `.data` files.
+4. Open the app from **Applications**. If macOS blocks it because the developer cannot be verified, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).
+5. When the app asks for resources, select the entire **`D2R Mobile Resources`** folder containing `data`. The app remembers this location. Metal shaders are included precompiled.
 
-1. In Finder, press **⌘⇧.** to show hidden files. Copy `build_manifest.psv` and `.build.config` from the included `Mac Resource Metadata/data` into `D2R Mobile Resources/data`.
-2. On first launch, select the `D2R Mobile Resources` folder. The app remembers this location.
+To update, run **Build macOS** again and replace the existing app with the new `.app`. Keep the resource folder in the same location. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
 
-Keep the resources in that location when updating the app. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
-
-The apps are signed ad hoc. If macOS blocks the first launch, follow Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).
+The build checks the prepared package’s source compatibility before compiling. See the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md) for preparing your own input.

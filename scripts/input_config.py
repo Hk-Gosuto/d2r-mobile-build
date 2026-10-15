@@ -108,11 +108,17 @@ def parse_checksum(text):
     return entries[0]
 
 
-def settings(secret_name='PREPARED_INPUT'):
+def settings(secret_name='PREPARED_INPUT', platform='ios'):
     try:
         config = json.loads(os.environ.get(secret_name, ''))
     except ValueError:
         raise ValueError(secret_name + ' must be a JSON object with url and sha256') from None
+    if secret_name == 'PREPARED_INPUT' and isinstance(config, dict) and {'ios', 'macos'} & config.keys():
+        if set(config) - {'ios', 'macos'}:
+            raise ValueError('PREPARED_INPUT supports ios and macos configurations')
+        config = config.get(platform)
+        if not isinstance(config, dict):
+            raise ValueError('PREPARED_INPUT must contain a ' + platform + ' configuration')
     if not isinstance(config, dict) or not isinstance(config.get('url'), str):
         raise ValueError(secret_name + ' must contain a download url')
     if set(config) - {'url', 'sha256', 'sha256_url'}:

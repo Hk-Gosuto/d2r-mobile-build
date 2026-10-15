@@ -196,7 +196,7 @@ def prepare():
 
 
 def plan_prepared():
-    url, digest = settings('MACOS_PREPARED_INPUT')
+    url, digest = settings(platform='macos')
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
         stream.write('input_revision=' + input_identity(url, digest) + '\n')
 
@@ -236,8 +236,8 @@ def export_prepared():
     body = out / 'MAC-PREPARED-RELEASE.md'
     body.write_text('macOS prepared input / macOS 预处理包\n\n'
                     f'Source / 源码：`{info["source_commit"]}`\n\n'
-                    'Use D2RMobile-MacPrepared.zip as MACOS_PREPARED_INPUT. / '
-                    '将此 ZIP 作为 MACOS_PREPARED_INPUT 使用。\n')
+                    'Set its URL and SHA-256 in PREPARED_INPUT.macos. / '
+                    '将此 ZIP 的地址和校验值填入 PREPARED_INPUT 的 macos 配置。\n')
     publish_assets(require_private(), info['key'], 'macOS prepared input', body, [package, sums])
     print('Mac prepared archive SHA256:', digest, flush=True)
 
@@ -333,13 +333,13 @@ def publish():
                     'Extract the ZIP and move the app to Applications. On first launch, choose your game’s '
                     'D2R Mobile Resources folder after merging the included Mac Resource Metadata files into it. Metal libraries are precompiled. '
                     'This build has not been tested on a physical device. '
-                    '[Usage](https://github.com/jiayx/d2r-mobile-build/blob/main/README.md#build-for-macos).\n\n'
+                    '[Usage](https://github.com/jiayx/d2r-mobile-build/blob/main/README.md#download-and-use-on-macos).\n\n'
                     '## 简体中文\n\n'
                     f'源码：`{report["source_commit"]}`。\n\n'
                     '- `macos26.zip`：macOS 26 及以上。\n- `macos15.zip`：macOS 15–25。\n\n'
                     '解压 ZIP，将应用移到“应用程序”。将附带的 Mac Resource Metadata 合并到 Data 文件夹，首次启动选择 D2R Mobile Resources。'
                     'Metal 着色器已预编译，未做真机测试。'
-                    '[使用说明](https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md#构建-macos)。\n')
+                    '[使用说明](https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md#macos-下载和使用)。\n')
     return publish_assets(repo, report['release_tag'],
                           f"D2R Mobile {ci.build_label()} · macOS build {ci.CONFIG['build_number']}", body,
                           [*paths, out / 'Mac-SHA256SUMS.txt', out / 'macos-build-report.json'])
@@ -352,7 +352,7 @@ def main(command):
     {'plan': plan, 'download': download, 'prepare': prepare,
      'verify': verify, 'build': build, 'publish': publish,
      'plan-prepared': plan_prepared, 'import': import_prepared, 'export': export_prepared,
-     'download-prepared': lambda: download_prepared(ci.ROOT, 'MACOS_PREPARED_INPUT', '.macos-downloads')}[command]()
+     'download-prepared': lambda: download_prepared(ci.ROOT, cache_name='.macos-downloads', platform='macos')}[command]()
 
 
 if __name__ == '__main__':

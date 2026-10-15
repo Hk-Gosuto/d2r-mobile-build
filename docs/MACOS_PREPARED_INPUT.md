@@ -2,7 +2,7 @@
 
 [English](MACOS_PREPARED_INPUT.md) | [简体中文](MACOS_PREPARED_INPUT.zh-CN.md)
 
-Set `MACOS_PREPARED_INPUT` to a JSON object containing the package’s HTTPS `url` and `sha256`. The ZIP has this layout:
+In the `PREPARED_INPUT` Secret, set the `macos` object’s HTTPS `url` and `sha256` to this package. The ZIP has this layout:
 
 ```text
 manifest.json

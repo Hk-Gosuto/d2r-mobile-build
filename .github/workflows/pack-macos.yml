@@ -12,7 +12,7 @@ on:
         type: boolean
         default: true
     secrets:
-      MACOS_PREPARED_INPUT:
+      PREPARED_INPUT:
         required: true
       SOURCE_TOKEN:
         required: false
@@ -72,7 +72,7 @@ jobs:
       - name: Resolve the Mac prepared input
         id: input
         env:
-          MACOS_PREPARED_INPUT: ${{ secrets.MACOS_PREPARED_INPUT }}
+          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
         run: python scripts/macos.py plan-prepared
       - name: Restore the original prepared package
         id: archive
@@ -83,7 +83,7 @@ jobs:
           key: macos-input-v1-${{ steps.input.outputs.input_revision }}
       - name: Download and verify the Mac prepared package
         env:
-          MACOS_PREPARED_INPUT: ${{ secrets.MACOS_PREPARED_INPUT }}
+          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
           INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
         run: python scripts/macos.py download-prepared
       - name: Check input cache space

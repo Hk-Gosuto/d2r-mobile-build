@@ -2,7 +2,7 @@
 
 [English](MACOS_PREPARED_INPUT.md) | [简体中文](MACOS_PREPARED_INPUT.zh-CN.md)
 
-在 `MACOS_PREPARED_INPUT` 中填写 JSON，包含预处理包的 HTTPS 下载地址 `url` 和校验值 `sha256`。ZIP 内的目录如下：
+在 `PREPARED_INPUT` Secret 的 `macos` 对象中填写预处理包的 HTTPS 下载地址 `url` 和校验值 `sha256`。ZIP 内的目录如下：
 
 ```text
 manifest.json

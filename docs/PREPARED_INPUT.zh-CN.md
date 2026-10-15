@@ -2,7 +2,7 @@
 
 [English](PREPARED_INPUT.md) | [简体中文](PREPARED_INPUT.zh-CN.md)
 
-在 `PREPARED_INPUT` Secret 中填写 ZIP、tar.gz 或 tar.xz 预处理包的 HTTPS 链接。必需文件如下，允许外面再套一层文件夹。
+在 `PREPARED_INPUT` Secret 的 `ios` 对象中填写 ZIP、tar.gz 或 tar.xz 预处理包的 HTTPS 链接。必需文件如下，允许外面再套一层文件夹。
 
 ```text
 prepared.json

@@ -4,29 +4,35 @@
 
 在 GitHub Actions 中从 [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 源码构建 iOS 和 macOS 应用。默认选择上游最新正式 Release，发布到自己的私有仓库。
 
-## 构建 iOS
+## 配置和构建
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
 2. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**，将以下 JSON 粘贴为它的值：
 
    ```json
    {
-     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
-     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+     "ios": {
+       "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+       "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+     },
+     "macos": {
+       "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+       "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
+     }
    }
    ```
 
    配置中的预处理包由热心网友提供。
 
-3. 打开 **Actions → Build IPA → Run workflow**。预计 **2–3 分钟**完成打包并发布。
+3. 在 **Actions** 中选择 **Build IPA** 构建 iOS，或 **Build macOS** 构建 Mac，点击 **Run workflow**。预计 **2–3 分钟**完成打包并发布。
 
 - 默认直接运行，自动编译上游最新正式 Release。
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。
 - 测试自己的修改：`source_repository` 填自己的 Fork，`source_ref` 填对应分支。私有源码仓库另配置 **`SOURCE_TOKEN`** Secret，授予该源码仓库 Contents 只读权限。
 
-构建入口自动使用本项目维护的最新构建逻辑。工作流下载并校验预处理包，检查源码兼容性，再编译、打包两份 IPA。下载完成的预处理包和原生编译模块会缓存，供后续构建复用。同一上游版本支持多次构建及重跑，每次使用独立的 Release 和文件名。
+构建入口自动使用本项目维护的最新构建逻辑。工作流下载并校验预处理包，检查源码兼容性，再编译、打包所选平台的两种系统版本。后续构建会复用下载和编译缓存。同一上游版本支持多次构建及重跑，每次使用独立的 Release 和文件名。
 
-## 下载和使用
+## iOS 下载和使用
 
 构建完成后，在自己仓库的 **Releases** 下载：
 
@@ -56,36 +62,22 @@
 
 普通原生代码更新可复用预处理包；工作流提示生成规则不兼容时，取得新版预处理包并更新 `PREPARED_INPUT`。
 
-## 构建 macOS
+## macOS 下载和使用
 
-1. 在自己的私有仓库添加 Secret **`MACOS_PREPARED_INPUT`**，填入 Mac 预处理包的下载配置：
-
-   ```json
-   {
-     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
-     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
-   }
-   ```
-
-   此配置中的预处理包由热心网友提供。
-
-2. 打开 **Actions → Build macOS → Run workflow**。构建和发布通常需要 **2–3 分钟**。源码选择参数与 iOS 构建相同。
-
-工作流下载并校验 Mac 预处理包，从当前源码编译两种系统版本的原生程序，并发布应用。下载完成的包会缓存，供后续构建复用。包内包含改写后的游戏程序、Mac 界面资源和预编译 macOS Metal 着色器，结构见[Mac 预处理包格式](docs/MACOS_PREPARED_INPUT.zh-CN.md)。
-
-在自己仓库的 **Releases** 下载：
+使用上方共用的 `PREPARED_INPUT` 配置运行 **Build macOS**。构建完成后，在自己仓库的 **Releases** 下载适合当前 Mac 的 ZIP：
 
 | 文件 | 用途 |
 |---|---|
-| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos26.zip` | macOS 26 及以上的 Apple 芯片 Mac |
-| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos15.zip` | macOS 15–25 的 Apple 芯片 Mac |
+| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos26.zip` | macOS 26 及以上的 Apple 芯片 Mac，内含 `D2R Mobile.app` |
+| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos15.zip` | macOS 15–25 的 Apple 芯片 Mac，内含 `D2R Mobile M3.app` |
 | `Mac-SHA256SUMS.txt`、`macos-build-report.json` | 校验值与构建详情 |
 
-解压 ZIP，将应用移到“应用程序”。游戏资源可复用上方下载的 Data：
+1. 解压 ZIP，将 `.app` 拖入“应用程序”，保留一起解压出来的 `Mac Resource Metadata` 文件夹。
+2. 从[游戏资源目录](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)下载 Data，下载全部三个分卷后打开 `.001`，解压得到整个 `D2R Mobile Resources` 文件夹，放在固定位置，例如自己的“游戏”文件夹。已有的 iOS Data 可以直接复用。
+3. 在 Finder 按 **⌘⇧.** 显示隐藏文件，将 `Mac Resource Metadata/data` 中的 `build_manifest.psv` 和 `.build.config` 复制到 `D2R Mobile Resources/data`，与 18 个 `.data` 文件放在一起。
+4. 从“应用程序”打开 App。若系统提示无法验证开发者，进入 **系统设置 → 隐私与安全性 → 仍要打开**，再确认“打开”。详见 Apple 的[打开可信应用说明](https://support.apple.com/zh-cn/102445)。
+5. 应用提示选择资源时，选择包含 `data` 的整个 **`D2R Mobile Resources`** 文件夹。应用会记住这个位置，包内已包含预编译 Metal 着色器。
 
-1. 在 Finder 按 **⌘⇧.** 显示隐藏文件，将 ZIP 附带的 `Mac Resource Metadata/data` 中的 `build_manifest.psv` 和 `.build.config` 复制到 `D2R Mobile Resources/data`。
-2. 首次启动应用，选择 `D2R Mobile Resources` 文件夹；应用会记住这个位置。
+更新时再次运行 **Build macOS**，用新 `.app` 替换原应用，保持资源文件夹的位置不变即可。macOS 15 版使用独立存档目录，可与 macOS 26 版并存。
 
-更新应用时保持资源位置不变即可。macOS 15 版使用独立存档目录，可与 macOS 26 版并存。
-
-应用使用本机临时签名。首次打开若被系统拦截，按 Apple 的[打开可信应用说明](https://support.apple.com/102445)操作。
+构建前会检查预处理包与源码的兼容性。自行准备输入的格式见[Mac 预处理包格式](docs/MACOS_PREPARED_INPUT.zh-CN.md)。

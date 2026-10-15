@@ -2,7 +2,7 @@
 
 [English](PREPARED_INPUT.md) | [简体中文](PREPARED_INPUT.zh-CN.md)
 
-Supply an HTTPS link to a ZIP, tar.gz, or tar.xz package in the `PREPARED_INPUT` Secret. The required files are shown below; one enclosing directory is supported.
+Supply an HTTPS link to a ZIP, tar.gz, or tar.xz package in the `PREPARED_INPUT` Secret’s `ios` object. The required files are shown below; one enclosing directory is supported.
 
 ```text
 prepared.json
