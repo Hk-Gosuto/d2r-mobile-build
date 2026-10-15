@@ -16,7 +16,9 @@ Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source 
    }
    ```
 
-3. Open **Actions → Build IPA → Run workflow**. Building and publishing typically takes **2–3 minutes**, excluding runner queue time.
+   The prepared package in this configuration is provided by a community contributor.
+
+3. Open **Actions → Build IPA → Run workflow**. Building and publishing typically takes **2–3 minutes**.
 
 - Run with the defaults to compile the latest official upstream Release.
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
@@ -34,7 +36,7 @@ After the build, download from your repository’s **Releases**:
 | `D2RMobile-<version>-build.<run>.<attempt>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`, `build-report.json` | Checksums and build details |
 
-Download the [game resources (Data and Legacy)](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA):
+Download the community-provided [game resources (Data and Legacy)](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA):
 
 | Package | Download size | Purpose |
 |---|---|---|

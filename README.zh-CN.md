@@ -16,7 +16,9 @@
    }
    ```
 
-3. 打开 **Actions → Build IPA → Run workflow**。预计 **2–3 分钟**完成打包并发布，不含机器排队时间。
+   配置中的预处理包由热心网友提供。
+
+3. 打开 **Actions → Build IPA → Run workflow**。预计 **2–3 分钟**完成打包并发布。
 
 - 默认直接运行，自动编译上游最新正式 Release。
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。
@@ -34,7 +36,7 @@
 | `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`、`build-report.json` | 校验值与构建详情 |
 
-下载[配套游戏资源（Data 和 Legacy）](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)：
+下载热心网友提供的[配套游戏资源（Data 和 Legacy）](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)：
 
 | 压缩包 | 下载大小 | 用途 |
 |---|---|---|
