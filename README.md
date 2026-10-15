@@ -37,7 +37,9 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
 - To test your changes, set `source_repository` to your fork and `source_ref` to its branch. For private source repositories, add a **`SOURCE_TOKEN`** Secret with Contents read access to that repository.
 
-The build entry automatically uses the latest build logic maintained by this project. The workflow downloads and verifies the prepared package, checks source compatibility, then compiles and packages two system variants for the selected platform. Completed downloads and build caches are reused on later runs. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
+The build entry automatically uses this project's latest build logic. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
+
+To prepare your own inputs, see [Generate an iOS prepared package](docs/PREPARED_INPUT.md#generate-an-ios-prepared-package) or the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md).
 
 ## Download and use on iOS
 
@@ -67,9 +69,7 @@ Device requirements: A14 / M1 or newer, with at least 6 GB of memory.
 
 Run **Build IPA** again to build the latest official upstream Release. Back up saves, keep the app identifier unchanged, and install over the existing app. Previously imported matching Data and Legacy resources remain reusable.
 
-Ordinary native code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer prepared package and update `prepared_input`.
-
-To generate your own iOS prepared input, see [Generate an iOS prepared package](docs/PREPARED_INPUT.md#generate-an-ios-prepared-package).
+Reuse your existing prepared input configuration when updating. If the workflow asks for a newer prepared package, update `prepared_input` and run it again.
 
 ## Download and use on macOS
 
@@ -87,12 +87,10 @@ Run **Build macOS** with the macOS JSON configuration above. After the build, do
 4. Open the app from **Applications**. If macOS blocks it because the developer cannot be verified, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).
 5. When the app asks for resources, select the entire **`D2R Mobile Resources`** folder containing `data`. The app remembers this location. Metal shaders are included precompiled.
 
-The build checks the prepared package’s source compatibility before compiling. See the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md) for preparing your own input.
-
 ## Update the macOS app
 
 Run **Build macOS** again with the macOS JSON configuration to build the latest official upstream Release. Quit the app and back up saves, then download and extract the ZIP for the same macOS 26 or macOS 15 app variant. Replace the existing `.app` in **Applications** with the new one.
 
 Keep the resource folder in the same location. Existing Data can be reused while the game resource version remains unchanged. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
 
-Ordinary app code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer Mac prepared package and update `prepared_input`.
+Reuse your existing Mac prepared input configuration when updating. If the workflow asks for a newer Mac prepared package, update `prepared_input` and run it again.

@@ -37,7 +37,9 @@
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。
 - 测试自己的修改：`source_repository` 填自己的 Fork，`source_ref` 填对应分支。私有源码仓库另配置 **`SOURCE_TOKEN`** Secret，授予该源码仓库 Contents 只读权限。
 
-构建入口自动使用本项目维护的最新构建逻辑。工作流下载并校验预处理包，检查源码兼容性，再编译、打包所选平台的两种系统版本。后续构建会复用下载和编译缓存。同一上游版本支持多次构建及重跑，每次使用独立的 Release 和文件名。
+构建入口自动使用本项目维护的最新构建逻辑。同一上游版本支持多次构建及重跑，每次使用独立的 Release 和文件名。
+
+需要自行准备输入时，见[生成 iOS 预处理包](docs/PREPARED_INPUT.zh-CN.md#生成-ios-预处理包)或 [Mac 预处理包格式](docs/MACOS_PREPARED_INPUT.zh-CN.md)。
 
 ## iOS 下载和使用
 
@@ -67,9 +69,7 @@
 
 再次运行 **Build IPA** 即可构建上游最新正式 Release。更新 IPA 时备份存档，保持应用标识一致并覆盖安装，已导入的相同 Data 和 Legacy 可继续使用。
 
-普通原生代码更新可复用预处理包；工作流提示生成规则不兼容时，取得新版预处理包并更新 `prepared_input`。
-
-需要自行生成 iOS 预处理包时，见[生成 iOS 预处理包](docs/PREPARED_INPUT.zh-CN.md#生成-ios-预处理包)。
+更新时可继续使用原来的预处理包配置；若工作流提示需要新版预处理包，更新 `prepared_input` 后重新运行。
 
 ## macOS 下载和使用
 
@@ -87,12 +87,10 @@
 4. 从“应用程序”打开 App。若系统提示无法验证开发者，进入 **系统设置 → 隐私与安全性 → 仍要打开**，再确认“打开”。详见 Apple 的[打开可信应用说明](https://support.apple.com/zh-cn/102445)。
 5. 应用提示选择资源时，选择包含 `data` 的整个 **`D2R Mobile Resources`** 文件夹。应用会记住这个位置，包内已包含预编译 Metal 着色器。
 
-构建前会检查预处理包与源码的兼容性。自行准备输入的格式见[Mac 预处理包格式](docs/MACOS_PREPARED_INPUT.zh-CN.md)。
-
 ## 更新 macOS 应用
 
 再次运行 **Build macOS**，填写 macOS 的 JSON 配置，即可构建上游最新正式 Release。退出应用并备份存档。按原先使用的 macOS 26 版或 macOS 15 版下载对应 ZIP，解压后用新 `.app` 替换“应用程序”中的原应用。
 
 保持资源文件夹的位置不变，游戏资源版本未变时可继续复用已有 Data。macOS 15 版使用独立存档目录，可与 macOS 26 版并存。
 
-普通应用代码更新可复用预处理包；工作流提示生成规则不兼容时，取得新版 Mac 预处理包并更新 `prepared_input`。
+更新时可继续使用原来的 Mac 预处理包配置；若工作流提示需要新版 Mac 预处理包，更新 `prepared_input` 后重新运行。
