@@ -392,15 +392,23 @@ def main(mode):
     report = json.loads((OUT / 'build-report.json').read_text())
     validate_report(report)
     paths = validate_packages(report)
-    legacy = verify_legacy_reference(repo, report)
     manifest = json.loads((OUT / 'resource-manifest.json').read_text())
     for key in ('game_version', 'switch_version'):
         if manifest[key] != ci.CONFIG[key]:
             raise ValueError('IPA resource version differs: ' + key)
     reference = json.loads((OUT / 'resources.json').read_text())
-    source = api(f"repos/{repo}/releases/{reference['source_release']['id']}")
-    if resource_reference(repo, source, manifest) != reference:
-        raise ValueError('Referenced Data is no longer complete or compatible')
+    if report.get('prepared_input'):
+        from source.prepared import verify_references
+        for name in ('resource-manifest.json', 'resources.json', 'legacy-resources.json'):
+            if ci.sha256(OUT / name) != report['prepared_metadata_sha256'][name]:
+                raise ValueError('Prepared resource metadata changed after input verification: ' + name)
+        legacy = json.loads((OUT / 'legacy-resources.json').read_text())
+        verify_references(manifest, reference, legacy, report['legacy_pack'])
+    else:
+        legacy = verify_legacy_reference(repo, report)
+        source = api(f"repos/{repo}/releases/{reference['source_release']['id']}")
+        if resource_reference(repo, source, manifest) != reference:
+            raise ValueError('Referenced Data is no longer complete or compatible')
     STAGE.mkdir(exist_ok=True)
     tag = ci.release_tag()
     title = release_title()

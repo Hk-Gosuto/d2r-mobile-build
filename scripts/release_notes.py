@@ -14,8 +14,8 @@ def bilingual(english, chinese):
 
 def ipa(repo, config, reference, legacy=None):
     standard, compatibility = ci.ipa_names(config)
-    readme = 'https://github.com/jiayx/d2r-mobile-build#readme'
-    chinese_readme = 'https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md'
+    readme = 'https://github.com/jiayx/d2r-mobile-build/blob/feat/build-template/README.md'
+    chinese_readme = 'https://github.com/jiayx/d2r-mobile-build/blob/feat/build-template/README.zh-CN.md'
     data_url = reference['source_release']['url']
     identity = reference['resource_id']
     links = '\n'.join(f"- [{a['name']}]({a['url']})" for a in reference['assets']
@@ -24,12 +24,12 @@ def ipa(repo, config, reference, legacy=None):
     if legacy:
         url = next(a['url'] for a in legacy['assets'] if a['name'] == 'Legacy-Device-Pack.zip')
         english_legacy = (
-            '### A16 and earlier devices\n\n'
+            '### A14–A16 devices\n\n'
             f'Also download [Legacy-Device-Pack.zip]({url}), extract it, and copy the entire '
             '`Legacy Device Pack` folder into the app beside `D2R Mobile Resources`. '
             'Both IPA variants use this pack. A17 Pro and newer devices and M-series iPads do not need it.\n\n')
         chinese_legacy = (
-            '### A16 及更早设备\n\n'
+            '### A14–A16 设备\n\n'
             f'还需下载 [Legacy-Device-Pack.zip]({url})，解压后将整个 `Legacy Device Pack` 文件夹'
             '与 `D2R Mobile Resources` 并排导入。两份 IPA 共用本补充包；A17 Pro 及更新芯片和 M 系列 iPad 无需导入。\n\n')
     english = (

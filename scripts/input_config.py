@@ -36,6 +36,30 @@ def drive_file_id(url):
 def download_file(url, destination, expected=None, max_bytes=None):
     url = https_url(url)
     destination = Path(destination)
+    # Authenticated downloads are restricted to the caller's own repository.
+    # Never forward a GitHub token to an arbitrary input host or repository.
+    parsed = urlsplit(url)
+    repository = os.environ.get('GITHUB_REPOSITORY', '')
+    if (repository and parsed.hostname == 'api.github.com' and
+            re.fullmatch(r'/repos/' + re.escape(repository) + r'/releases/assets/\d+', parsed.path)):
+        import subprocess
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        partial = destination.with_suffix(destination.suffix + '.part')
+        try:
+            with partial.open('wb') as stream:
+                result = subprocess.run(['gh', 'api', parsed.path.lstrip('/'),
+                                         '-H', 'Accept: application/octet-stream'], stdout=stream,
+                                        stderr=subprocess.DEVNULL)
+            if result.returncode or not partial.stat().st_size:
+                raise RuntimeError('Private input asset download failed')
+            if max_bytes and partial.stat().st_size > max_bytes:
+                raise ValueError('Input file is too large')
+            if expected and ci.sha256(partial) != expected:
+                raise ValueError('Download SHA256 mismatch: ' + destination.name)
+            partial.replace(destination)
+        finally:
+            partial.unlink(missing_ok=True)
+        return
     if drive_file_id(url) is None:
         if max_bytes:
             ci.download(url, destination, expected, max_bytes=max_bytes)
@@ -92,13 +116,13 @@ def parse_checksum(text):
     return entries[0]
 
 
-def settings():
+def settings(secret_name='GAME_ARCHIVE'):
     try:
-        config = json.loads(os.environ.get('GAME_ARCHIVE', ''))
+        config = json.loads(os.environ.get(secret_name, ''))
     except ValueError:
-        raise ValueError('GAME_ARCHIVE must be a JSON object with url and optional sha256 or sha256_url') from None
+        raise ValueError(secret_name + ' must be a JSON object with url and optional sha256 or sha256_url') from None
     if not isinstance(config, dict) or not isinstance(config.get('url'), str):
-        raise ValueError('GAME_ARCHIVE must contain a download url')
+        raise ValueError(secret_name + ' must contain a download url')
     url = https_url(config['url'])
     drive_file_id(url)
     digest = config.get('sha256')

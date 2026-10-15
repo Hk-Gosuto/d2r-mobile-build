@@ -84,5 +84,29 @@ class InputConfigTests(unittest.TestCase):
                 inputs.download_file('https://storage.invalid/sums',Path(temp)/'sums',max_bytes=65536)
             read.assert_not_called()
 
+    def test_named_prepared_secret_uses_the_same_json_and_checksum_validation(self):
+        value = {'url': 'https://storage.invalid/prepared.zip', 'sha256': 'a' * 64}
+        with patch.dict(os.environ, PREPARED_INPUT=json.dumps(value)):
+            self.assertEqual(inputs.settings('PREPARED_INPUT'), (value['url'], value['sha256']))
+        with patch.dict(os.environ, PREPARED_INPUT='bad JSON'):
+            with self.assertRaisesRegex(ValueError, 'PREPARED_INPUT'):
+                inputs.settings('PREPARED_INPUT')
+
+    def test_private_asset_credentials_are_used_only_for_the_callers_repository(self):
+        content = b'private prepared package'
+        def fetch(args, stdout=None, **kwargs):
+            self.assertEqual(args[0:2], ['gh', 'api'])
+            stdout.write(content)
+            return types.SimpleNamespace(returncode=0)
+        import subprocess
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, GITHUB_REPOSITORY='owner/repo'), patch.object(subprocess, 'run', side_effect=fetch) as gh, patch.object(ci, 'download') as generic:
+            dest = Path(temporary) / 'package'
+            inputs.download_file('https://api.github.com/repos/owner/repo/releases/assets/123', dest, hashlib.sha256(content).hexdigest())
+            self.assertEqual(dest.read_bytes(), content)
+            self.assertEqual(gh.call_count, 1)
+            inputs.download_file('https://api.github.com/repos/other/repo/releases/assets/123', dest)
+            self.assertEqual(gh.call_count, 1)
+            generic.assert_called_once()
+
 
 if __name__=='__main__':unittest.main()

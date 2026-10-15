@@ -2,114 +2,67 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-使用 GitHub Actions，从 [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 源码构建自己的 IPA 和 Data。提供包含自有 ExeFS/RomFS 的压缩包及 SHA256SUMS 校验文件，支持 HTTPS 直链或 Google Drive 文件分享链接。工作流下载并缓存输入，在 macOS 26 上从源码编译两种 iOS 版本，将结果保存到你自己的私有仓库 Release，无需上游预先发布 IPA。
+使用 GitHub Actions 和自己的预处理包，从 [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 源码构建两份 IPA。默认选择上游最新正式 Release，在 macOS 26 上编译，并发布到自己的私有仓库。
 
-## 1. 准备输入压缩包
+## 1. 准备输入
 
-支持的游戏版本：**3.3.94012**，Switch 更新 **1.0.34.0**，包含所需资料片。需要已经解密、合并本体与更新的完整 ExeFS 和 RomFS，具体要求见上游的[游戏文件说明](https://github.com/jhaizhou-ops/d2r-mobile/blob/main/docs/GAME_FILES.zh-CN.md)。
+准备预处理包及配套的 `Prepared-SHA256SUMS.txt`，取得两个文件的 HTTPS 下载链接。支持直链和 Google Drive 文件分享链接。
 
-打成一个 **ZIP、tar.gz 或 tar.xz**，目录如下：
+预处理包包含已生成的游戏 payload、原生编译所需文件、预编译 Metal 着色器，以及配套 Data / Legacy Device Pack 的下载信息。包的结构和导出方式见[预处理包说明](docs/PREPARED_INPUT.md)。
 
-```text
-ExeFS/
-  main
-  sdk
-  subsdk0
-RomFS/
-  data/
-    build_manifest.psv
-    ...完整游戏资源...
-```
+Google Drive 使用 `https://drive.google.com/file/d/文件ID/view` 形式的文件分享链接，将文件设为「知道链接的任何人 → 查看者」。签名直链的有效期需覆盖下载过程。
 
-允许外面再套一层文件夹。
-
-在压缩包旁生成校验文件：
-
-```sh
-# macOS
-shasum -a 256 game-input.zip > SHA256SUMS.txt
-# Linux
-sha256sum game-input.zip > SHA256SUMS.txt
-```
-
-Windows PowerShell：
-
-```powershell
-$hash = (Get-FileHash .\game-input.zip -Algorithm SHA256).Hash
-"$hash  game-input.zip" | Set-Content -Encoding ascii SHA256SUMS.txt
-```
-
-将**压缩包和校验文件**都上传到自己的存储服务，取得无需登录即可下载的链接。Google Drive 选择「知道链接的任何人 → 查看者」后，可直接使用文件分享链接，大 ZIP 的下载确认页会自动处理；不要使用文件夹链接。使用签名 HTTPS 直链时，有效期需覆盖整个下载过程。校验文件只能包含这一份压缩包的校验值。
-
-## 2. 创建自己的构建仓库
+## 2. 创建构建仓库
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，选择 **Create a new repository**，可见性选 **Private**。
-2. 将本页的[构建入口工作流](.github/workflows/build.yml)复制到自己私有仓库的 `.github/workflows/build.yml`，已有旧入口时替换它。入口调用维护中的源码构建工作流，后续 App 版本更新无需重复复制构建脚本。
-3. 打开 **Settings → Secrets and variables → Actions → New repository secret**。创建一个名为 **`GAME_ARCHIVE`** 的 Secret，填写以下 JSON：`url` 是 ZIP 的链接，`sha256_url` 是 `SHA256SUMS.txt` 的链接：
+2. 将本页的[构建入口工作流](.github/workflows/build.yml)复制到自己的 `.github/workflows/build.yml`。
+3. 打开 **Settings → Secrets and variables → Actions → New repository secret**，创建 **`PREPARED_INPUT`**，填写以下 JSON：
 
    ```json
    {
-     "url": "https://your-storage.example/game-input.zip",
-     "sha256_url": "https://your-storage.example/SHA256SUMS.txt"
+     "url": "https://your-storage.example/D2RMobile-Prepared.zip",
+     "sha256_url": "https://your-storage.example/Prepared-SHA256SUMS.txt"
    }
    ```
 
-Google Drive 链接直接使用 `https://drive.google.com/file/d/文件ID/view` 的形式即可，Actions 无需登录 Google 账号。两个链接保存在自己的私有仓库 Secret 中。
+`url` 是预处理包链接，`sha256_url` 是校验文件链接。两个链接保存在自己的仓库 Secret 中。
 
 ## 3. 执行构建
 
-在自己的仓库打开 **Actions → Build IPA and Data → Run workflow**。`source_ref` 留空，即自动获取并构建上游最新正式 Release。
+打开 **Actions → Build IPA → Run workflow**。`source_ref` 留空，自动获取上游最新正式 Release 的标签并编译。
 
-测试最新开发代码时，`source_ref` 填 `main`；也可以填其他分支、标签或提交。构建自己的修改时，`source_repository` 填自己的公开 Fork。选择与游戏输入版本匹配的源码。
+- 测试最新开发代码：`source_ref` 填 `main`，也可以填写其他分支、标签或提交。
+- 构建自己的修改：`source_repository` 填自己的 Fork，`source_ref` 填对应分支。
+- 使用私有源码仓库：添加 **`SOURCE_TOKEN`** Secret，填写对该源码仓库具有 Contents 只读权限的细粒度令牌。
 
-构建私有源码仓库时，添加 `SOURCE_TOKEN` 仓库 Secret，填写仅对该源码仓库具有 Contents 只读权限的细粒度令牌。`source_repository` 填对应的 `用户名/仓库名`，`source_ref` 填要构建的分支或标签。
-
-首次构建由两台 Linux 机器并行转换 Legacy 贴图，Data 与 IPA 构建流程并行处理。后续构建会复用已有资源和匹配的生成内容。
+工作流校验预处理包与所选源码的兼容性，再并行编译 iOS 18 和 iOS 26 两份 IPA。下载完成后先缓存，后续失败可复用已完成的下载。
 
 ## 4. 下载和安装
 
 设备要求：A14 / M1 及更新芯片，至少 6 GB 内存。
 
-构建成功后，打开**自己仓库的 Releases**。最新 App Release 包含：
+构建成功后，打开自己仓库的 **Releases**：
 
 | 文件 | 用途 |
 |---|---|
-| `D2RMobile-<版本>.ipa` | iOS 26 及以上 |
-| `D2RMobile-<版本>-ios18.ipa` | iOS 18–25 |
+| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>.ipa` | iOS 26 及以上 |
+| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`、`build-report.json` | 校验值与构建详情 |
-
-文件名使用源码标签；标签之后的构建会附带源码提交，没有版本标签时使用提交。Release 正文提供配套 Data 与 Legacy Device Pack 的下载链接。
-
-App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Release 和 IPA 文件名，例如 `v1.0.14-build.7.1`、`v1.0.14-build.7.2`；`7.2` 表示第 7 次工作流运行的第 2 次尝试。同一上游版本可以反复构建，分别下载并保留各次构建的包。连续触发的任务会排队，依次执行。
+| `RESOURCE-INSTALL.txt` | 配套资源安装说明 |
 
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装对应 IPA。
-2. 从正文链接的 Data Release 下载全部三个 `D2R-Mobile-Resources.zip.001`–`.003` 分卷，按 `RESOURCE-INSTALL.txt` 合并、解压，再通过 Finder 或“文件”App 将 `D2R Mobile Resources` 文件夹导入应用。
-3. **A14–A16 设备**还需下载正文链接的 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片和 M 系列 iPad 使用标准 Data 即可。
-4. 打开应用并导入或选择资源文件夹。Metal 着色器已在构建时预编译，首次启动无需等待批量着色器编译。
+2. 从 Release 正文的链接下载配套 Data，按 `RESOURCE-INSTALL.txt` 合并、解压，将 `D2R Mobile Resources` 文件夹通过 Finder 或“文件”App 导入应用。
+3. **A14–A16 设备**还需下载正文链接的 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片和 M 系列 iPad 使用标准 Data。
+4. 打开应用并选择资源文件夹。Metal 着色器已预编译，首次启动无需等待批量着色器编译。
 
-更新时保持应用标识一致，提前备份存档，再覆盖安装新版 IPA。
+Data 和 Legacy 的下载链接沿用预处理包内的信息。已导入相同资源时，更新 IPA 后继续使用原资源。更新前备份存档，保持应用标识一致并覆盖安装。
+
+## 更新
+
+再次运行 **Build IPA**，`source_ref` 留空，即使用维护中的最新构建逻辑和上游最新正式 Release。
+
+每次运行及重跑使用独立的 Release 和文件名，支持同一上游版本反复构建。预处理包的缓存与 App 版本无关，普通运行时代码更新可继续复用；上游改变游戏改写、素材或着色器生成规则时，工作流会提示更新预处理包。替换输入后更新 `PREPARED_INPUT` 中的链接和校验信息。
 
 ### iCloud 存档
 
-上游源码包含 iCloud 存档同步。这些未签名包使用普通侧载配置，不配置 iCloud 权限；免费 Apple ID 签名只支持本地存档。自动同步需要付费 Apple Developer Program 账号、已开启 iCloud 的 App ID，以及匹配的描述文件和签名，游戏内打开 iCloud 开关不能代替签名权限。导出的存档可以通过 iCloud 云盘手动备份或传输。
-
-## 更新与复用
-
-后续在自己的仓库再次运行 **Build IPA and Data**，将 `source_ref` 留空，即可使用最新构建工具打包上游最新正式 Release。输入文件保持相同时，沿用已有的 `GAME_ARCHIVE` 配置。
-
-每次新运行都会自动使用共享工作流的最新构建逻辑，无需同步模板或重新复制脚本。
-
-- 根据校验文件确定原始压缩包的缓存键，与 App 版本无关；验证下载后**先缓存，再解压**，后续解压或编译失败不会丢掉已完成的下载。
-- 压缩包校验值不变时复用已验证的输入清单；生成内容也匹配时，无需恢复和解压大压缩包即可继续构建。
-- Drive 下载遇到临时网络故障会重试，并在当前任务中续传；中断或失败的下载不会被当成完整缓存。
-- 游戏程序改写、界面素材、构建工具和着色器分开缓存，按各自相关输入计算缓存键；只修改 App 运行时代码时，不会让未变的改写产物和着色器缓存失效。
-- 自动下载并校验匹配的 SPIRV-Cross、zlib-ng 和着色器翻译工具预构建包；没有匹配包时自行从源码编译，无需额外配置。
-- Data 内容相同时，Release 直接引用已有的 Data。手机上已导入的资源继续使用。
-- Legacy 转换输入和设置相同时，恢复已有的 Legacy 包。
-- 复用 Legacy 时只下载校验通过的索引和描述文件，手机使用的大贴图包保留在已有 Release。
-- 各生成阶段完成后立即缓存；两份 iOS 版本在 macOS 26 上并行编译。
-- 两份 IPA 共用一次 macOS Metal 预编译。未变的着色器复用同一编译器下校验通过的结果，失败重试时也会保留已完成的着色器。
-- 保留仍被 App Release 引用的旧 Data 和 Legacy Release。
-- GitHub 可能清理缓存，请保留原始压缩包；更换输入时，保持 `GAME_ARCHIVE` 中 ZIP 和校验文件的链接有效。
-
-构建工具使用 [MIT 许可证](LICENSE)。上游及第三方代码保留各自许可证。
+默认侧载配置使用本地存档。iCloud 自动同步需要付费 Apple Developer Program 账号、已开启 iCloud 的 App ID，以及匹配的描述文件和签名。导出的存档也可通过 iCloud 云盘手动备份或传输。

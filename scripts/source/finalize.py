@@ -16,7 +16,8 @@ def main():
     reports = [json.loads((out / name).read_text())
                for name in ('source-report.json', 'source-ios18-report.json')]
     for key in ('source_commit', 'patch_sha256', 'product', 'payload_sha256', 'legacy_pack',
-                'app_version', 'build_number', 'release_tag', 'shader_chain', 'metal_toolchain', 'metal_precompiled'):
+                'app_version', 'build_number', 'release_tag', 'shader_chain', 'metal_toolchain', 'metal_precompiled',
+                'prepared_input', 'prepared_archive_sha256', 'prepared_metadata_sha256'):
         if reports[0].get(key) != reports[1].get(key):
             raise ValueError('The two IPA variants use different source inputs: ' + key)
     report = dict(reports[0], packages=reports)

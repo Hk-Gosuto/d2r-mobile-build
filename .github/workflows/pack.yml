@@ -1,4 +1,4 @@
-name: Reusable source build
+name: Reusable prepared-input build
 on:
   workflow_call:
     inputs:
@@ -8,11 +8,8 @@ on:
       source_ref:
         type: string
         default: ''
-      validate_legacy:
-        type: boolean
-        default: false
     secrets:
-      GAME_ARCHIVE:
+      PREPARED_INPUT:
         required: true
       SOURCE_TOKEN:
         required: false
@@ -20,15 +17,19 @@ permissions:
   contents: write
   actions: write
 concurrency:
-  group: d2r-build-${{ inputs.validate_legacy && 'validation' || 'release' }}
+  group: d2r-build
   queue: max
   cancel-in-progress: false
 jobs:
-  resolve:
+  prepare:
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     outputs:
       tools_commit: ${{ steps.tools.outputs.tools_commit }}
       input_revision: ${{ steps.input.outputs.input_revision }}
+    env:
+      SOURCE_REPOSITORY: ${{ inputs.source_repository }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check destination and fix the tools revision
         id: tools
@@ -60,42 +61,6 @@ jobs:
           repository: jiayx/d2r-mobile-build
           ref: ${{ steps.tools.outputs.tools_commit }}
           persist-credentials: false
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: requirements-inputs.txt
-      - name: Install the Drive input downloader
-        run: python -m pip install -r requirements-inputs.txt
-      - name: Resolve the archive checksum and cache identity
-        id: input
-        env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: python scripts/archive_input.py resolve
-  inputs:
-    needs: resolve
-    outputs:
-      source_commit: ${{ steps.context.outputs.source_commit }}
-      legacy_reused: ${{ steps.legacy.outputs.reused }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 360
-    env:
-      SOURCE_BUILD: '1'
-      SOURCE_REPOSITORY: ${{ inputs.source_repository }}
-      TOOLS_COMMIT: ${{ needs.resolve.outputs.tools_commit }}
-      DM_ROOT: ${{ github.workspace }}/.dm-work
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
-      D2RM_NO_METAL: '1'
-      PYTHONUTF8: '1'
-      J: '2'
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_NOLOGO: '1'
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
-          persist-credentials: false
       - name: Select the latest release or requested source
         id: source
         env:
@@ -110,550 +75,46 @@ jobs:
           fetch-depth: 0
           path: upstream
           persist-credentials: false
-      - name: Record the selected source and patches
-        id: context
+      - name: Record the selected source and build identity
         run: python3 scripts/source/configure.py
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-inputs.txt
-      - name: Install the Drive input downloader
+          cache-dependency-path: requirements-inputs.txt
+      - name: Install the input downloader
         run: python -m pip install -r requirements-inputs.txt
-      - name: Restore verified input metadata
-        id: input-metadata
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .input-metadata
-          key: input-metadata-v1-${{ needs.resolve.outputs.input_revision }}
-      - name: Verify input metadata against the supplied archive checksum
-        id: metadata-check
+      - name: Resolve the prepared package checksum
+        id: input
         env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: python scripts/source/input_metadata.py restore
-      - name: Check the original archive cache without transferring it
-        id: original-check
+          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
+        run: python scripts/source/prepared.py resolve
+      - name: Restore the original prepared package
+        id: archive
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          path: .game-downloads
-          key: input-archive-v1-${{ needs.resolve.outputs.input_revision }}
-          lookup-only: true
-      - name: Make room for input preparation
-        if: steps.metadata-check.outputs.reused != 'true' || steps.original-check.outputs.cache-hit != 'true'
-        run: bash scripts/runner_space.sh
-      - name: Restore the original input archive
-        if: steps.metadata-check.outputs.reused != 'true' || steps.original-check.outputs.cache-hit != 'true'
-        id: downloads
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .game-downloads
-          key: input-archive-v1-${{ needs.resolve.outputs.input_revision }}
-      - name: Download and verify the user-supplied archive
-        if: steps.metadata-check.outputs.reused != 'true' || steps.original-check.outputs.cache-hit != 'true'
+          path: .prepared-downloads
+          key: prepared-input-v1-${{ steps.input.outputs.input_revision }}
+      - name: Download and verify the prepared package
         env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: python scripts/archive_input.py download
-      - name: Save the original archive BEFORE extraction
-        if: (steps.metadata-check.outputs.reused != 'true' || steps.original-check.outputs.cache-hit != 'true') && steps.downloads.outputs.cache-hit != 'true'
+          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
+          INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
+        run: python scripts/source/prepared.py download
+      - name: Cache the completed download before preparing the build
+        if: steps.archive.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          path: .game-downloads
-          key: ${{ steps.downloads.outputs.cache-primary-key }}
-      - name: Confirm the download cache is available
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .game-downloads
-          key: input-archive-v1-${{ needs.resolve.outputs.input_revision }}
-          lookup-only: true
-          fail-on-cache-miss: true
-      - name: Extract and validate ExeFS/RomFS
-        if: steps.metadata-check.outputs.reused != 'true' || steps.original-check.outputs.cache-hit != 'true'
+          path: .prepared-downloads
+          key: ${{ steps.archive.outputs.cache-primary-key }}
+      - name: Verify compatibility and prepare current native sources
         env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: python scripts/archive_input.py prepare
-      - name: Save the verified resource and program metadata
-        if: steps.metadata-check.outputs.reused != 'true' || steps.original-check.outputs.cache-hit != 'true'
-        env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: python scripts/source/input_metadata.py save
-      - name: Cache the verified input metadata
-        if: steps.input-metadata.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .input-metadata
-          key: ${{ steps.input-metadata.outputs.cache-primary-key }}
-      - name: Hash phone resources and select the existing Legacy pack
-        id: legacy
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python scripts/legacy_pack.py plan
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: game-input-metadata
-          overwrite: true
-          path: |
-            outputs/build-context.json
-            outputs/resource-manifest.json
-            outputs/legacy-plan.json
-            outputs/verified-input.json
-          retention-days: 3
-          if-no-files-found: error
-  data:
-    needs: [resolve, inputs]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      SOURCE_BUILD: '1'
-      SOURCE_REPOSITORY: ${{ inputs.source_repository }}
-      TOOLS_COMMIT: ${{ needs.resolve.outputs.tools_commit }}
-      DM_ROOT: ${{ github.workspace }}/.dm-work
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
-      GH_TOKEN: ${{ github.token }}
-      PYTHONUTF8: '1'
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: game-input-metadata
-          path: outputs
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: ${{ inputs.source_repository }}
-          token: ${{ secrets.SOURCE_TOKEN || github.token }}
-          ref: ${{ needs.inputs.outputs.source_commit }}
-          path: upstream
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Apply the selected source configuration
-        run: python3 scripts/source/configure.py
-      - name: Find matching Data without downloading game files
-        id: reuse
-        run: python3 scripts/publish_release.py probe-resources
-      - if: steps.reuse.outputs.reused != 'true'
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-inputs.txt
-      - name: Prepare a new Data release only when needed
-        if: steps.reuse.outputs.reused != 'true'
-        run: |
-          bash scripts/runner_space.sh
-          python -m pip install -r requirements-inputs.txt
-      - name: Restore the verified original archive
-        if: steps.reuse.outputs.reused != 'true'
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .game-downloads
-          key: input-archive-v1-${{ needs.resolve.outputs.input_revision }}
-          fail-on-cache-miss: true
-      - name: Verify and extract the cached input
-        if: steps.reuse.outputs.reused != 'true'
-        env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: |
-          python scripts/archive_input.py download
-          python scripts/archive_input.py prepare
-      - name: Publish new Data
-        if: steps.reuse.outputs.reused != 'true'
-        run: python3 scripts/publish_release.py prepare-resources
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: data-metadata
-          overwrite: true
-          path: |
-            outputs/resources.json
-            outputs/RESOURCE-INSTALL.txt
-          retention-days: 3
-          if-no-files-found: error
-  legacy-worker:
-    needs: [resolve, inputs]
-    if: needs.inputs.outputs.legacy_reused != 'true' || inputs.validate_legacy
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        index: [0, 1]
-    env:
-      SOURCE_BUILD: '1'
-      SOURCE_REPOSITORY: ${{ inputs.source_repository }}
-      TOOLS_COMMIT: ${{ needs.resolve.outputs.tools_commit }}
-      DM_ROOT: ${{ github.workspace }}/.dm-work
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
-      GH_TOKEN: ${{ github.token }}
-      PYTHONUTF8: '1'
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: game-input-metadata
-          path: outputs
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: ${{ inputs.source_repository }}
-          token: ${{ secrets.SOURCE_TOKEN || github.token }}
-          ref: ${{ needs.inputs.outputs.source_commit }}
-          path: upstream
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Apply the selected source configuration
-        run: python3 scripts/source/configure.py
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-inputs.txt
-      - name: Prepare the conversion environment
-        run: |
-          bash scripts/runner_space.sh
-          python -m pip install -r requirements.txt
-      - name: Restore the verified original archive
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .game-downloads
-          key: input-archive-v1-${{ needs.resolve.outputs.input_revision }}
-          fail-on-cache-miss: true
-      - name: Verify and extract the cached input
-        env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: |
-          python scripts/archive_input.py download
-          python scripts/archive_input.py prepare
-      - name: Encode intact original batches assigned to this worker
-        env:
-          WORKER_INDEX: ${{ matrix.index }}
-        run: python -u scripts/legacy_batches.py convert --index "$WORKER_INDEX"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: legacy-worker-${{ matrix.index }}
-          path: outputs/legacy-worker-${{ matrix.index }}.tar
-          overwrite: true
-          compression-level: 0
-          retention-days: 3
-          if-no-files-found: error
-  legacy:
-    needs: [resolve, inputs, legacy-worker]
-    if: ${{ !cancelled() && needs.inputs.result == 'success' && (needs.legacy-worker.result == 'success' || needs.legacy-worker.result == 'skipped') }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      SOURCE_BUILD: '1'
-      SOURCE_REPOSITORY: ${{ inputs.source_repository }}
-      TOOLS_COMMIT: ${{ needs.resolve.outputs.tools_commit }}
-      DM_ROOT: ${{ github.workspace }}/.dm-work
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
-      GH_TOKEN: ${{ github.token }}
-      PYTHONUTF8: '1'
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: game-input-metadata
-          path: outputs
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: ${{ inputs.source_repository }}
-          token: ${{ secrets.SOURCE_TOKEN || github.token }}
-          ref: ${{ needs.inputs.outputs.source_commit }}
-          path: upstream
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Apply the selected source configuration
-        run: python3 scripts/source/configure.py
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-inputs.txt
-      - name: Restore verified Legacy metadata
-        if: needs.inputs.outputs.legacy_reused == 'true' && !inputs.validate_legacy
-        run: python3 scripts/legacy_pack.py
-      - name: Prepare the pack merge environment
-        if: needs.inputs.outputs.legacy_reused != 'true' || inputs.validate_legacy
-        run: |
-          bash scripts/runner_space.sh
-          python -m pip install -r requirements.txt
-      - name: Restore the verified original archive
-        if: needs.inputs.outputs.legacy_reused != 'true' || inputs.validate_legacy
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .game-downloads
-          key: input-archive-v1-${{ needs.resolve.outputs.input_revision }}
-          fail-on-cache-miss: true
-      - name: Verify and extract the cached input
-        if: needs.inputs.outputs.legacy_reused != 'true' || inputs.validate_legacy
-        env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: |
-          python scripts/archive_input.py download
-          python scripts/archive_input.py prepare
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        if: needs.inputs.outputs.legacy_reused != 'true' || inputs.validate_legacy
-        with:
-          pattern: legacy-worker-*
-          merge-multiple: true
-          path: outputs
-      - name: Merge and verify conversion batches
-        if: needs.inputs.outputs.legacy_reused != 'true' || inputs.validate_legacy
-        run: python -u scripts/legacy_batches.py merge
-      - name: Export the small Legacy build metadata
-        run: |
-          mkdir -p outputs/legacy-metadata
-          cp .dm-work/build/legacy/pack/pack.json .dm-work/build/legacy/pack/pack_index.tsv outputs/legacy-metadata/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: legacy-metadata
-          overwrite: true
-          path: |
-            outputs/legacy-resources.json
-            outputs/legacy-metadata
-            outputs/legacy-validation.json
-          retention-days: 3
-          if-no-files-found: error
-  prepare:
-    needs: [resolve, inputs, legacy]
-    if: ${{ !cancelled() && needs.legacy.result == 'success' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
-    env:
-      SOURCE_BUILD: '1'
-      SOURCE_REPOSITORY: ${{ inputs.source_repository }}
-      TOOLS_COMMIT: ${{ needs.resolve.outputs.tools_commit }}
-      DM_ROOT: ${{ github.workspace }}/.dm-work
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
-      GH_TOKEN: ${{ github.token }}
-      PYTHONUTF8: '1'
-      D2RM_NO_METAL: '1'
-      J: '2'
-      D2RM_ASTC_PACK: ${{ github.workspace }}/outputs/legacy-metadata
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_NOLOGO: '1'
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: game-input-metadata
-          path: outputs
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: ${{ inputs.source_repository }}
-          token: ${{ secrets.SOURCE_TOKEN || github.token }}
-          ref: ${{ needs.inputs.outputs.source_commit }}
-          path: upstream
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Apply the selected source configuration
-        run: python3 scripts/source/configure.py
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: legacy-metadata
-          path: outputs
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-inputs.txt
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
-        id: dotnet
-        with:
-          dotnet-version: '10.0.x'
-      - name: Install compiler and archive tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends clang cmake ninja-build fonts-dejavu-core libjpeg-dev zlib1g-dev libfreetype6-dev libraqm-dev
-          python -m pip install -r requirements.txt
-          df -h "$GITHUB_WORKSPACE"
-      - name: Compute dependency cache keys
-        id: cache-keys
-        run: python scripts/cache_keys.py
-      - name: Restore build tools
-        id: tools
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .tools
-          key: tools-v3-${{ runner.os }}-${{ runner.arch }}-${{ steps.cache-keys.outputs.tools }}
-      - name: Build and verify toolchain
-        run: |
-          bash scripts/tools.sh
-          python upstream/dm/gfx/tools/nometal_run.py upstream/dm/gfx/tools/dmsh_chain.py --header
-          echo "$GITHUB_WORKSPACE/.tools/bin" >> "$GITHUB_PATH"
-      - name: Compute verified shader cache key
-        id: shader-key
-        run: python scripts/cache_keys.py shaders
-      - name: Restore PNG compression backend
-        id: png
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .tools/png-zlib-ng-2.3.2
-          key: png-backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/png_backend.sh', 'scripts/build_tool.sh', 'scripts/prebuilt_tools.py') }}
-      - name: Pin the verified PNG compression backend
-        run: |
-          bash scripts/png_backend.sh
-          LD_PRELOAD="$GITHUB_WORKSPACE/.tools/png-zlib-ng-2.3.2/lib/libz.so.1" python - <<'PY'
-          from PIL import features
-          assert features.version('zlib') == '1.3.1.zlib-ng', features.version('zlib')
-          print('Verified PNG compressor:', features.version('zlib'))
-          PY
-      - name: Save PNG compression backend
-        if: steps.png.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .tools/png-zlib-ng-2.3.2
-          key: ${{ steps.png.outputs.cache-primary-key }}
-      - name: Save verified build tools
-        if: steps.tools.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .tools
-          key: ${{ steps.tools.outputs.cache-primary-key }}
-      - name: Restore the matching common payload
-        id: payload
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .dm-work/build/payload-cache
-          key: payload-v1-${{ needs.resolve.outputs.input_revision }}-${{ steps.shader-key.outputs.payload }}
-      - name: Verify the common payload cache
-        id: payload-check
-        env:
-          PAYLOAD_KEY: ${{ steps.shader-key.outputs.payload }}
-        run: |
-          python - <<'PYCODE'
-          import os
-          from scripts.source.prepare import cached_payload
-          usable = cached_payload(os.environ['PAYLOAD_KEY']) is not None
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write('usable='+str(usable).lower()+'\n')
-          PYCODE
-      - name: Restore matching rewritten game code
-        if: steps.payload-check.outputs.usable != 'true'
-        id: rewrite
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .dm-work/build/cache/dm/out
-          key: rewrite-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.cache-keys.outputs.rewrite }}
-      - name: Restore matching generated interface assets
-        if: steps.payload-check.outputs.usable != 'true'
-        id: assets
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            upstream/dm/ios/Gen/assets
-            upstream/dm/ios/Sources/TouchArt
-            upstream/dm/ios/Sources/dm_touch_native_art.c
-          key: assets-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.cache-keys.outputs.assets }}
-      - name: Restore matching shader outputs
-        if: steps.payload-check.outputs.usable != 'true'
-        id: shaders
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            .dm-work/build/cache/dm/dmsh
-            .dm-work/build/cache/metal_shader_cache
-            .dm-work/build/ios/dmsh_b
-          key: shaders-v4-${{ runner.os }}-${{ runner.arch }}-${{ needs.resolve.outputs.input_revision }}-${{ steps.shader-key.outputs.shaders }}
-          restore-keys: shaders-v4-${{ runner.os }}-${{ runner.arch }}-${{ needs.resolve.outputs.input_revision }}-
-      - name: Make room only when generation needs game files
-        if: steps.payload-check.outputs.usable != 'true'
-        run: bash scripts/runner_space.sh
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
-        if: steps.payload-check.outputs.usable != 'true'
-        with:
-          dotnet-version: ${{ steps.cache-keys.outputs.sdk }}
-      - name: Restore the verified original archive
-        if: steps.payload-check.outputs.usable != 'true'
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .game-downloads
-          key: input-archive-v1-${{ needs.resolve.outputs.input_revision }}
-          fail-on-cache-miss: true
-      - name: Verify and extract the cached input
-        if: steps.payload-check.outputs.usable != 'true'
-        env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-        run: |
-          python scripts/archive_input.py download
-          python scripts/archive_input.py prepare
-      - name: Verify frozen PNG hashes
-        if: steps.payload-check.outputs.usable != 'true'
-        run: LD_PRELOAD="$GITHUB_WORKSPACE/.tools/png-zlib-ng-2.3.2/lib/libz.so.1" python -u scripts/png_preflight.py
-      - name: Generate and verify rewritten game code
-        if: steps.payload-check.outputs.usable != 'true'
-        env:
-          REWRITE_KEY: ${{ steps.cache-keys.outputs.rewrite }}
-        run: python -u scripts/source/stages.py rewrite
-      - name: Save verified rewritten game code
-        if: steps.payload-check.outputs.usable != 'true' && steps.rewrite.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .dm-work/build/cache/dm/out
-          key: ${{ steps.rewrite.outputs.cache-primary-key }}
-      - name: Generate and verify interface assets
-        if: steps.payload-check.outputs.usable != 'true'
-        env:
-          ASSETS_KEY: ${{ steps.cache-keys.outputs.assets }}
-        run: LD_PRELOAD="$GITHUB_WORKSPACE/.tools/png-zlib-ng-2.3.2/lib/libz.so.1" python -u scripts/source/stages.py assets
-      - name: Save generated interface assets
-        if: steps.payload-check.outputs.usable != 'true' && steps.assets.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            upstream/dm/ios/Gen/assets
-            upstream/dm/ios/Sources/TouchArt
-            upstream/dm/ios/Sources/dm_touch_native_art.c
-          key: ${{ steps.assets.outputs.cache-primary-key }}
-      - name: Generate and verify shaders
-        if: steps.payload-check.outputs.usable != 'true'
-        run: python -u scripts/source/stages.py shaders
-      - name: Save verified shader outputs
-        if: steps.payload-check.outputs.usable != 'true' && steps.shaders.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            .dm-work/build/cache/dm/dmsh
-            .dm-work/build/cache/metal_shader_cache
-            .dm-work/build/ios/dmsh_b
-          key: ${{ steps.shaders.outputs.cache-primary-key }}
-      - name: Generate or reuse the common payload and current native sources
-        env:
-          PAYLOAD_KEY: ${{ steps.shader-key.outputs.payload }}
-        run: LD_PRELOAD="$GITHUB_WORKSPACE/.tools/png-zlib-ng-2.3.2/lib/libz.so.1" python -u scripts/source/prepare.py
-      - name: Save the verified common payload
-        if: steps.payload.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .dm-work/build/payload-cache
-          key: ${{ steps.payload.outputs.cache-primary-key }}
-      - name: Upload translated source build inputs
+          TOOLS_COMMIT: ${{ steps.tools.outputs.tools_commit }}
+          INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
+        run: python scripts/source/prepared.py prepare
+      - name: Upload verified native build inputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: translated-source-inputs
+          name: native-source-inputs
           overwrite: true
           path: |
             outputs/native-inputs.tar.gz
@@ -663,7 +124,7 @@ jobs:
           retention-days: 3
           compression-level: 0
           if-no-files-found: error
-      - name: Upload build metadata
+      - name: Upload resource links and current build metadata
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: build-metadata
@@ -671,73 +132,13 @@ jobs:
           path: |
             outputs/build-context.json
             outputs/resource-manifest.json
+            outputs/resources.json
             outputs/legacy-resources.json
           retention-days: 3
           if-no-files-found: error
-  metal:
-    needs: [resolve, prepare]
-    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
-    runs-on: macos-26
-    timeout-minutes: 180
-    env:
-      GH_TOKEN: ${{ github.token }}
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: translated-source-inputs
-          path: outputs
-      - name: Select macOS 26 and iOS 26.4+ SDK
-        run: python3 scripts/source/select_xcode.py
-      - name: Resolve the Metal compiler and shader cache
-        id: metal-key
-        run: |
-          tar -xzf outputs/native-inputs.tar.gz
-          python3 scripts/source/metal.py keys
-      - name: Restore compiled iOS shaders
-        id: metal-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .metal-cache
-          key: ${{ steps.metal-key.outputs.key }}
-          restore-keys: ${{ steps.metal-key.outputs.prefix }}
-      - name: Precompile and verify shared iOS Metal libraries
-        id: compile
-        run: |
-          set -o pipefail
-          python3 -u scripts/source/metal.py compile 2>&1 | tee outputs/metal-build.log
-      - name: Cache verified compiled shaders
-        if: success() && steps.metal-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .metal-cache
-          key: ${{ steps.metal-key.outputs.key }}
-      - name: Preserve completed shaders after a failed compilation
-        if: failure() && steps.compile.outcome == 'failure'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .metal-cache
-          key: ${{ steps.metal-key.outputs.key }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Upload source inputs with precompiled Metal shaders
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: native-source-inputs
-          path: |
-            outputs/native-inputs.tar.gz
-            outputs/source-payload.zip
-            outputs/source-input-report.json
-            outputs/build-context.json
-          retention-days: 3
-          compression-level: 0
-          if-no-files-found: error
   native:
-    needs: [resolve, metal]
-    if: ${{ !cancelled() && needs.metal.result == 'success' }}
+    needs: prepare
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
     runs-on: macos-26
     timeout-minutes: 90
     strategy:
@@ -745,12 +146,12 @@ jobs:
       matrix:
         minimum: ['26.0', '18.0']
     env:
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
+      INPUT_REVISION: ${{ needs.prepare.outputs.input_revision }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
+          ref: ${{ needs.prepare.outputs.tools_commit }}
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
@@ -783,18 +184,18 @@ jobs:
           compression-level: 0
           if-no-files-found: error
   publish:
-    needs: [resolve, native, data]
-    if: ${{ !cancelled() && needs.native.result == 'success' && needs.data.result == 'success' }}
+    needs: [prepare, native]
+    if: ${{ !cancelled() && needs.native.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
+      INPUT_REVISION: ${{ needs.prepare.outputs.input_revision }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: jiayx/d2r-mobile-build
-          ref: ${{ needs.resolve.outputs.tools_commit }}
+          ref: ${{ needs.prepare.outputs.tools_commit }}
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
@@ -804,10 +205,6 @@ jobs:
         with:
           pattern: IPA-ios*
           merge-multiple: true
-          path: outputs
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: data-metadata
           path: outputs
       - name: Publish to your private Releases
         run: |
