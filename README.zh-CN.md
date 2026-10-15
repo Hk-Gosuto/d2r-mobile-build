@@ -27,7 +27,7 @@
 | `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 合计 5.42 GB | 所有支持设备均需导入的 Data，解压后为包含 18 个 `.data` 文件的 `D2R Mobile Resources` 文件夹 |
 | `Legacy-Device-Pack.zip` | 1.02 GB | A14–A16 设备需要的补充贴图，解压后为 `Legacy Device Pack` 文件夹 |
 
-IPA 工作流只下载预处理包。Data 和 Legacy 从资源提供者的网盘另行下载，安装 IPA 后按[下载和使用](#下载和使用)导入。
+IPA 工作流只下载预处理包。Data 和 Legacy 从 [Data + Legacy 共享目录](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)另行下载，安装 IPA 后按[下载和使用](#下载和使用)导入。
 
 ## 构建
 
@@ -50,8 +50,8 @@ IPA 工作流只下载预处理包。Data 和 Legacy 从资源提供者的网盘
 | `SHA256SUMS.txt`、`build-report.json` | 校验值与构建详情 |
 
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装 IPA。
-2. 从资源提供者的网盘下载配套 Data。分卷形式需下载全部 `.001`、`.002`、`.003`，用支持分卷的解压工具打开 `.001`，将解压得到的 `D2R Mobile Resources` 文件夹通过 Finder 或“文件”App 导入应用。
-3. A14–A16 设备另从网盘下载 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片、M 系列 iPad 使用标准 Data。
+2. 从上方共享目录下载配套 Data。分卷形式需下载全部 `.001`、`.002`、`.003`，用支持分卷的解压工具打开 `.001`，将解压得到的 `D2R Mobile Resources` 文件夹通过 Finder 或“文件”App 导入应用。
+3. A14–A16 设备另从同一共享目录下载 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片、M 系列 iPad 使用标准 Data。
 4. 打开应用并选择资源文件夹。预处理包已包含预编译 Metal 着色器。
 
 设备要求：A14 / M1 及更新芯片，至少 6 GB 内存。

@@ -27,7 +27,7 @@ The workflow downloads the prepared package directly from Google Drive. See the 
 | `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | 5.42 GB total | Data required on every supported device; contains the `D2R Mobile Resources` folder with 18 `.data` files |
 | `Legacy-Device-Pack.zip` | 1.02 GB | Additional textures for A14–A16 devices; contains the `Legacy Device Pack` folder |
 
-The IPA workflow downloads only the prepared package. Download matching Data and Legacy archives from your resource provider’s storage, then follow [Download and use](#download-and-use) to import them after installing the IPA.
+The IPA workflow downloads only the prepared package. Download matching resources from the [Data + Legacy shared folder](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA), then follow [Download and use](#download-and-use) to import them after installing the IPA.
 
 ## Build
 
@@ -50,8 +50,8 @@ After the build, download from your repository’s **Releases**:
 | `SHA256SUMS.txt`, `build-report.json` | Checksums and build details |
 
 1. Sign and install the IPA with [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/).
-2. Download matching Data from your resource provider’s storage. For split archives, download all `.001`, `.002`, and `.003` parts and open `.001` with an extractor supporting split archives. Import the extracted `D2R Mobile Resources` folder into the app using Finder or Files.
-3. A14–A16 devices also need `Legacy-Device-Pack.zip` from your storage provider. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
+2. Download matching Data from the shared folder linked above. For split archives, download all `.001`, `.002`, and `.003` parts and open `.001` with an extractor supporting split archives. Import the extracted `D2R Mobile Resources` folder into the app using Finder or Files.
+3. A14–A16 devices also need `Legacy-Device-Pack.zip` from the same shared folder. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
 4. Open the app and select the resource folder. The prepared package includes precompiled Metal shaders.
 
 Device requirements: A14 / M1 or newer, with at least 6 GB of memory.
