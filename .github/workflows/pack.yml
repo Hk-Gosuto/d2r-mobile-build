@@ -8,6 +8,10 @@ on:
       source_ref:
         type: string
         default: ''
+      use_cache:
+        description: Reuse and save caches; disable for cold-build measurements
+        type: boolean
+        default: true
     secrets:
       PREPARED_INPUT:
         required: true
@@ -80,7 +84,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-          cache: pip
+          cache: ${{ inputs.use_cache && 'pip' || '' }}
           cache-dependency-path: requirements-inputs.txt
       - name: Install the input downloader
         run: python -m pip install -r requirements-inputs.txt
@@ -91,6 +95,7 @@ jobs:
         run: python scripts/source/prepared.py resolve
       - name: Restore the original prepared package
         id: archive
+        if: inputs.use_cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .prepared-downloads
@@ -101,7 +106,7 @@ jobs:
           INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
         run: python scripts/source/prepared.py download
       - name: Cache the completed download before preparing the build
-        if: steps.archive.outputs.cache-hit != 'true'
+        if: inputs.use_cache && steps.archive.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .prepared-downloads
@@ -154,6 +159,7 @@ jobs:
         run: python3 scripts/source/select_xcode.py
       - name: Restore matching native compiler modules
         id: modules
+        if: inputs.use_cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .native-module-cache
@@ -173,12 +179,12 @@ jobs:
           .venv/bin/python scripts/source/build.py "$MINIMUM_IOS" 2>&1 | tee outputs/native-build.log
       - name: Check compiler cache budget
         id: budget
-        if: steps.modules.outputs.cache-hit != 'true'
+        if: inputs.use_cache && steps.modules.outputs.cache-hit != 'true'
         env:
           SAVE_NATIVE: 'true'
         run: python3 scripts/cache_budget.py
       - name: Save native compiler modules when space permits
-        if: steps.modules.outputs.cache-hit != 'true' && steps.budget.outputs.native == 'true'
+        if: inputs.use_cache && steps.modules.outputs.cache-hit != 'true' && steps.budget.outputs.native == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .native-module-cache
