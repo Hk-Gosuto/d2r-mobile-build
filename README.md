@@ -16,7 +16,7 @@ Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source 
    }
    ```
 
-3. Open **Actions → Build IPA → Run workflow**.
+3. Open **Actions → Build IPA → Run workflow**. Building and publishing typically takes **2–3 minutes**, excluding runner queue time.
 
 - Run with the defaults to compile the latest official upstream Release.
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
@@ -34,17 +34,17 @@ After the build, download from your repository’s **Releases**:
 | `D2RMobile-<version>-build.<run>.<attempt>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`, `build-report.json` | Checksums and build details |
 
-Download the resources used on your device from the [Data + Legacy shared folder](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA):
+Download the [game resources (Data and Legacy)](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA):
 
 | Package | Download size | Purpose |
 |---|---|---|
 | `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | 5.42 GB total | Data required on every supported device; contains the `D2R Mobile Resources` folder with 18 `.data` files |
 | `Legacy-Device-Pack.zip` | 1.02 GB | Additional textures for A14–A16 devices; contains the `Legacy Device Pack` folder |
 
-1. Sign and install the IPA with [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/).
-2. Download matching Data from the shared folder linked above. For split archives, download all `.001`, `.002`, and `.003` parts and open `.001` with an extractor supporting split archives. Import the extracted `D2R Mobile Resources` folder into the app using Finder or Files.
-3. A14–A16 devices also need `Legacy-Device-Pack.zip` from the same shared folder. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
-4. Open the app and select the resource folder. The prepared package includes precompiled Metal shaders.
+1. Sign and install the IPA with [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/), then open the app once.
+2. Download matching Data from the link above. For split archives, download all `.001`, `.002`, and `.003` parts and open `.001` with an extractor supporting split archives. Copy the entire extracted `D2R Mobile Resources` folder to **Files → On My iPhone → D2R Mobile**. Alternatively, connect to a Mac and drag the folder into the app under **Finder → your iPhone → Files**.
+3. A14–A16 devices also need `Legacy-Device-Pack.zip` from the same link. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
+4. Return to the app after copying. If the resource prompt is still shown, tap **Retry**; the app automatically detects and loads the resources. The IPA includes precompiled Metal shaders.
 
 Device requirements: A14 / M1 or newer, with at least 6 GB of memory.
 

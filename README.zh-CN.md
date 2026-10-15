@@ -16,7 +16,7 @@
    }
    ```
 
-3. 打开 **Actions → Build IPA → Run workflow**。
+3. 打开 **Actions → Build IPA → Run workflow**。预计 **2–3 分钟**完成打包并发布，不含机器排队时间。
 
 - 默认直接运行，自动编译上游最新正式 Release。
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。
@@ -34,17 +34,17 @@
 | `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`、`build-report.json` | 校验值与构建详情 |
 
-从 [Data + Legacy 共享目录](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)下载手机运行所需的资源：
+下载[配套游戏资源（Data 和 Legacy）](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)：
 
 | 压缩包 | 下载大小 | 用途 |
 |---|---|---|
 | `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 合计 5.42 GB | 所有支持设备均需导入的 Data，解压后为包含 18 个 `.data` 文件的 `D2R Mobile Resources` 文件夹 |
 | `Legacy-Device-Pack.zip` | 1.02 GB | A14–A16 设备需要的补充贴图，解压后为 `Legacy Device Pack` 文件夹 |
 
-1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装 IPA。
-2. 从上方共享目录下载配套 Data。分卷形式需下载全部 `.001`、`.002`、`.003`，用支持分卷的解压工具打开 `.001`，将解压得到的 `D2R Mobile Resources` 文件夹通过 Finder 或“文件”App 导入应用。
-3. A14–A16 设备另从同一共享目录下载 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片、M 系列 iPad 使用标准 Data。
-4. 打开应用并选择资源文件夹。预处理包已包含预编译 Metal 着色器。
+1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装 IPA，安装后先打开一次应用。
+2. 从上方链接下载配套 Data。分卷形式需下载全部 `.001`、`.002`、`.003`，用支持分卷的解压工具打开 `.001`，将解压得到的整个 `D2R Mobile Resources` 文件夹拷到“文件”App →“我的 iPhone”→“D2R Mobile”；也可连接 Mac，在 Finder → 手机 →“文件”中拖入该应用。
+3. A14–A16 设备另从同一链接下载 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片、M 系列 iPad 使用标准 Data。
+4. 拷贝完成后回到应用，若停在资源提示页，点击“重试”，应用会自动检测并加载资源。IPA 已包含预编译 Metal 着色器。
 
 设备要求：A14 / M1 及更新芯片，至少 6 GB 内存。
 
