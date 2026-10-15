@@ -62,12 +62,14 @@ Ordinary native code changes can reuse the prepared package. If the workflow rep
 
    ```json
    {
-     "url": "HTTPS download URL of the Mac prepared package",
-     "sha256": "SHA-256 of the Mac prepared package"
+     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
    }
    ```
 
-2. Open **Actions → Build macOS → Run workflow**. The source selection fields work the same way as for iOS.
+   The prepared package in this configuration is provided by a community contributor.
+
+2. Open **Actions → Build macOS → Run workflow**. Building and publishing typically takes **2–3 minutes**. The source selection fields work the same way as for iOS.
 
 The workflow downloads and verifies the Mac prepared package, compiles the current native source for both system versions, and publishes the apps. Prepared downloads are cached for later builds. The package contains the rewritten game programs, Mac interface resources and precompiled macOS Metal libraries. See the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md).
 

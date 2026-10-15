@@ -62,12 +62,14 @@
 
    ```json
    {
-     "url": "Mac 预处理包的 HTTPS 下载地址",
-     "sha256": "Mac 预处理包的 SHA-256"
+     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
    }
    ```
 
-2. 打开 **Actions → Build macOS → Run workflow**。源码选择参数与 iOS 构建相同。
+   此配置中的预处理包由热心网友提供。
+
+2. 打开 **Actions → Build macOS → Run workflow**。构建和发布通常需要 **2–3 分钟**。源码选择参数与 iOS 构建相同。
 
 工作流下载并校验 Mac 预处理包，从当前源码编译两种系统版本的原生程序，并发布应用。下载完成的包会缓存，供后续构建复用。包内包含改写后的游戏程序、Mac 界面资源和预编译 macOS Metal 着色器，结构见[Mac 预处理包格式](docs/MACOS_PREPARED_INPUT.zh-CN.md)。
 
