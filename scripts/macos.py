@@ -282,7 +282,7 @@ def publish():
                     'Metal 着色器已预编译，未做真机测试。'
                     '[使用说明](https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md#macos-下载和使用)。\n')
     return publish_assets(repo, report['release_tag'],
-                          f"D2R Mobile {ci.build_label()} · macOS build {ci.CONFIG['build_number']}", body,
+                          f"{ci.build_label()} · macOS build {ci.CONFIG['build_number']}", body,
                           [*paths, out / 'Mac-SHA256SUMS.txt', out / 'macos-build-report.json'])
 
 

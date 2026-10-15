@@ -137,7 +137,7 @@ def main():
     paths = collect_packages(out)
     body = out / 'RELEASE.md'
     body.write_text(notes())
-    title = f"D2R Mobile {ci.build_label()} · build {ci.CONFIG['build_number']}"
+    title = f"{ci.build_label()} · build {ci.CONFIG['build_number']}"
     return publish_assets(repo, ci.release_tag(), title, body,
                           [*paths, out / 'SHA256SUMS.txt', out / 'build-report.json'])
 
