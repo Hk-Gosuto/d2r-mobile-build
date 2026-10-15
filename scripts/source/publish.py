@@ -40,7 +40,7 @@ def publish():
     body.write_text(notes())
     tag, title = ci.release_tag(), releases.release_title()
     releases.ensure_release(repo, tag, title, body)
-    releases.upload_verified(repo, tag, [*paths, out / 'SHA256SUMS.txt', out / 'build-report.json'])
+    releases.upload_verified(repo, tag, [*paths, out / 'SHA256SUMS.txt', out / 'build-report.json'], workers=4)
     release = releases.publish_complete(repo, tag, body, title)
     print('Published verified IPAs:', release['html_url'], flush=True)
     if os.environ.get('GITHUB_STEP_SUMMARY'):

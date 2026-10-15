@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+import time
 import yaml
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -51,6 +52,7 @@ def main():
                      'CURRENT_PROJECT_VERSION':ci.CONFIG['build_number'],
                      'MARKETING_VERSION':ci.CONFIG['app_version']})
     settings['COMPILER_INDEX_STORE_ENABLE']='NO'
+    settings['CLANG_MODULE_CACHE_PATH']=str(root/'.native-module-cache')
     props=target['info']['properties']
     for key in list(props):
         if key.startswith('BA'):props.pop(key)
@@ -67,9 +69,11 @@ def main():
     (ios/'source-build.yml').write_text(yaml.safe_dump(project,sort_keys=False))
     run('xcodegen','generate','--spec','source-build.yml',cwd=ios)
     derived=root/'native-build'
+    started=time.monotonic()
     subprocess.run(['xcodebuild','-project','SourceBuild.xcodeproj','-scheme','DmIOS','-configuration','Release',
                     '-sdk','iphoneos','-destination','generic/platform=iOS','-derivedDataPath',str(derived),
                     'CODE_SIGNING_ALLOWED=NO','CODE_SIGNING_REQUIRED=NO','build'],cwd=ios,check=True)
+    native_seconds=round(time.monotonic()-started,2)
     app=derived/'Build/Products/Release-iphoneos/DmIOS.app'
     plist=plistlib.loads((app/'Info.plist').read_bytes());native=(app/plist['CFBundleExecutable']).read_bytes()
     native_os=ci.macho_minimum_os(native)
@@ -110,6 +114,8 @@ def main():
                   app_version=ci.CONFIG['app_version'],build_number=ci.CONFIG['build_number'],
                   release_tag=ci.CONFIG['release_tag'],
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
+                  native_build_seconds=native_seconds,
+                  native_module_cache_hit=os.environ.get('NATIVE_MODULE_CACHE_HIT')=='true',
                   icloud_sync_provisioned=False,icloud_sync_verified=False,
                   xcode=run('xcodebuild','-version').strip(),sdk=run('xcrun','--sdk','iphoneos','--show-sdk-version').strip())
     (root/'outputs'/f'source{suffix}-report.json').write_text(json.dumps(report,indent=2)+'\n')

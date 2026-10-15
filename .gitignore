@@ -7,6 +7,7 @@
 .prepared-downloads/
 .prepared-input/
 native-build/
+.native-module-cache/
 .release-assets/
 upstream/
 outputs/

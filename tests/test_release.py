@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import threading
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
@@ -98,3 +99,25 @@ class ReleaseTests(unittest.TestCase):
         published = {'draft': False, 'html_url': 'https://github.com/owner/repo/releases/tag/tag'}
         with patch.object(module, 'gh'), patch.object(module, 'release_info', return_value=published):
             self.assertEqual(module.publish_complete('owner/repo', 'tag', 'notes.md'), published)
+
+    def test_independent_assets_upload_in_parallel_and_all_server_digests_are_verified(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            files = [Path(temporary) / name for name in ('one.ipa', 'two.ipa')]
+            for path in files:
+                path.write_bytes(path.name.encode())
+            assets = [{'name': p.name, 'size': p.stat().st_size, 'state': 'uploaded',
+                       'digest': 'sha256:' + module.ci.sha256(p)} for p in files]
+            barrier = threading.Barrier(2)
+            def upload(*args):
+                self.assertEqual(args[:2], ('release', 'upload'))
+                barrier.wait(timeout=5)
+            for corrupt in (False, True):
+                result = {'assets': [dict(a) for a in assets]}
+                if corrupt:
+                    result['assets'][0]['digest'] = 'sha256:' + '0' * 64
+                with patch.object(module, 'release_info', side_effect=[{'assets': []}, result]), patch.object(module, 'gh', side_effect=upload):
+                    if corrupt:
+                        with self.assertRaisesRegex(ValueError, 'SHA256 mismatch'):
+                            module.upload_verified('owner/repo', 'tag', files, workers=2)
+                    else:
+                        self.assertEqual(module.upload_verified('owner/repo', 'tag', files, workers=2), result)

@@ -135,6 +135,10 @@ jobs:
         minimum: ['26.0', '18.0']
     env:
       INPUT_REVISION: ${{ needs.prepare.outputs.input_revision }}
+      GH_TOKEN: ${{ github.token }}
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -146,7 +150,14 @@ jobs:
           name: native-source-inputs
           path: outputs
       - name: Select macOS 26 and iOS 26.4+ SDK
+        id: xcode
         run: python3 scripts/source/select_xcode.py
+      - name: Restore matching native compiler modules
+        id: modules
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .native-module-cache
+          key: native-modules-v1-${{ runner.arch }}-${{ matrix.minimum }}-${{ steps.xcode.outputs.toolchain }}
       - name: Prepare native build dependencies
         run: |
           brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
@@ -156,9 +167,22 @@ jobs:
       - name: Compile and verify the IPA
         env:
           MINIMUM_IOS: ${{ matrix.minimum }}
+          NATIVE_MODULE_CACHE_HIT: ${{ steps.modules.outputs.cache-hit }}
         run: |
           set -o pipefail
           .venv/bin/python scripts/source/build.py "$MINIMUM_IOS" 2>&1 | tee outputs/native-build.log
+      - name: Check compiler cache budget
+        id: budget
+        if: steps.modules.outputs.cache-hit != 'true'
+        env:
+          SAVE_NATIVE: 'true'
+        run: python3 scripts/cache_budget.py
+      - name: Save native compiler modules when space permits
+        if: steps.modules.outputs.cache-hit != 'true' && steps.budget.outputs.native == 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .native-module-cache
+          key: ${{ steps.modules.outputs.cache-primary-key }}
       - name: Upload the verified IPA
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

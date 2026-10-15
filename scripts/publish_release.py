@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import ci
 import export_resources
@@ -252,11 +253,12 @@ def ensure_release(repo, tag, title, notes):
     return release
 
 
-def upload_verified(repo, tag, assets):
+def upload_verified(repo, tag, assets, workers=1):
     require_private(repo)
     release = release_info(repo, tag)
     current = {item['name']: item for item in release['assets']}
     expected = {}
+    pending = []
     for path in assets:
         digest = ci.sha256(path)
         expected[path.name] = (path.stat().st_size, digest)
@@ -264,8 +266,12 @@ def upload_verified(repo, tag, assets):
         if item and item.get('state') == 'uploaded' and item.get('digest') == 'sha256:' + digest and item['size'] == path.stat().st_size:
             print('Release asset unchanged:', path.name, flush=True)
             continue
+        pending.append(path)
+    def upload(path):
         print('Uploading release asset:', path.name, flush=True)
         gh('release', 'upload', tag, path, '--repo', repo, '--clobber')
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(upload, pending))
     release = release_info(repo, tag)
     remote = {item['name']: item for item in release['assets']}
     for name, (size, digest) in expected.items():
