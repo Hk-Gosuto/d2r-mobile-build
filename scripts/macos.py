@@ -345,13 +345,19 @@ def publish():
                           [*paths, out / 'Mac-SHA256SUMS.txt', out / 'macos-build-report.json'])
 
 
+def main(command):
+    validation = os.environ.get('MACOS_BUILD_VALIDATION') == 'true'
+    if not (validation and command in ('plan-prepared', 'download-prepared', 'import', 'build')):
+        require_private()
+    {'plan': plan, 'download': download, 'prepare': prepare,
+     'verify': verify, 'build': build, 'publish': publish,
+     'plan-prepared': plan_prepared, 'import': import_prepared, 'export': export_prepared,
+     'download-prepared': lambda: download_prepared(ci.ROOT, 'MACOS_PREPARED_INPUT', '.macos-downloads')}[command]()
+
+
 if __name__ == '__main__':
-    require_private()
     try:
-        {'plan': plan, 'download': download, 'prepare': prepare,
-         'verify': verify, 'build': build, 'publish': publish,
-         'plan-prepared': plan_prepared, 'import': import_prepared, 'export': export_prepared,
-         'download-prepared': lambda: download_prepared(ci.ROOT, 'MACOS_PREPARED_INPUT', '.macos-downloads')}[sys.argv[1]]()
+        main(sys.argv[1])
     except Exception as exc:
         print('::error::' + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__), file=sys.stderr)
         sys.exit(1)

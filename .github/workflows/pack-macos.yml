@@ -8,6 +8,9 @@ on:
       source_ref:
         type: string
         default: ''
+      publish:
+        type: boolean
+        default: true
     secrets:
       MACOS_PREPARED_INPUT:
         required: true
@@ -26,6 +29,7 @@ jobs:
     timeout-minutes: 30
     env:
       SOURCE_REPOSITORY: ${{ inputs.source_repository }}
+      MACOS_BUILD_VALIDATION: ${{ !inputs.publish }}
       GH_TOKEN: ${{ github.token }}
       PIP_DISABLE_PIP_VERSION_CHECK: '1'
       PYTHONUTF8: '1'
@@ -72,6 +76,7 @@ jobs:
         run: python scripts/macos.py plan-prepared
       - name: Restore the original prepared package
         id: archive
+        if: inputs.publish
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .macos-downloads
@@ -83,10 +88,10 @@ jobs:
         run: python scripts/macos.py download-prepared
       - name: Check input cache space
         id: budget
-        if: steps.archive.outputs.cache-hit != 'true'
+        if: inputs.publish && steps.archive.outputs.cache-hit != 'true'
         run: python scripts/cache_budget.py .macos-downloads macos
       - name: Cache the completed download before extraction
-        if: steps.budget.outputs.macos == 'true'
+        if: inputs.publish && steps.budget.outputs.macos == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .macos-downloads
@@ -101,6 +106,7 @@ jobs:
           MACOS_PREPARED_CACHE_HIT: ${{ steps.archive.outputs.cache-hit }}
         run: python scripts/macos.py build
       - name: Upload verified macOS packages
+        if: inputs.publish
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macOS-apps
@@ -112,5 +118,14 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 3
-      - name: Publish to your private Releases
+      - name: Publish to your Releases
+        if: inputs.publish
         run: python scripts/macos.py publish
+      - name: Upload the build report
+        if: ${{ !inputs.publish }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-build-report
+          path: outputs/macos-build-report.json
+          if-no-files-found: error
+          retention-days: 3
