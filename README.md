@@ -22,8 +22,8 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/D2RMobile-MacPrepared.zip",
-     "sha256_url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/MacPrepared-SHA256SUMS.txt"
+     "url": "https://ipfs.filebase.io/ipfs/bafybeihkvz24tivc4hqtlruqlagtrtgcanuzj3o4fgrfjgolxui4hzvni4/D2RMobile-MacPrepared.zip",
+     "sha256_url": "https://ipfs.filebase.io/ipfs/bafybeihkvz24tivc4hqtlruqlagtrtgcanuzj3o4fgrfjgolxui4hzvni4/MacPrepared-SHA256SUMS.txt"
    }
    ```
 
