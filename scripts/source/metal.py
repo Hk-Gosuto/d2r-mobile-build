@@ -43,7 +43,7 @@ def toolchain(dm):
     run = lambda *args: subprocess.check_output(args, text=True).strip()
     ios = module(dm / 'ios/tools/ios_metal.py', 'ios_metal_compile')
     # Honor the upstream iOS compile implementation, including its deployment target.
-    identity = {'metal': check.stdout.strip(), 'xcode': run('xcodebuild', '-version'),
+    identity = {'metal': check.stdout.splitlines()[0], 'xcode': run('xcodebuild', '-version'),
                 'sdk': run('xcrun', '--sdk', 'iphoneos', '--show-sdk-build-version'),
                 'compiler_sha256': ci.sha256(Path(run('xcrun', '-sdk', 'iphoneos', '--find', 'metal'))),
                 'ios_compile_sha256': ci.sha256(dm / 'ios/tools/ios_metal.py'),
