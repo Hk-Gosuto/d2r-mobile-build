@@ -79,7 +79,7 @@ def collect_packages(out):
                ('source-report.json', 'source-ios18-report.json')]
     common = ('source_commit', 'tools_commit', 'product', 'payload_sha256', 'legacy_pack',
               'app_version', 'build_number', 'release_tag', 'shader_chain', 'metal_toolchain',
-              'prepared_archive_sha256', 'resource_manifest_sha256')
+              'prepared_archive_sha256', 'resource_manifest_sha256', 'runtime_resources_sha256')
     for key in common:
         if reports[0][key] != reports[1][key]:
             raise ValueError('IPA variants use different build inputs: ' + key)

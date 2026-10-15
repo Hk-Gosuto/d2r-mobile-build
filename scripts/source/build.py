@@ -1,4 +1,5 @@
 """Compile the complete native iOS runtime on macOS; add the matching generated payload."""
+import copy
 import hashlib
 import json
 import os
@@ -9,7 +10,6 @@ import subprocess
 import sys
 import zipfile
 import time
-import yaml
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import ci
@@ -20,7 +20,53 @@ def run(*args, **kwargs):
     return subprocess.check_output([str(a) for a in args],text=True,**kwargs)
 
 
+def package_ipa(app, payload, destination, dm):
+    base = 'Payload/DmIOS.app/'
+    resources = {f'dm/{name}': dm / 'gfx/nvn' / name
+                 for name in ('shader_map.tsv', 'pso_manifest.tsv')}
+    resources['dm/asset_pointers.txt'] = dm / 'ios/asset_pointers.txt'
+    with zipfile.ZipFile(payload) as src:
+        for name, path in resources.items():
+            if not path.is_file() or not path.stat().st_size:
+                raise ValueError('Missing upstream runtime resource: ' + name)
+        manifest_name = base + 'dm/shell_manifest.txt'
+        manifest = src.read(manifest_name).decode().splitlines()
+        manifest = '\n'.join(dict.fromkeys([*manifest, *resources])) + '\n'
+        with zipfile.ZipFile(destination, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as dst:
+            names = set()
+            for p in sorted(app.rglob('*')):
+                if not p.is_file() or '_CodeSignature' in p.parts or p.name == 'embedded.mobileprovision':
+                    continue
+                n = base + p.relative_to(app).as_posix()
+                dst.write(p, n); names.add(n)
+            for item in src.infolist():
+                if item.filename in (base + 'Info.plist', manifest_name):
+                    continue
+                if not item.filename.startswith(base) or '..' in item.filename.split('/'):
+                    raise ValueError('Unexpected generated payload path')
+                if item.filename in names:
+                    raise ValueError('Payload replaces compiled app content: ' + item.filename)
+                dst.writestr(copy.copy(item), src.read(item)); names.add(item.filename)
+            for name, path in resources.items():
+                if base + name in names:
+                    raise ValueError('Runtime resource duplicates packaged content: ' + name)
+                dst.write(path, base + name)
+            dst.writestr(manifest_name, manifest)
+        with zipfile.ZipFile(destination) as final:
+            for n in src.namelist():
+                if n not in (base + 'Info.plist', manifest_name) and final.read(n) != src.read(n):
+                    raise ValueError('Generated payload changed: ' + n)
+            for name, path in resources.items():
+                if final.read(base + name) != path.read_bytes():
+                    raise ValueError('Runtime resource changed during IPA packaging: ' + name)
+            if final.read(manifest_name).decode() != manifest:
+                raise ValueError('Runtime resource manifest changed during IPA packaging')
+    return {name: ci.sha256(path) for name, path in resources.items()}
+
+
 def main():
+    import yaml
+
     minimum=sys.argv[1]
     if minimum not in ('26.0','18.0'):raise ValueError('Unsupported system variant')
     root=ci.ROOT; ios=root/'upstream/dm/ios'; gen=ios/'Gen'
@@ -66,7 +112,8 @@ def main():
     deps += [d for d in target.get('dependencies',[]) if 'sdk' in d]
     project={'name':'SourceBuild','options':{'deploymentTarget':{'iOS':minimum}},'targets':{'DmIOS':{
         'type':'application','platform':'iOS','sources':sources,'settings':{'base':settings},
-        'info':{'path':'SourceBuild-Info.plist','properties':props},'dependencies':deps}}}
+        'info':{'path':'SourceBuild-Info.plist','properties':props},
+        'entitlements':target['entitlements'],'dependencies':deps}}}
     (ios/'source-build.yml').write_text(yaml.safe_dump(project,sort_keys=False))
     run('xcodegen','generate','--spec','source-build.yml',cwd=ios)
     derived=root/'native-build'
@@ -88,20 +135,8 @@ def main():
     name=ci.ipa_names()[minimum=='18.0']
     destination=root/'outputs'/name
     base='Payload/DmIOS.app/'
-    with zipfile.ZipFile(payload) as src, zipfile.ZipFile(destination,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as dst:
-        names=set()
-        for p in sorted(app.rglob('*')):
-            if not p.is_file() or '_CodeSignature' in p.parts or p.name=='embedded.mobileprovision':continue
-            n=base+p.relative_to(app).as_posix();dst.write(p,n);names.add(n)
-        for item in src.infolist():
-            if item.filename==base+'Info.plist':continue
-            if not item.filename.startswith(base) or '..' in item.filename.split('/'):
-                raise ValueError('Unexpected generated payload path')
-            if item.filename in names:raise ValueError('Payload replaces compiled app content: '+item.filename)
-            dst.writestr(item,src.read(item));names.add(item.filename)
-    with zipfile.ZipFile(destination) as final, zipfile.ZipFile(payload) as original:
-        for n in original.namelist():
-            if n!=base+'Info.plist' and final.read(n)!=original.read(n):raise ValueError('Generated payload changed: '+n)
+    resources = package_ipa(app, payload, destination, ios.parent)
+    with zipfile.ZipFile(destination) as final:
         if final.read(base+plist['CFBundleExecutable'])!=native:
             raise ValueError('Native executable changed during IPA packaging')
     verify_payload(destination, report)
@@ -112,6 +147,7 @@ def main():
                   app_version=ci.CONFIG['app_version'],build_number=ci.CONFIG['build_number'],
                   release_tag=ci.CONFIG['release_tag'],
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
+                  runtime_resources_sha256=resources,
                   native_build_seconds=native_seconds,
                   native_module_cache_hit=os.environ.get('NATIVE_MODULE_CACHE_HIT')=='true',
                   xcode=run('xcodebuild','-version').strip(),sdk=run('xcrun','--sdk','iphoneos','--show-sdk-version').strip())

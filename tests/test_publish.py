@@ -22,6 +22,7 @@ def reports(root):
               'legacy_pack': {'name': 'fixture'}, 'app_version': '1.2.3', 'build_number': '7.1',
               'release_tag': config['release_tag'], 'shader_chain': 'chain', 'metal_toolchain': {},
               'prepared_archive_sha256': 'd' * 64, 'resource_manifest_sha256': 'e' * 64,
+              'runtime_resources_sha256': {'dm/shader_map.tsv': 'f' * 64},
               'native_built_from_source': True, 'payload_verified': True, 'metal_precompiled': True,
               'phone_shader_compilation_required': False}
     for name, minimum, metadata in zip(ci.ipa_names(config), ('26.0', '18.0'),

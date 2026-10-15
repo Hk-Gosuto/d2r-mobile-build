@@ -37,6 +37,9 @@ def source(root):
             f"(p.parent/'nvn/dmsh_chain.h').write_text('#define DMSH_CHAIN \\\"{CHAIN}\\\"\\n')\nprint('{CHAIN}')\n",
         'dm/ios/tools/shell_stubs.py': '# fixture stubs\n',
         'dm/gfx/nvn/stub.c': 'stub source\n',
+        'dm/gfx/nvn/shader_map.tsv': 'fixture shader map\n',
+        'dm/gfx/nvn/pso_manifest.tsv': '# fixture pipeline seed\n',
+        'dm/ios/asset_pointers.txt': '# fixture download pointers\n',
         'dm/host/romfs_validate.c': 'static const char *need[] = {' +
             ','.join('"' + f['name'] + '"' for f in resources) + '};\nstatic const long long size[] = {' +
             ','.join(str(f['bytes']) for f in resources) + '};\n',
