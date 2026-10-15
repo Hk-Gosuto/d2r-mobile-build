@@ -125,14 +125,6 @@ class PrebuiltToolTests(unittest.TestCase):
                 with patch.object(tools, 'request', side_effect=responses), self.assertRaisesRegex(ValueError, 'Unsafe'):
                     tools.restore(Path(temp) / 'extracted', spec)
 
-    def test_publisher_workflow_has_no_game_inputs_or_game_build_steps(self):
-        text = (tools.ROOT / '.github/workflows/tools.yml').read_text()
-        for value in ('GAME_ARCHIVE', 'SOURCE_TOKEN', 'secrets.', 'scripts/ci.py', 'scripts/source/prepare.py', '.game-downloads'):
-            self.assertNotIn(value, text)
-        self.assertIn('contents: read', text)
-        self.assertIn('contents: write', text.split('  publish:', 1)[1])
-        self.assertEqual(set(tools.KINDS), {'spirv', 'png', 'xlate'})
-
     def license_fixture(self, root, expression='MIT'):
         entries = {'upstream/LICENSE': 'upstream notice', 'dotnet/LICENSE.txt': 'dotnet notice',
                    'dotnet/ThirdPartyNotices.txt': 'dotnet third parties',

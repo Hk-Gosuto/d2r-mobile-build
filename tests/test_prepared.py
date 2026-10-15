@@ -14,6 +14,7 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 from source import metal, prepared
+from source import publish as ipa_publish
 import publish_release as publish
 from test_metal import fixture as metal_fixture
 from test_resource_reuse import manifest, FakeGitHub
@@ -171,7 +172,7 @@ class PreparedTests(unittest.TestCase):
                 prepared.download(root)
                 self.assertEqual(download.call_count, 2)
 
-    def test_publish_uses_bound_external_resource_links_without_fetching_or_republishing_resources(self):
+    def test_ipa_publication_needs_no_resource_files_or_resource_api_and_uploads_only_four_assets(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             config, m, report = fixture(root)
@@ -192,17 +193,23 @@ class PreparedTests(unittest.TestCase):
                     **{k: config[k] for k in ('app_version', 'build_number', 'release_tag')}))
             prepared.write(output / 'build-report.json', dict(report, packages=packages))
             (output / 'SHA256SUMS.txt').write_text(''.join(f"{p['ipa_sha256']}  {p['ipa_name']}\n" for p in packages))
+            for name in ('resource-manifest.json', 'resources.json', 'legacy-resources.json'):
+                (output / name).unlink()
             store = FakeGitHub()
-            with patch.object(ci, 'CONFIG', config), patch.object(publish, 'OUT', output), patch.object(publish, 'STAGE', stage), patch.object(publish, 'require_private', return_value=store.repo), patch.object(publish, 'gh', side_effect=store.gh), patch.object(publish, 'release_info', side_effect=lambda repo, tag: store.releases.get(tag)), patch.object(publish, 'api', side_effect=AssertionError('Resource API access forbidden')), patch.dict(os.environ, INPUT_REVISION='f' * 64, GITHUB_SHA='a' * 40, GITHUB_STEP_SUMMARY=''):
-                release = publish.main('ipa')
+            with patch.object(ci, 'CONFIG', config), patch.object(ci, 'ROOT', root), patch.object(publish, 'OUT', output), patch.object(publish, 'STAGE', stage), patch.object(publish, 'require_private', return_value=store.repo), patch.object(ipa_publish, 'require_private', return_value=store.repo), patch.object(publish, 'gh', side_effect=store.gh), patch.object(publish, 'release_info', side_effect=lambda repo, tag: store.releases.get(tag)), patch.object(publish, 'api', side_effect=AssertionError('Resource API access forbidden')), patch.dict(os.environ, INPUT_REVISION='f' * 64, GITHUB_SHA='a' * 40, GITHUB_STEP_SUMMARY=''):
+                release = ipa_publish.publish()
                 self.assertEqual(release['tag_name'], config['release_tag'])
-                self.assertFalse(any(a['name'].endswith(('.zip', '.001', '.002', '.003')) for a in release['assets']))
-                self.assertIn('https://storage.invalid/data', (stage / 'RELEASE.md').read_text())
-                data = prepared.read(output / 'resources.json')
-                data['source_release']['url'] = 'https://other.invalid/data'
-                prepared.write(output / 'resources.json', data)
-                with self.assertRaisesRegex(ValueError, 'metadata changed'):
-                    publish.main('ipa')
+                self.assertEqual({a['name'] for a in release['assets']},
+                                 {*ci.ipa_names(config), 'SHA256SUMS.txt', 'build-report.json'})
+                notes = (stage / 'RELEASE.md').read_text()
+                self.assertIn('## English', notes)
+                self.assertIn('## 简体中文', notes)
+                self.assertNotIn('https://storage.invalid/data', notes)
+                self.assertNotIn('RESOURCE-INSTALL.txt', notes)
+                # A retry skips already verified assets instead of uploading them again.
+                before = sum(c[:2] == ('release', 'upload') for c in store.calls)
+                ipa_publish.publish()
+                self.assertEqual(sum(c[:2] == ('release', 'upload') for c in store.calls), before)
 
 
 if __name__ == '__main__': unittest.main()

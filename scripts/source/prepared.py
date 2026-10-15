@@ -237,8 +237,7 @@ def prepare(root=ci.ROOT):
     subprocess.run([sys.executable, str(dm / 'ios/tools/shell_stubs.py'), 'stubs', str(dm)], check=True)
     out = root / 'outputs'
     out.mkdir(exist_ok=True)
-    for name in ('source-payload.zip', 'resource-manifest.json', 'resources.json', 'legacy-resources.json'):
-        shutil.copy2(directory / name, out / name)
+    shutil.copy2(directory / 'source-payload.zip', out / 'source-payload.zip')
     # Never inherit the producer's source commit, tool commit, build number or test claims.
     allowed = ('product', 'shader_chain', 'shader_source_chain', 'payload_sha256', 'legacy_pack',
                'shader_source_sha16', 'metal_precompiled', 'metal_libraries', 'metal_unique_libraries',
@@ -251,7 +250,7 @@ def prepare(root=ci.ROOT):
                   prepared_from_source=info['producer']['source_commit'],
                   metal_compiled_count=0, metal_cache_hits=report['metal_unique_libraries'], metal_seconds=0,
                   resource_links_verified=False,
-                  prepared_metadata_sha256={n: ci.sha256(out / n) for n in
+                  prepared_metadata_sha256={n: ci.sha256(directory / n) for n in
                     ('resource-manifest.json', 'resources.json', 'legacy-resources.json')})
     write(out / 'source-input-report.json', report)
     with tarfile.open(out / 'native-inputs.tar.gz', 'w:gz') as tf:

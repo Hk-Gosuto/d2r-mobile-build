@@ -27,9 +27,9 @@ legacy-resources.json
 - `resources.json`, `legacy-resources.json`: matching Data and Legacy download descriptors. Their links can point to HTTPS storage or Google Drive and must be accessible to the package's users. / 配套 Data 与 Legacy 下载描述，可指向 HTTPS 存储或 Google Drive，使用者需有权下载。
 - `prepared.json`: schema, producer provenance, per-file checksums, and generation compatibility fingerprints. / 格式、生成来源、各文件校验值和生成规则的兼容性指纹。
 
-Data and Legacy archives stay at the described download locations. The prepared package carries their metadata; builds reuse those links in the new IPA Release. Native runtime sources come from the selected upstream checkout on every run.
+Data and Legacy archives are downloaded separately by users from their storage provider. The IPA build downloads only this prepared package. Its resource descriptors are checked locally for package consistency. Native runtime sources come from the selected upstream checkout on every run.
 
-Data 和 Legacy 大文件保留在描述文件指向的下载位置。预处理包携带其元数据，新 IPA Release 沿用这些链接；每次构建的原生运行时代码来自当次选择的上游源码。
+Data 和 Legacy 由用户另外从网盘下载。IPA 构建只下载这个预处理包，包内资源描述用于本地一致性检查；每次构建的原生运行时代码来自当次选择的上游源码。
 
 ## Export / 导出
 

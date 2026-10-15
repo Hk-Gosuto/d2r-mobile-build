@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ci
-import publish_release
+from source.publish import publish
 from repository_access import require_private
 
 
@@ -24,7 +24,7 @@ def main():
     (out / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     (out / 'SHA256SUMS.txt').write_text(''.join(
         f"{item['ipa_sha256']}  {item['ipa_name']}\n" for item in reports))
-    publish_release.main('ipa')
+    publish()
 
 
 if __name__ == '__main__':

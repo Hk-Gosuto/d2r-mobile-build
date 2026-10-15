@@ -23,7 +23,7 @@ concurrency:
 jobs:
   prepare:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 15
     outputs:
       tools_commit: ${{ steps.tools.outputs.tools_commit }}
       input_revision: ${{ steps.input.outputs.input_revision }}
@@ -124,18 +124,6 @@ jobs:
           retention-days: 3
           compression-level: 0
           if-no-files-found: error
-      - name: Upload resource links and current build metadata
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: build-metadata
-          overwrite: true
-          path: |
-            outputs/build-context.json
-            outputs/resource-manifest.json
-            outputs/resources.json
-            outputs/legacy-resources.json
-          retention-days: 3
-          if-no-files-found: error
   native:
     needs: prepare
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
@@ -179,7 +167,7 @@ jobs:
           path: |
             outputs/D2RMobile-*.ipa
             outputs/source*-report.json
-            outputs/source*-SHA256SUMS.txt
+            outputs/build-context.json
           retention-days: 3
           compression-level: 0
           if-no-files-found: error
@@ -199,10 +187,6 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: build-metadata
-          path: outputs
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
           pattern: IPA-ios*
           merge-multiple: true
           path: outputs
@@ -216,6 +200,6 @@ jobs:
           repo, run = os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_RUN_ID']
           data = json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run}/artifacts'],text=True))
           for item in data['artifacts']:
-              if item['name'] in ('translated-source-inputs','native-source-inputs','build-metadata','game-input-metadata','data-metadata','legacy-metadata','legacy-worker-0','legacy-worker-1'):
+              if item['name'] == 'native-source-inputs':
                   subprocess.run(['gh','api','--method','DELETE',f"repos/{repo}/actions/artifacts/{item['id']}"],check=True)
           PYCODE
