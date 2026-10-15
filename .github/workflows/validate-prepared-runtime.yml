@@ -52,6 +52,8 @@ jobs:
           GAME_INPUT_MANIFEST: ${{ secrets.GAME_INPUT_MANIFEST }}
         run: |
           ln -s "$GITHUB_WORKSPACE/.tools" legacy-source/.tools
+          ln -s "$GITHUB_WORKSPACE/upstream" legacy-source/upstream
+          test -f legacy-source/upstream/dm/host/romfs_validate.c
           mv .game-downloads legacy-source/.game-downloads
           test -x .tools/bin/hactool
           python legacy-source/scripts/ci.py inputs

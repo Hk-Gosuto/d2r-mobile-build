@@ -27,13 +27,14 @@ def upgrade(directory, original, legacy_index, upstream):
             raise ValueError('Legacy index does not match the existing prepared package')
         temporary = directory / 'heavy-payload.zip'
         with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as output:
-            names = []
+            names = {f'msl/b-{info["payload"]["shader_chain"]}/', 'Frameworks/Guest.framework/'}
             for item in source.infolist():
                 if not item.is_dir() and heavy_member(item.filename):
                     output.writestr(item, source.read(item))
-                    names.append(item.filename.removeprefix(BASE))
+                    if item.filename.startswith(BASE + 'dm/'):
+                        names.add(item.filename.removeprefix(BASE))
             output.writestr(BASE + 'dm/shell_info.txt', source.read(BASE + 'dm/shell_info.txt'))
-            output.writestr(BASE + 'dm/shell_manifest.txt', '\n'.join(names) + '\n')
+            output.writestr(BASE + 'dm/shell_manifest.txt', '\n'.join(sorted(names)) + '\n')
     temporary.replace(directory / 'source-payload.zip')
     size = create(original, directory / 'romfs-inputs.zip')
     shutil.rmtree(directory / 'generated', ignore_errors=True)
