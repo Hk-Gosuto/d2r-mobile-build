@@ -154,7 +154,7 @@ def prepare(root=ci.ROOT):
     verify_payload(out / 'source-payload.zip', report)
     write(out / 'build-context.json', ci.CONFIG)
     write(out / 'source-input-report.json', report)
-    with tarfile.open(out / 'native-inputs.tar.gz', 'w:gz') as tf:
+    with tarfile.open(out / 'native-inputs.tar.gz', 'w:gz', compresslevel=1) as tf:
         def include(item):
             return None if any(p in ('.git', 'Gen', '__pycache__', 'bin', 'obj')
                                for p in Path(item.name).parts) else item

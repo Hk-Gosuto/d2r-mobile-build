@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from source.romfs_input import restore
 from archive_input import extract
 import ci
-from source.compatibility import git
+from source.compatibility import git, python_dependencies
 
 BASE = 'Payload/DmIOS.app/'
 HEAVY_DM = {'c1_full.tsv', 'bootlist.tsv', 'main.cuts.tsv',
@@ -28,10 +28,12 @@ def heavy_member(name):
     return relative.startswith(('msl/', 'Frameworks/Guest.framework/')) or relative in {'dm/' + n for n in HEAVY_DM}
 
 
-UI_INPUTS = ('dm/ios/tools', 'dm/ios/docs', 'dm/ios/NativeHUD', 'dm/i18n', 'dm/data',
+UI_SCRIPTS = ('dm/ios/tools/gen_assets.py', 'dm/ios/tools/gen_romfs_overlay.py',
+              'dm/ios/tools/gen_vault_table.py', 'dm/ios/tools/gen_hud_exp.py',
+              'dm/tools/casc_overlay.py', 'dm/tools/gen_bright_levels.py')
+UI_INPUTS = ('dm/ios/docs', 'dm/ios/NativeHUD', 'dm/i18n', 'dm/data',
              'dm/gfx/tex', 'dm/gfx/nvn/include', 'dm/gfx/nvn/nvn_tex.c', 'dm/gfx/nvn/nvn_tex.h',
-             'dm/ios/Sources/TouchArt/native_art_manifest.json', 'dm/host/dm_kills.c',
-             'dm/tools/casc_overlay.py', 'dm/tools/dmx.py', 'dm/tools/gen_bright_levels.py')
+             'dm/ios/Sources/TouchArt/native_art_manifest.json', 'dm/host/dm_kills.c')
 
 
 def generation_key(kind, root=ci.ROOT):
@@ -44,10 +46,16 @@ def generation_key(kind, root=ci.ROOT):
             version = 'missing'
         digest.update((package + version).encode())
     upstream = root / 'upstream'
-    for name in sorted(git(upstream, 'ls-files', '-z').split('\0')):
-        if any(name == p or name.startswith(p + '/') for p in UI_INPUTS):
-            digest.update((name + '\0').encode() + (upstream / name).read_bytes())
-    for name in ('scripts/source/runtime_assets.py', 'scripts/source/romfs_input.py', 'scripts/png_backend.sh'):
+    names = {n for n in git(upstream, 'ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0')
+             if n and (upstream / n).is_file()}
+    dependencies = python_dependencies(names, UI_SCRIPTS, lambda n: (upstream / n).read_text())
+    # Keep generator data (JSON, templates, artwork) even when its filename is assembled at runtime.
+    dependencies.update(n for n in names if any(n == p or n.startswith(p + '/') for p in UI_INPUTS)
+                        or n.startswith('dm/ios/tools/') and not n.endswith('.py'))
+    for name in sorted(dependencies):
+        digest.update((name + '\0').encode() + (upstream / name).read_bytes())
+    for name in ('scripts/source/runtime_assets.py', 'scripts/source/compatibility.py',
+                 'scripts/source/romfs_input.py', 'scripts/png_backend.sh'):
         digest.update((root / name).read_bytes())
     return 'interface-v1-' + kind + '-' + digest.hexdigest()
 

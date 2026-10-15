@@ -27,7 +27,14 @@ def main():
     enabled = can_save(used, size)
     with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
         out.write(output + '=' + str(enabled).lower() + '\n')
-    print('Save cache', path + ':', enabled)
+    if not size:
+        reason = 'no files to cache'
+    elif used is None:
+        reason = 'repository cache usage is unavailable'
+    else:
+        reason = (f'{used / 1024**3:.2f} GiB used + {size / 1024**2:.1f} MiB estimated cache'
+                  f' + {RESERVE / 1024**2:.0f} MiB reserve; limit {LIMIT / 1024**3:.0f} GiB')
+    print(f'Save cache {path}: {enabled} ({reason})')
 
 
 if __name__ == '__main__':

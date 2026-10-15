@@ -1,4 +1,4 @@
-"""Compare payload-generation inputs with the package's source revision."""
+"""Track source dependencies for prepared payloads and generated interface resources."""
 import ast
 from pathlib import Path
 import posixpath
@@ -15,19 +15,9 @@ def git(upstream, *args):
                                    stderr=subprocess.DEVNULL).decode()
 
 
-def generation_paths(upstream, revision):
-    if revision:
-        names = set(git(upstream, 'ls-tree', '-r', '--name-only', '-z', revision).split('\0')) - {''}
-    else:
-        names = {n for n in git(upstream, 'ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0')
-                 if n and (upstream / n).is_file()}
-
-    def read(name):
-        return git(upstream, 'show', revision + ':' + name) if revision else (upstream / name).read_text()
-
-    paths = {n for n in names if any(n == p or n.startswith(p + '/') for p in ROOTS)}
-    paths.update(n for n in names if n.startswith('dm/data/bootlist_'))
-    pending = [n for n in SCRIPTS if n in names]
+def python_dependencies(names, scripts, read):
+    paths = set()
+    pending = [n for n in scripts if n in names]
     while pending:
         name = pending.pop()
         if name in paths:
@@ -42,11 +32,31 @@ def generation_paths(upstream, revision):
                 imports.append(node.module.replace('.', '/') + '.py')
             elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.endswith('.py'):
                 imports.append(node.value)
+            elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                  and node.func.id == '__import__' and node.args
+                  and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)):
+                imports.append(node.args[0].value.replace('.', '/') + '.py')
         for child in imports:
             for directory in (posixpath.dirname(name), 'dm/ios/tools', 'dm/tools'):
                 candidate = posixpath.normpath(directory + '/' + child)
                 if candidate in names and candidate not in paths:
                     pending.append(candidate)
+    return paths
+
+
+def generation_paths(upstream, revision):
+    if revision:
+        names = set(git(upstream, 'ls-tree', '-r', '--name-only', '-z', revision).split('\0')) - {''}
+    else:
+        names = {n for n in git(upstream, 'ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0')
+                 if n and (upstream / n).is_file()}
+
+    def read(name):
+        return git(upstream, 'show', revision + ':' + name) if revision else (upstream / name).read_text()
+
+    paths = {n for n in names if any(n == p or n.startswith(p + '/') for p in ROOTS)}
+    paths.update(n for n in names if n.startswith('dm/data/bootlist_'))
+    paths.update(python_dependencies(names, SCRIPTS, read))
 
     chain = 'dm/gfx/tools/dmsh_chain.py'
     tree = ast.parse(read(chain))

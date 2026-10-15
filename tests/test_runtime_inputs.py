@@ -86,7 +86,8 @@ class InterfaceCacheTests(unittest.TestCase):
             upstream, _, _, _ = source(root)
             archive = root / '.prepared-downloads/prepared-input.archive'
             archive.parent.mkdir(); archive.write_bytes(b'original prepared input')
-            for name in ('scripts/source/runtime_assets.py', 'scripts/source/romfs_input.py', 'scripts/png_backend.sh'):
+            for name in ('scripts/source/runtime_assets.py', 'scripts/source/compatibility.py',
+                         'scripts/source/romfs_input.py', 'scripts/png_backend.sh'):
                 target = root / name; target.parent.mkdir(parents=True, exist_ok=True); target.write_text('fixture tools\n')
             text = upstream / 'dm/i18n/ui_text.tsv'
             text.parent.mkdir(); text.write_text('original interface text\n')
@@ -94,9 +95,28 @@ class InterfaceCacheTests(unittest.TestCase):
             first = generation_key('ios', root)
             (upstream / 'dm/runtime.c').write_text('new native implementation\n')
             self.assertEqual(generation_key('ios', root), first)
+            (upstream / 'dm/ios/tools/project_free.py').write_text('native_project = True\n')
+            self.assertEqual(generation_key('ios', root), first)
+            helper = upstream / 'dm/ios/tools/interface_helper.py'
+            helper.write_text('layout = 1\n')
+            generator = upstream / 'dm/ios/tools/gen_assets.py'
+            original = generator.read_text()
+            generator.write_text(original + '\n__import__("interface_helper")\n')
+            changed_generator = generation_key('ios', root)
+            self.assertNotEqual(changed_generator, first)
+            helper.write_text('layout = 2\n')
+            self.assertNotEqual(generation_key('ios', root), changed_generator)
+            generator.write_text(original)
+            template = upstream / 'dm/ios/tools/layout.json'
+            template.write_text('{"width": 100}\n')
+            changed_template = generation_key('ios', root)
+            self.assertNotEqual(changed_template, first)
+            template.write_text('{"width": 200}\n')
+            self.assertNotEqual(generation_key('ios', root), changed_template)
+            before_text = generation_key('ios', root)
             text.write_text('new interface text\n')
             second = generation_key('ios', root)
-            self.assertNotEqual(second, first)
+            self.assertNotEqual(second, before_text)
             archive.write_bytes(b'updated prepared input')
             self.assertNotEqual(generation_key('ios', root), second)
 
