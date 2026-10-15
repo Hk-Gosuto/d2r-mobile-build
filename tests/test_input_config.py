@@ -79,3 +79,9 @@ class InputTests(unittest.TestCase):
             with self.assertRaises(RuntimeError) as error:
                 inputs.download_file(secret_url, Path(temporary) / 'input')
             self.assertNotIn('resourcekey', str(error.exception))
+        def quota(**kwargs):
+            raise RuntimeError('Too many users have viewed or downloaded this file recently. ' + secret_url)
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(sys.modules, gdown=types.SimpleNamespace(download=quota)):
+            with self.assertRaisesRegex(RuntimeError, 'Google Drive download quota exceeded') as error:
+                inputs.download_file(secret_url, Path(temporary) / 'input')
+            self.assertNotIn('resourcekey', str(error.exception))

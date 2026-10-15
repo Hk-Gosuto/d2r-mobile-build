@@ -88,8 +88,10 @@ def download_file(url, destination, expected=None, max_bytes=None):
         partial.replace(destination)
     except ValueError:
         raise
-    except Exception:
+    except Exception as exc:
         # gdown exceptions may contain URLs; keep them out of Actions logs.
+        if re.search(r'quota exceeded|too many users|download quota', str(exc), re.I):
+            raise RuntimeError('Google Drive download quota exceeded; retry after the shared file becomes available') from None
         raise RuntimeError('Google Drive download failed; check link sharing and download quota') from None
 
 

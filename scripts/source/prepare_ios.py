@@ -213,5 +213,5 @@ if __name__ == '__main__':
         {'plan': plan, 'verify': verify, 'download': download,
          'prepare': prepare, 'export': export}[sys.argv[1]]()
     except Exception as exc:
-        print('::error::' + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__), file=sys.stderr)
+        print('::error::' + (str(exc) if isinstance(exc, (ValueError, RuntimeError)) else type(exc).__name__), file=sys.stderr)
         sys.exit(1)
