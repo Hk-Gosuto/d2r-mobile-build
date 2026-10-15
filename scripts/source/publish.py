@@ -105,14 +105,7 @@ def collect_packages(out):
     return paths
 
 
-def main():
-    repo = require_private()
-    out = ci.ROOT / 'outputs'
-    paths = collect_packages(out)
-    body = out / 'RELEASE.md'
-    body.write_text(notes())
-    tag = ci.release_tag()
-    title = f"D2R Mobile {ci.build_label()} · build {ci.CONFIG['build_number']}"
+def publish_assets(repo, tag, title, body, paths):
     release = release_info(repo, tag)
     if release is None:
         gh('release', 'create', tag, '--repo', repo, '--target', os.environ['GITHUB_SHA'],
@@ -126,17 +119,28 @@ def main():
             raise RuntimeError('Created Release is not visible after retrying')
     if release.get('immutable'):
         raise ValueError('Cannot update an immutable Release')
-    upload_verified(repo, tag, [*paths, out / 'SHA256SUMS.txt', out / 'build-report.json'])
+    upload_verified(repo, tag, paths)
     gh('release', 'edit', tag, '--repo', repo, '--notes-file', body, '--title', title,
        '--draft=false', '--latest=true')
     release = release_info(repo, tag)
     if not release or release['draft']:
         raise RuntimeError('Release did not become published')
-    print('Published verified IPAs:', release['html_url'], flush=True)
+    print('Published verified packages:', release['html_url'], flush=True)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-            summary.write(f"\n[Download IPAs]({release['html_url']})\n")
+            summary.write(f"\n[Download packages]({release['html_url']})\n")
     return release
+
+
+def main():
+    repo = require_private()
+    out = ci.ROOT / 'outputs'
+    paths = collect_packages(out)
+    body = out / 'RELEASE.md'
+    body.write_text(notes())
+    title = f"D2R Mobile {ci.build_label()} · build {ci.CONFIG['build_number']}"
+    return publish_assets(repo, ci.release_tag(), title, body,
+                          [*paths, out / 'SHA256SUMS.txt', out / 'build-report.json'])
 
 
 if __name__ == '__main__':

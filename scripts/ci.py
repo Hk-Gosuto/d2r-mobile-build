@@ -90,8 +90,8 @@ def resource_sizes():
     return dict(zip(files, lengths))
 
 
-def macho_minimum_os(data):
-    """Read the iOS minimum from a thin ARM64 executable's load commands."""
+def macho_minimum_os(data, platform=2):
+    """Read the minimum system from a thin ARM64 executable's load commands."""
     if len(data) < 32 or struct.unpack_from('<II', data) != (0xfeedfacf, 0x0100000c):
         raise ValueError('Native executable is not Mach-O arm64')
     count, size = struct.unpack_from('<II', data, 16)
@@ -108,9 +108,9 @@ def macho_minimum_os(data):
         if command == 0x32:  # LC_BUILD_VERSION
             if length < 24:
                 raise ValueError('Truncated Mach-O build version')
-            platform, minimum = struct.unpack_from('<II', data, offset + 8)
-            if platform != 2:
-                raise ValueError('Native executable does not target iOS')
+            target, minimum = struct.unpack_from('<II', data, offset + 8)
+            if target != platform:
+                raise ValueError('Native executable targets the wrong platform')
             versions.append((minimum >> 16, (minimum >> 8) & 255, minimum & 255))
         offset += length
     if offset != end or len(versions) != 1:

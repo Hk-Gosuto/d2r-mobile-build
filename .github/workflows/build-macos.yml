@@ -1,0 +1,25 @@
+name: Build macOS
+run-name: macOS source build · ${{ inputs.source_ref || 'latest release' }}
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository:
+        description: Upstream source repository or your fork
+        type: string
+        default: jhaizhou-ops/d2r-mobile
+      source_ref:
+        description: Branch, tag or commit (empty uses the latest release)
+        type: string
+        default: ''
+permissions:
+  contents: write
+  actions: write
+jobs:
+  build:
+    uses: jiayx/d2r-mobile-build/.github/workflows/pack-macos.yml@main
+    with:
+      source_repository: ${{ inputs.source_repository }}
+      source_ref: ${{ inputs.source_ref }}
+    secrets:
+      GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
+      SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}

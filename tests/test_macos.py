@@ -1,0 +1,84 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import struct
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
+import ci
+import macos
+from fixtures import source
+
+
+class MacBuildTests(unittest.TestCase):
+    def test_native_changes_reuse_generation_but_changed_generators_do_not(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            upstream, _, _, _ = source(Path(temporary))
+            original = macos.generation_key(upstream, 'input', 'xcode')
+            (upstream / 'dm/runtime.c').write_text('new native code\n')
+            self.assertEqual(macos.generation_key(upstream, 'input', 'xcode'), original)
+            (upstream / 'dm/tools/helper.py').write_text('changed_generation = True\n')
+            self.assertNotEqual(macos.generation_key(upstream, 'input', 'xcode'), original)
+            self.assertNotEqual(macos.generation_key(upstream, 'other-input', 'xcode'), original)
+
+    def test_existing_archive_cache_is_verified_without_downloading_again(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / '.game-downloads/game-input.archive'
+            archive.parent.mkdir()
+            archive.write_bytes(b'existing ExeFS/RomFS archive')
+            digest = ci.sha256(archive)
+            with patch.object(ci, 'ROOT', root), patch.object(macos, 'settings', return_value=('https://storage.invalid/game.zip', digest)), patch.object(macos, 'download_file') as download:
+                macos.download()
+                download.assert_not_called()
+            self.assertEqual(archive.read_bytes(), b'existing ExeFS/RomFS archive')
+
+    def test_prepared_cache_integrity_and_macos_executable_platform(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / '.macos-prepared'
+            cache.mkdir()
+            payload = cache / 'program'
+            payload.write_bytes(b'prepared')
+            (cache / 'manifest.json').write_text(json.dumps({'key': 'cache-key', 'files': {'program': ci.sha256(payload)}}))
+            with patch.object(ci, 'ROOT', root), patch.dict(os.environ, MACOS_PREPARED_KEY='cache-key'):
+                self.assertEqual(macos.load_prepared()['key'], 'cache-key')
+                payload.write_bytes(b'damaged')
+                with self.assertRaisesRegex(ValueError, 'checksum'):
+                    macos.load_prepared()
+        native = struct.pack('<8I6I', 0xfeedfacf, 0x0100000c, 0, 2, 1, 24, 0, 0,
+                             0x32, 24, 1, 15 << 16, 26 << 16, 0)
+        self.assertEqual(ci.macho_minimum_os(native, platform=1), (15, 0, 0))
+        with self.assertRaises(ValueError):
+            ci.macho_minimum_os(native)
+
+    def test_mac_release_checks_both_packages_before_publishing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            out = root / 'outputs'
+            out.mkdir()
+            config = {'upstream_commit': 'a' * 40, 'build_label': 'v1.2.3',
+                      'build_number': '5.2', 'release_tag': 'v1.2.3-build.5.2'}
+            report = {'source_commit': 'a' * 40, 'portable': True,
+                      'native_built_from_source': True, 'release_tag': config['release_tag'] + '-macos', 'packages': []}
+            for minimum in ('26.0', '15.0'):
+                name = f'D2RMobile-{config["release_tag"]}-macos{minimum.split(".")[0]}.zip'
+                body = name.encode()
+                (out / name).write_bytes(body)
+                report['packages'].append({'name': name, 'minimum_os': minimum,
+                                           'sha256': hashlib.sha256(body).hexdigest(), 'bytes': len(body)})
+            (out / 'macos-build-report.json').write_text(json.dumps(report))
+            (out / 'Mac-SHA256SUMS.txt').write_text('fixture')
+            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch.object(macos, 'require_private', return_value='owner/private'), patch.object(macos, 'publish_assets') as publish:
+                macos.publish()
+                self.assertEqual(len(publish.call_args.args[-1]), 4)
+                self.assertIn('## 简体中文', (out / 'MAC-RELEASE.md').read_text())
+                publish.reset_mock()
+                (out / report['packages'][0]['name']).write_bytes(b'damaged')
+                with self.assertRaisesRegex(ValueError, 'checksum'):
+                    macos.publish()
+                publish.assert_not_called()

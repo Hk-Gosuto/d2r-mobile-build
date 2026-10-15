@@ -31,31 +31,11 @@ jobs:
       SOURCE_REPOSITORY: ${{ inputs.source_repository }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Check destination and fix the tools revision
+      - name: Check destination and resolve the tools revision
         id: tools
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 - <<'PYCODE'
-          import json, os, re, subprocess, time
-          def api(path):
-              return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
-          repo = os.environ['GITHUB_REPOSITORY']
-          meta = api('repos/' + repo)
-          if meta.get('private') is not True:
-              raise SystemExit('Create your own PRIVATE repository using this template before building game files.')
-          for attempt in range(3):
-              run = api('repos/' + repo + '/actions/runs/' + os.environ['GITHUB_RUN_ID'])
-              refs = [item['sha'] for item in run.get('referenced_workflows', [])
-                      if item['path'].split('@')[0] == 'jiayx/d2r-mobile-build/.github/workflows/pack.yml']
-              if len(set(refs)) == 1 and re.fullmatch('[a-f0-9]{40}', refs[0]):
-                  break
-              time.sleep(2)
-          else:
-              raise SystemExit('Cannot resolve the exact reusable workflow commit; refusing mixed tool versions.')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write('tools_commit=' + refs[0] + '\n')
-          PYCODE
+        uses: jiayx/d2r-mobile-build/.github/actions/resolve-tools@main
+        with:
+          workflow: pack.yml
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: jiayx/d2r-mobile-build

@@ -86,15 +86,15 @@ def parse_checksum(text):
     return entries[0]
 
 
-def settings():
+def settings(secret_name='PREPARED_INPUT'):
     try:
-        config = json.loads(os.environ.get('PREPARED_INPUT', ''))
+        config = json.loads(os.environ.get(secret_name, ''))
     except ValueError:
-        raise ValueError('PREPARED_INPUT must be a JSON object with url and sha256') from None
+        raise ValueError(secret_name + ' must be a JSON object with url and sha256') from None
     if not isinstance(config, dict) or not isinstance(config.get('url'), str):
-        raise ValueError('PREPARED_INPUT must contain a download url')
+        raise ValueError(secret_name + ' must contain a download url')
     if set(config) - {'url', 'sha256', 'sha256_url'}:
-        raise ValueError('PREPARED_INPUT supports url, sha256 and sha256_url')
+        raise ValueError(secret_name + ' supports url, sha256 and sha256_url')
     url = https_url(config['url'])
     drive_file_id(url)
     digest = config.get('sha256')

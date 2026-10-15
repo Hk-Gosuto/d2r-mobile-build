@@ -7,3 +7,5 @@ outputs/
 .venv*/
 __pycache__/
 *.ipa
+.game-downloads/
+.macos-*/
