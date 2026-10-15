@@ -2,9 +2,9 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source with GitHub Actions. Each run defaults to the latest official upstream Release, compiles iOS 18 and iOS 26 variants in parallel on macOS 26, and publishes to your private repository.
+Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source with GitHub Actions. Each run defaults to the latest official upstream Release and publishes to your private repository.
 
-## Build
+## Build for iOS
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
 2. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret and paste the following JSON as its value:
@@ -55,3 +55,30 @@ Device requirements: A14 / M1 or newer, with at least 6 GB of memory.
 Run **Build IPA** again to build the latest official upstream Release. Back up saves, keep the app identifier unchanged, and install over the existing app. Previously imported matching Data and Legacy resources remain reusable.
 
 Ordinary native code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer prepared package and update `PREPARED_INPUT`.
+
+## Build for macOS
+
+1. In your private repository, add a **`MACOS_PREPARED_INPUT`** Secret containing the Mac prepared package’s download configuration:
+
+   ```json
+   {
+     "url": "HTTPS download URL of the Mac prepared package",
+     "sha256": "SHA-256 of the Mac prepared package"
+   }
+   ```
+
+2. Open **Actions → Build macOS → Run workflow**. The source selection fields work the same way as for iOS.
+
+The workflow downloads and verifies the Mac prepared package, compiles the current native source for both system versions, and publishes the apps. Prepared downloads are cached for later builds. The package contains the rewritten game programs, Mac interface resources and precompiled macOS Metal libraries. See the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md).
+
+Download from your repository’s **Releases**:
+
+| File | Purpose |
+|---|---|
+| `D2RMobile-<version>-build.<run>.<attempt>-macos26.zip` | Apple silicon Macs running macOS 26 or later |
+| `D2RMobile-<version>-build.<run>.<attempt>-macos15.zip` | Apple silicon Macs running macOS 15–25 |
+| `Mac-SHA256SUMS.txt`, `macos-build-report.json` | Checksums and build details |
+
+Extract the ZIP and move the app to **Applications**. On first launch, choose your game’s `RomFS` folder containing `data/build_manifest.psv`; the app remembers this location. Keep the game resources in that location when updating the app. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
+
+The apps are signed ad hoc. If macOS blocks the first launch, follow Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).

@@ -2,9 +2,9 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-在 GitHub Actions 中从 [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 源码构建 IPA。默认选择上游最新正式 Release，在 macOS 26 上并行编译 iOS 18 和 iOS 26 两份 IPA，发布到自己的私有仓库。
+在 GitHub Actions 中从 [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 源码构建 iOS 和 macOS 应用。默认选择上游最新正式 Release，发布到自己的私有仓库。
 
-## 构建
+## 构建 iOS
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
 2. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**，将以下 JSON 粘贴为它的值：
@@ -55,3 +55,30 @@
 再次运行 **Build IPA** 即可构建上游最新正式 Release。更新 IPA 时备份存档，保持应用标识一致并覆盖安装，已导入的相同 Data 和 Legacy 可继续使用。
 
 普通原生代码更新可复用预处理包；工作流提示生成规则不兼容时，取得新版预处理包并更新 `PREPARED_INPUT`。
+
+## 构建 macOS
+
+1. 在自己的私有仓库添加 Secret **`MACOS_PREPARED_INPUT`**，填入 Mac 预处理包的下载配置：
+
+   ```json
+   {
+     "url": "Mac 预处理包的 HTTPS 下载地址",
+     "sha256": "Mac 预处理包的 SHA-256"
+   }
+   ```
+
+2. 打开 **Actions → Build macOS → Run workflow**。源码选择参数与 iOS 构建相同。
+
+工作流下载并校验 Mac 预处理包，从当前源码编译两种系统版本的原生程序，并发布应用。下载完成的包会缓存，供后续构建复用。包内包含改写后的游戏程序、Mac 界面资源和预编译 macOS Metal 着色器，结构见[Mac 预处理包格式](docs/MACOS_PREPARED_INPUT.zh-CN.md)。
+
+在自己仓库的 **Releases** 下载：
+
+| 文件 | 用途 |
+|---|---|
+| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos26.zip` | macOS 26 及以上的 Apple 芯片 Mac |
+| `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos15.zip` | macOS 15–25 的 Apple 芯片 Mac |
+| `Mac-SHA256SUMS.txt`、`macos-build-report.json` | 校验值与构建详情 |
+
+解压 ZIP，将应用移到“应用程序”。首次启动选择包含 `data/build_manifest.psv` 的游戏 `RomFS` 文件夹，应用会记住这个位置。更新应用时保持游戏资源的位置不变即可。macOS 15 版使用独立存档目录，可与 macOS 26 版并存。
+
+应用使用本机临时签名。首次打开若被系统拦截，按 Apple 的[打开可信应用说明](https://support.apple.com/102445)操作。
