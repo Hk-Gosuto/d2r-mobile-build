@@ -3,6 +3,10 @@ run-name: Source build · ${{ inputs.source_ref || 'latest release' }}
 on:
   workflow_dispatch:
     inputs:
+      prepared_input:
+        description: Prepared package configuration (paste JSON from the README)
+        type: string
+        required: true
       source_repository:
         description: Upstream source repository or your fork
         type: string
@@ -18,8 +22,8 @@ jobs:
   build:
     uses: jiayx/d2r-mobile-build/.github/workflows/pack.yml@main
     with:
+      prepared_input: ${{ inputs.prepared_input }}
       source_repository: ${{ inputs.source_repository }}
       source_ref: ${{ inputs.source_ref }}
     secrets:
-      PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
       SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}

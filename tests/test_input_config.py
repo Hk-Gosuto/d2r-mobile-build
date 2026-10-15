@@ -15,6 +15,16 @@ import input_config as inputs
 
 
 class InputTests(unittest.TestCase):
+    def test_configuration_errors_identify_missing_or_invalid_json_without_exposing_input(self):
+        for value, message in (('', 'prepared_input is empty'),
+                               (' \n ', 'prepared_input is empty'),
+                               ('{"url":"sensitive-token",}', 'prepared_input is not valid JSON'),
+                               ('[]', 'prepared_input must be a JSON object')):
+            with self.subTest(value=value), patch.dict(os.environ, PREPARED_INPUT=value):
+                with self.assertRaisesRegex(ValueError, message) as error:
+                    inputs.settings()
+                self.assertNotIn('sensitive-token', str(error.exception))
+
     def test_each_platform_selects_its_own_prepared_input(self):
         config = {'ios': {'url': 'https://storage.invalid/ios.zip', 'sha256': 'a' * 64},
                   'macos': {'url': 'https://storage.invalid/mac.zip', 'sha256': 'b' * 64}}

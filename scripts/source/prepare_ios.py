@@ -203,8 +203,8 @@ def export():
     body = out / 'IOS-PREPARED-RELEASE.md'
     body.write_text('iOS prepared input / iOS 预处理包\n\n'
                     f'Source / 源码：`{info["producer"]["source_commit"]}`\n\n'
-                    'Set this ZIP’s URL and SHA-256 in PREPARED_INPUT.ios. / '
-                    '将此 ZIP 的地址和校验值填入 PREPARED_INPUT 的 ios 配置。\n')
+                    'Set this ZIP’s URL and SHA-256 in the ios object of the prepared_input workflow parameter. / '
+                    '将此 ZIP 的地址和校验值填入运行参数 prepared_input 的 ios 配置。\n')
     publish_assets(os.environ['GITHUB_REPOSITORY'], info['prepare_key'], 'iOS prepared input', body, [package, checksum])
 
 

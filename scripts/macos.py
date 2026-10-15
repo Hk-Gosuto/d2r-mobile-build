@@ -176,8 +176,8 @@ def export_prepared():
     body = out / 'MAC-PREPARED-RELEASE.md'
     body.write_text('macOS prepared input / macOS 预处理包\n\n'
                     f'Source / 源码：`{info["source_commit"]}`\n\n'
-                    'Set its URL and SHA-256 in PREPARED_INPUT.macos. / '
-                    '将此 ZIP 的地址和校验值填入 PREPARED_INPUT 的 macos 配置。\n')
+                    'Set its URL and SHA-256 in the macos object of the prepared_input workflow parameter. / '
+                    '将此 ZIP 的地址和校验值填入运行参数 prepared_input 的 macos 配置。\n')
     publish_assets(os.environ['GITHUB_REPOSITORY'], info['key'], 'macOS prepared input', body, [package, sums])
     print('Mac prepared archive SHA256:', digest, flush=True)
 

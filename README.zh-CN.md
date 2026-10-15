@@ -7,7 +7,7 @@
 ## 配置和构建
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
-2. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**，将以下 JSON 粘贴为它的值：
+2. 在 **Actions** 中选择 **Build IPA**（iOS）或 **Build macOS**，点击 **Run workflow**，将以下 JSON 粘贴到 **`prepared_input`**：
 
    ```json
    {
@@ -24,7 +24,7 @@
 
    配置中的预处理包由热心网友提供。
 
-3. 在 **Actions** 中选择 **Build IPA** 构建 iOS，或 **Build macOS** 构建 Mac，点击 **Run workflow**。预计 **2–3 分钟**完成打包并发布。
+3. 点击 **Run workflow** 开始构建。预计 **2–3 分钟**完成打包并发布。
 
 - 默认直接运行，自动编译上游最新正式 Release。
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。
@@ -60,13 +60,13 @@
 
 再次运行 **Build IPA** 即可构建上游最新正式 Release。更新 IPA 时备份存档，保持应用标识一致并覆盖安装，已导入的相同 Data 和 Legacy 可继续使用。
 
-普通原生代码更新可复用预处理包；工作流提示生成规则不兼容时，取得新版预处理包并更新 `PREPARED_INPUT`。
+普通原生代码更新可复用预处理包；工作流提示生成规则不兼容时，取得新版预处理包并更新 `prepared_input`。
 
 需要自行生成 iOS 预处理包时，见[生成 iOS 预处理包](docs/PREPARED_INPUT.zh-CN.md#生成-ios-预处理包)。
 
 ## macOS 下载和使用
 
-使用上方共用的 `PREPARED_INPUT` 配置运行 **Build macOS**。构建完成后，在自己仓库的 **Releases** 下载适合当前 Mac 的 ZIP：
+使用上方共用的 `prepared_input` 配置运行 **Build macOS**。构建完成后，在自己仓库的 **Releases** 下载适合当前 Mac 的 ZIP：
 
 | 文件 | 用途 |
 |---|---|

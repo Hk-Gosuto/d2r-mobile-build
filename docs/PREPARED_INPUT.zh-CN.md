@@ -2,7 +2,7 @@
 
 [English](PREPARED_INPUT.md) | [简体中文](PREPARED_INPUT.zh-CN.md)
 
-在 `PREPARED_INPUT` Secret 的 `ios` 对象中填写 ZIP、tar.gz 或 tar.xz 预处理包的 HTTPS 链接。必需文件如下，允许外面再套一层文件夹。
+在运行参数 `prepared_input` 的 `ios` 对象中填写 ZIP、tar.gz 或 tar.xz 预处理包的 HTTPS 链接。必需文件如下，允许外面再套一层文件夹。
 
 ```text
 prepared.json
@@ -69,4 +69,4 @@ jobs:
 
 工作流默认使用上游最新正式 Release，生成改写后的游戏程序、界面素材、覆盖层、宿主表头和预编译 iOS Metal 着色器。Legacy 索引用于生成老设备覆盖层，沿用现有贴图包。
 
-原始游戏压缩包和完成的预处理结果会按输入与生成规则缓存。结果发布到自己的私有 Releases，包含 `D2RMobile-Prepared.zip` 和 `Prepared-SHA256SUMS.txt`。将 ZIP 的地址和校验值填入 `PREPARED_INPUT` JSON 的 `ios` 对象，日常运行 **Build IPA** 使用它。
+原始游戏压缩包和完成的预处理结果会按输入与生成规则缓存。结果发布到自己的私有 Releases，包含 `D2RMobile-Prepared.zip` 和 `Prepared-SHA256SUMS.txt`。将 ZIP 的地址和校验值填入 `prepared_input` JSON 的 `ios` 对象，日常运行 **Build IPA** 使用它。

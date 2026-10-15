@@ -7,7 +7,7 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 ## Configure and build
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
-2. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret and paste the following JSON as its value:
+2. In **Actions**, select **Build IPA** (iOS) or **Build macOS**, click **Run workflow**, and paste the following JSON into **`prepared_input`**:
 
    ```json
    {
@@ -24,7 +24,7 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    The prepared packages in this configuration are provided by community contributors.
 
-3. Under **Actions**, choose **Build IPA** for iOS or **Build macOS** for Mac, then click **Run workflow**. Building and publishing typically takes **2–3 minutes**.
+3. Click **Run workflow** to start the build. Building and publishing typically takes **2–3 minutes**.
 
 - Run with the defaults to compile the latest official upstream Release.
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
@@ -60,13 +60,13 @@ Device requirements: A14 / M1 or newer, with at least 6 GB of memory.
 
 Run **Build IPA** again to build the latest official upstream Release. Back up saves, keep the app identifier unchanged, and install over the existing app. Previously imported matching Data and Legacy resources remain reusable.
 
-Ordinary native code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer prepared package and update `PREPARED_INPUT`.
+Ordinary native code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer prepared package and update `prepared_input`.
 
 To generate your own iOS prepared input, see [Generate an iOS prepared package](docs/PREPARED_INPUT.md#generate-an-ios-prepared-package).
 
 ## Download and use on macOS
 
-Run **Build macOS** with the shared `PREPARED_INPUT` configuration above. After the build, download the ZIP matching your Mac from your repository’s **Releases**:
+Run **Build macOS** with the shared `prepared_input` configuration above. After the build, download the ZIP matching your Mac from your repository’s **Releases**:
 
 | File | Purpose |
 |---|---|

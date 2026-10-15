@@ -2,6 +2,10 @@ name: Reusable prepared-input macOS build
 on:
   workflow_call:
     inputs:
+      prepared_input:
+        description: Prepared package configuration as JSON
+        type: string
+        default: ''
       source_repository:
         type: string
         default: jhaizhou-ops/d2r-mobile
@@ -13,7 +17,7 @@ on:
         default: true
     secrets:
       PREPARED_INPUT:
-        required: true
+        required: false
       SOURCE_TOKEN:
         required: false
 permissions:
@@ -71,7 +75,7 @@ jobs:
       - name: Resolve the Mac prepared input
         id: input
         env:
-          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
+          PREPARED_INPUT: ${{ inputs.prepared_input || secrets.PREPARED_INPUT }}
         run: python scripts/macos.py plan-prepared
       - name: Restore the original prepared package
         id: archive
@@ -82,7 +86,7 @@ jobs:
           key: macos-input-v1-${{ steps.input.outputs.input_revision }}
       - name: Download and verify the Mac prepared package
         env:
-          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
+          PREPARED_INPUT: ${{ inputs.prepared_input || secrets.PREPARED_INPUT }}
           INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
         run: python scripts/macos.py download-prepared
       - name: Check input cache space

@@ -2,6 +2,10 @@ name: Reusable prepared-input build
 on:
   workflow_call:
     inputs:
+      prepared_input:
+        description: Prepared package configuration as JSON
+        type: string
+        default: ''
       source_repository:
         type: string
         default: jhaizhou-ops/d2r-mobile
@@ -10,7 +14,7 @@ on:
         default: ''
     secrets:
       PREPARED_INPUT:
-        required: true
+        required: false
       SOURCE_TOKEN:
         required: false
 permissions:
@@ -67,7 +71,7 @@ jobs:
       - name: Resolve the prepared package checksum
         id: input
         env:
-          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
+          PREPARED_INPUT: ${{ inputs.prepared_input || secrets.PREPARED_INPUT }}
         run: python scripts/source/prepared.py resolve
       - name: Restore the original prepared package
         id: archive
@@ -77,7 +81,7 @@ jobs:
           key: prepared-input-v1-${{ steps.input.outputs.input_revision }}
       - name: Download and verify the prepared package
         env:
-          PREPARED_INPUT: ${{ secrets.PREPARED_INPUT }}
+          PREPARED_INPUT: ${{ inputs.prepared_input || secrets.PREPARED_INPUT }}
           INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
         run: python scripts/source/prepared.py download
       - name: Cache the completed download before preparing the build
