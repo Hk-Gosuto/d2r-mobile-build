@@ -66,3 +66,50 @@ class RuntimeInputTests(unittest.TestCase):
             (upstream / 'dm/tools/helper.py').write_text('changed_program_rewrite = True\n')
             with self.assertRaisesRegex(ValueError, 'updated prepared package'):
                 verify_generation(upstream, commit, heavy=True)
+
+
+class InterfaceCacheTests(unittest.TestCase):
+    def test_native_changes_keep_cache_but_ui_text_and_inputs_invalidate_it(self):
+        from source.runtime_assets import generation_key
+        from fixtures import git
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            upstream, _, _, _ = source(root)
+            archive = root / '.prepared-downloads/prepared-input.archive'
+            archive.parent.mkdir(); archive.write_bytes(b'original prepared input')
+            for name in ('scripts/source/runtime_assets.py', 'scripts/source/romfs_input.py', 'scripts/png_backend.sh'):
+                target = root / name; target.parent.mkdir(parents=True, exist_ok=True); target.write_text('fixture tools\n')
+            text = upstream / 'dm/i18n/ui_text.tsv'
+            text.parent.mkdir(); text.write_text('original interface text\n')
+            git(upstream, 'add', '.')
+            first = generation_key('ios', root)
+            (upstream / 'dm/runtime.c').write_text('new native implementation\n')
+            self.assertEqual(generation_key('ios', root), first)
+            text.write_text('new interface text\n')
+            second = generation_key('ios', root)
+            self.assertNotEqual(second, first)
+            archive.write_bytes(b'updated prepared input')
+            self.assertNotEqual(generation_key('ios', root), second)
+
+    def test_cached_generated_files_restore_without_replacing_native_sources(self):
+        from unittest.mock import patch
+        import ci
+        from source.runtime_assets import cached_interface, save_interface
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            dm = root / 'upstream/dm'; workspace = root / '.runtime-inputs'
+            generated = dm / 'ios/Sources/dm_touch_native_art.c'
+            generated.parent.mkdir(parents=True); generated.write_text('generated skill index\n')
+            native = dm / 'ios/Sources/application.m'; native.write_text('current native code\n')
+            overlay = workspace / 'romfs_overlay/data/new.data'
+            overlay.parent.mkdir(parents=True); overlay.write_bytes(b'generated overlay')
+            with patch.object(ci, 'ROOT', root):
+                save_interface('source-key', dm, workspace, 100.0)
+                generated.unlink(); overlay.unlink()
+                self.assertFalse(cached_interface('different-source', dm, workspace))
+                self.assertTrue(cached_interface('source-key', dm, workspace))
+                self.assertEqual(generated.read_text(), 'generated skill index\n')
+                self.assertEqual(overlay.read_bytes(), b'generated overlay')
+                self.assertEqual(native.read_text(), 'current native code\n')
+                (root / '.interface-cache/interface.zip').write_bytes(b'corrupt')
+                self.assertFalse(cached_interface('source-key', dm, workspace))

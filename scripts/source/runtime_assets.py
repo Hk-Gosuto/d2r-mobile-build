@@ -1,5 +1,9 @@
 """Generate interface resources from the selected source and small original inputs."""
 import os
+import hashlib
+import importlib.metadata
+import json
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -7,7 +11,11 @@ import sys
 import time
 import zipfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from source.romfs_input import restore
+from archive_input import extract
+import ci
 from source.compatibility import git
 
 BASE = 'Payload/DmIOS.app/'
@@ -20,8 +28,83 @@ def heavy_member(name):
     return relative.startswith(('msl/', 'Frameworks/Guest.framework/')) or relative in {'dm/' + n for n in HEAVY_DM}
 
 
+UI_INPUTS = ('dm/ios/tools', 'dm/ios/docs', 'dm/ios/NativeHUD', 'dm/i18n', 'dm/data',
+             'dm/gfx/tex', 'dm/gfx/nvn/include', 'dm/gfx/nvn/nvn_tex.c', 'dm/gfx/nvn/nvn_tex.h',
+             'dm/ios/Sources/TouchArt/native_art_manifest.json', 'dm/host/dm_kills.c',
+             'dm/tools/casc_overlay.py', 'dm/tools/dmx.py', 'dm/tools/gen_bright_levels.py')
+
+
+def generation_key(kind, root=ci.ROOT):
+    archive = root / ('.macos-downloads' if kind == 'macos' else '.prepared-downloads') / 'prepared-input.archive'
+    digest = hashlib.sha256((kind + platform.machine() + ci.sha256(archive)).encode())
+    for package in ('Pillow', 'numpy'):
+        try:
+            version = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            version = 'missing'
+        digest.update((package + version).encode())
+    upstream = root / 'upstream'
+    for name in sorted(git(upstream, 'ls-files', '-z').split('\0')):
+        if any(name == p or name.startswith(p + '/') for p in UI_INPUTS):
+            digest.update((name + '\0').encode() + (upstream / name).read_bytes())
+    for name in ('scripts/source/runtime_assets.py', 'scripts/source/romfs_input.py', 'scripts/png_backend.sh'):
+        digest.update((root / name).read_bytes())
+    return 'interface-v1-' + kind + '-' + digest.hexdigest()
+
+
+def cache_paths(dm, workspace):
+    return {'assets': dm / 'ios/Gen/assets', 'art': dm / 'ios/Sources/TouchArt',
+            'native': dm / 'ios/Sources', 'tables': dm / 'host',
+            **{name: workspace / name for name in ('romfs_overlay', 'romfs_overlay_variants',
+                                                  'romfs_overlay_astc', 'romfs_overlay_astc_variants')}}
+
+
+def cached_interface(key, dm, workspace):
+    cache = ci.ROOT / '.interface-cache'
+    temporary = cache / 'unpacked'
+    try:
+        info = json.loads((cache / 'receipt.json').read_text())
+        if info['key'] != key or ci.sha256(cache / 'interface.zip') != info['sha256']:
+            return False
+        extract(cache / 'interface.zip', temporary, max_members=10000, max_bytes=512 * 1024**2)
+        for name, target in cache_paths(dm, workspace).items():
+            source = temporary / name
+            if source.is_dir():
+                shutil.copytree(source, target, dirs_exist_ok=True)
+                for path in source.rglob('*'):
+                    if path.is_file():
+                        os.utime(target / path.relative_to(source), None)
+        print('Reused interface resources for the selected source', flush=True)
+        return True
+    except (OSError, ValueError, KeyError, zipfile.BadZipFile):
+        return False
+    finally:
+        shutil.rmtree(temporary, ignore_errors=True)
+
+
+def save_interface(key, dm, workspace, seconds):
+    cache = ci.ROOT / '.interface-cache'
+    cache.mkdir(exist_ok=True)
+    with zipfile.ZipFile(cache / 'interface.zip', 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as output:
+        for name, directory in cache_paths(dm, workspace).items():
+            for path in sorted(directory.rglob('*')) if directory.is_dir() else ():
+                if not path.is_file():
+                    continue
+                relative = path.relative_to(directory).as_posix()
+                if (name == 'native' and relative != 'dm_touch_native_art.c'
+                        or name == 'art' and not path.name.startswith('dm_native_')
+                        or name == 'tables' and relative not in ('dm_vault_tab.h', 'dm_hud_exp.h', 'dm_bright_levels.inc')):
+                    continue
+                output.write(path, name + '/' + relative)
+    (cache / 'receipt.json').write_text(json.dumps({'key': key, 'sha256': ci.sha256(cache / 'interface.zip'),
+                                                  'generation_seconds': seconds}) + '\n')
+
+
 def generate(dm, inputs, workspace, *, macos=False, legacy=None, headers=None, baseline=None):
     started = time.monotonic()
+    key = generation_key('macos' if macos else 'ios')
+    if cached_interface(key, dm, workspace):
+        return round(time.monotonic() - started, 2)
     romfs = restore(inputs, workspace / 'RomFS')
     environment = dict(os.environ, DM_ROOT=str(workspace), DM_ROMFS_SRC=str(romfs))
     environment.pop('DM_PC_DATA', None)
@@ -51,7 +134,9 @@ def generate(dm, inputs, workspace, *, macos=False, legacy=None, headers=None, b
     for name in ('romfs_overlay', 'romfs_overlay_variants', 'romfs_overlay_astc', 'romfs_overlay_astc_variants'):
         shutil.rmtree(workspace / name, ignore_errors=True)
     run('ios/tools/gen_romfs_overlay.py', romfs, overlay)
-    return round(time.monotonic() - started, 2)
+    seconds = round(time.monotonic() - started, 2)
+    save_interface(key, dm, workspace, seconds)
+    return seconds
 
 
 def ios_payload(directory, info, dm, destination, workspace):
@@ -97,3 +182,9 @@ def ios_payload(directory, info, dm, destination, workspace):
             if path.is_file():
                 output.write(path, BASE + path.relative_to(stage).as_posix())
     return seconds
+
+
+if __name__ == '__main__':
+    key = generation_key(sys.argv[1])
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+        output.write('interface_key=' + key + '\n')

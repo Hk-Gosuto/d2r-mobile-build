@@ -1,12 +1,9 @@
 """Reuse existing game programs and Metal libraries, adding original runtime-generation inputs."""
-import argparse
 import json
 from pathlib import Path
 import shutil
-import sys
 import zipfile
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ci
 from source.compatibility import verify_generation
 from source.prepared import verify_directory, write
@@ -68,17 +65,3 @@ def upgrade_macos(directory, original, upstream):
                      for p in sorted(directory.rglob('*')) if p.is_file() and p.name != 'manifest.json'}
     write(directory / 'manifest.json', info)
     return info
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('directory', type=Path)
-    parser.add_argument('original', type=Path)
-    parser.add_argument('legacy_index', type=Path)
-    parser.add_argument('upstream', type=Path)
-    parser.add_argument('--macos', action='store_true')
-    args = parser.parse_args()
-    if args.macos:
-        upgrade_macos(args.directory, args.original, args.upstream)
-    else:
-        upgrade(args.directory, args.original, args.legacy_index, args.upstream)

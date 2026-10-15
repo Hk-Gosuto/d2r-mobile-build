@@ -135,14 +135,8 @@ def prepare():
             'files': {p.relative_to(stage).as_posix(): ci.sha256(p)
                       for p in sorted(stage.rglob('*')) if p.is_file()}}
     write(stage / 'manifest.json', info)
-    from source.romfs_input import create
-    create(game.parent, stage / 'romfs-inputs.zip')
-    shutil.rmtree(stage / 'romfs_overlay')
-    shutil.rmtree(stage / 'romfs_overlay_variants', ignore_errors=True)
-    info['schema_version'] = 2
-    info['files'] = {p.relative_to(stage).as_posix(): ci.sha256(p)
-                     for p in sorted(stage.rglob('*')) if p.is_file() and p.name != 'manifest.json'}
-    write(stage / 'manifest.json', info)
+    from source.upgrade_prepared import upgrade_macos
+    upgrade_macos(stage, game.parent, upstream)
     shutil.rmtree(cache, ignore_errors=True)
     stage.rename(cache)
     print('Mac preparation completed and verified; original archive retained', flush=True)
