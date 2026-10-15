@@ -24,7 +24,7 @@ c1_full.tsv
 |---|---|
 | `manifest.json` | Format `d2r-mobile-macos-prepared`, schema `2`, source commit, game program hashes, generation key, producer toolchain and every file’s SHA-256 |
 | `product/` | Upstream’s rewritten `touch` game programs and loader tables |
-| `msl/` | macOS Metal libraries targeting macOS 15.0, and their reflection metadata; shared by both Mac apps |
+| `msl/` | macOS Metal libraries targeting macOS 15.0; each `_b.metallib` has a matching `_b.json` reflection file. Shared by both Mac apps |
 | `romfs-inputs.zip` | Selected original inputs for generating Mac layouts, strings, images, fonts, data tables and overlays |
 | `resources/data/` | Small metadata files needed by the Mac resource picker; used alongside existing Data |
 | `generated/` | Game-table headers, reused when their generator scripts are unchanged |

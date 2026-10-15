@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import shlex
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,11 @@ from source.prepared import download as download_prepared, resolve as plan_prepa
 from source.romfs_input import create
 
 HEADERS = ('dm_vault_tab.h', 'dm_hud_exp.h', 'dm_bright_levels.inc')
+PREPARED_FILES = {'romfs-inputs.zip', 'shader-chain.lock', 'c1_full.tsv',
+                  'resources/data/build_manifest.psv', 'resources/data/.build.config',
+                  *('generated/' + n for n in HEADERS),
+                  *(f'product/{module}.{suffix}' for module in ('main', 'sdk', 'subsdk0')
+                    for suffix in ('patched.bin', 'fixups.tsv', 'gates.tsv'))}
 
 
 def run(*args, **kwargs):
@@ -29,6 +35,59 @@ def run(*args, **kwargs):
 
 def write(path, value):
     path.write_text(json.dumps(value, indent=2) + '\n')
+
+
+def retarget_shaders(script_path, minimum, destination, environment):
+    # Avoid ARG_MAX in older upstream scripts without changing their hashed source.
+    copy = 'import pathlib,shutil,sys; [shutil.copyfile(p,pathlib.Path(sys.argv[2])/p.name) for p in pathlib.Path(sys.argv[1]).glob("*.json")]'
+    script = script_path.read_text()
+    replacement = '"$D2R_COPY_PYTHON" -c ' + shlex.quote(copy) + ' "$S" "$D" || exit 3'
+    for command in ('cp -c "$S"/*.json "$D"/', 'cp -c "$S"/*.json "$D/"'):
+        script = script.replace(command, replacement)
+    subprocess.run(['bash', '-c', script, str(script_path), minimum, str(destination)],
+                   env=dict(environment, D2R_COPY_PYTHON=sys.executable), check=True)
+
+
+def verify_shaders(directory, chain, expected):
+    libraries = {p.name: p for p in directory.glob('*.metallib')}
+    base = {name.removesuffix('.metallib') for name in libraries if name.endswith('_b.metallib')}
+    reflections = {p.stem: p for p in directory.glob('*_b.json')}
+    if not base or len(libraries) != expected:
+        raise ValueError('Mac Metal library set is incomplete')
+    if base != reflections.keys():
+        raise ValueError('Mac shader reflection JSON set is incomplete; regenerate the Mac prepared package')
+    for name, path in libraries.items():
+        with path.open('rb') as stream:
+            if stream.read(4) != b'MTLB':
+                raise ValueError('Mac Metal library is uncompiled: ' + name)
+        if name.endswith('_bf.metallib') and name.removesuffix('f.metallib') not in base:
+            raise ValueError('Mac tile shader has no base reflection: ' + name)
+    def invalid_constant(value):
+        raise ValueError('Non-finite value in Mac shader reflection JSON')
+    for name, path in reflections.items():
+        data = json.loads(path.read_text(), parse_constant=invalid_constant)
+        if (not isinstance(data, dict) or data.get('chain') != chain or data.get('key') != name
+                or not isinstance(data.get('entry'), str) or not data['entry']
+                or not isinstance(data.get('bindings'), list)):
+            raise ValueError('Invalid Mac shader reflection: ' + path.name)
+    return len(reflections)
+
+
+def verify_app_resources(app, dm, info, overlay):
+    resources = app / 'Contents/Resources'
+    expected = {name: digest for name, digest in info['files'].items()
+                if name.startswith(('product/', 'msl/'))}
+    expected.update({name: ci.sha256(dm / 'gfx/nvn' / name)
+                     for name in ('shader_map.tsv', 'pso_manifest.tsv', 'c1_full.tsv')})
+    expected.update({'romfs_overlay/' + p.relative_to(overlay).as_posix(): ci.sha256(p)
+                     for p in overlay.rglob('*') if p.is_file()})
+    for name, digest in expected.items():
+        path = resources / name
+        if not path.is_file() or ci.sha256(path) != digest:
+            raise ValueError('Mac app runtime resource missing or changed: ' + name)
+    verify_shaders(resources / 'msl' / ('b-' + info['shader_chain']),
+                   info['shader_chain'], info['metal_libraries'])
+    return expected
 
 
 def generation_key(upstream, identity, toolchain):
@@ -59,8 +118,8 @@ def load_prepared():
     info = json.loads((cache / 'manifest.json').read_text())
     if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') != 2:
         raise ValueError('Expected a macOS prepared package (schema 2)')
-    if not {'romfs-inputs.zip', *('generated/' + n for n in HEADERS)} <= info['files'].keys():
-        raise ValueError('Mac prepared package is missing original inputs or game tables')
+    if not PREPARED_FILES <= info['files'].keys():
+        raise ValueError('Mac prepared package is missing required runtime or preparation files')
     expected = os.environ.get('MACOS_PREPARED_KEY')
     if expected is None:
         verify_generation(ci.ROOT / 'upstream', info['source_commit'])
@@ -73,6 +132,10 @@ def load_prepared():
     for name, digest in info['files'].items():
         if (cache / name).is_symlink() or ci.sha256(cache / name) != digest:
             raise ValueError('Mac preparation cache checksum mismatch')
+    if not (cache / 'c1_full.tsv').read_text().startswith('# chain b-' + info['shader_chain'] + ' '):
+        raise ValueError('Mac shader constant index belongs to another chain')
+    verify_shaders(cache / 'msl' / ('b-' + info['shader_chain']),
+                   info['shader_chain'], info['metal_libraries'])
     return info
 
 
@@ -109,8 +172,7 @@ def prepare():
     product = (dm / 'PRODUCT').read_text().strip()
     shutil.copytree(workspace / 'build/cache/dm/out' / (product + '-touch'), stage / 'product',
                     ignore=shutil.ignore_patterns('*.log'))
-    subprocess.run(['bash', str(dm / 'gfx/tools/msl_retarget.sh'), '15.0', str(stage / 'msl')],
-                   env=environment, check=True)
+    retarget_shaders(dm / 'gfx/tools/msl_retarget.sh', '15.0', stage / 'msl', environment)
     generators = ('ios/tools/gen_vault_table.py', 'ios/tools/gen_hud_exp.py',
                   'tools/gen_bright_levels.py')
     (stage / 'generated').mkdir()
@@ -122,14 +184,14 @@ def prepare():
     shutil.copy2(dm / 'gfx/nvn/c1_full.tsv', stage / 'c1_full.tsv')
     chain = run(python, dm / 'gfx/tools/dmsh_chain.py', '--header')
     libraries = list((stage / 'msl' / ('b-' + chain)).glob('*.metallib'))
-    if not libraries or any(not p.read_bytes().startswith(b'MTLB') for p in libraries):
-        raise ValueError('Mac Metal libraries are missing or uncompiled')
+    reflections = verify_shaders(stage / 'msl' / ('b-' + chain), chain, len(libraries))
     size = create(game.parent, stage / 'romfs-inputs.zip')
     info = {'format': 'd2r-mobile-macos-prepared', 'schema_version': 2,
             'toolchain': os.environ['MACOS_TOOLCHAIN'], 'nso_sha256': ci.CONFIG['nso_sha256'],
             'key': os.environ['MACOS_PREPARED_KEY'], 'source_commit': ci.CONFIG['upstream_commit'],
             'input_revision': os.environ['INPUT_REVISION'], 'archive_sha256': settings('GAME_ARCHIVE')[1] or ci.sha256(archive),
             'product': product, 'shader_chain': chain, 'metal_libraries': len(libraries),
+            'metal_reflections': reflections,
             'metal_minimum_os': '15.0', 'runtime_input_bytes': size,
             'prepare_seconds': round(time.monotonic() - started, 2),
             'files': {p.relative_to(stage).as_posix(): ci.sha256(p)
@@ -187,7 +249,7 @@ def build():
     cache = root / '.macos-prepared'
     info = load_prepared()
     workspace = root / '.macos-runtime'
-    from source.runtime_assets import generate
+    from source.runtime_assets import generate, copy_licenses
     generation_seconds = generate(dm, cache / 'romfs-inputs.zip', workspace, macos=True,
                                   headers=cache / 'generated', baseline=info['source_commit'])
     shutil.copyfile(cache / 'shader-chain.lock', dm / 'gfx/tools/dmsh_chain.lock')
@@ -212,6 +274,9 @@ def build():
         subprocess.run(['bash', str(dm / 'tools/mac_app.sh'), str(out / 'macos-apps')],
                        env=dict(environment, DM_MAC_M3=older), check=True)
         app = out / 'macos-apps' / app_name
+        copy_licenses(dm, app / 'Contents/Resources')
+        subprocess.run(['codesign', '--force', '-s', '-', str(app)], check=True)
+        runtime_files = verify_app_resources(app, dm, info, workspace / 'romfs_overlay')
         plist = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
         native = (app / 'Contents/MacOS' / plist['CFBundleExecutable']).read_bytes()
         version = ci.macho_minimum_os(native, platform=1)
@@ -228,10 +293,16 @@ def build():
         with zipfile.ZipFile(path, 'a', zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             for metadata in sorted((cache / 'resources/data').iterdir()):
                 archive.write(metadata, 'Mac Resource Metadata/data/' + metadata.name)
+        with zipfile.ZipFile(path) as archive:
+            for resource_name, digest in runtime_files.items():
+                member = app_name + '/Contents/Resources/' + resource_name
+                if hashlib.sha256(archive.read(member)).hexdigest() != digest:
+                    raise ValueError('Mac ZIP runtime resource changed: ' + resource_name)
         packages.append({'name': name, 'sha256': ci.sha256(path), 'bytes': path.stat().st_size,
                          'app_name': app_name, 'minimum_os': minimum,
                          'native_minimum_os': '.'.join(map(str, version)),
                          'native_sha256': hashlib.sha256(native).hexdigest(),
+                         'runtime_files_verified': len(runtime_files),
                          'bundle_identifier': plist['CFBundleIdentifier'], 'signature': 'ad-hoc'})
     report = {'platform': 'macos', 'source_repository': os.environ['SOURCE_REPOSITORY'],
               'source_commit': ci.CONFIG['upstream_commit'], 'tools_commit': os.environ['TOOLS_COMMIT'],
@@ -241,6 +312,7 @@ def build():
               'prepared_archive_sha256': ci.sha256(root / '.macos-downloads/prepared-input.archive'),
               'product': info['product'], 'shader_chain': info['shader_chain'],
               'metal_libraries': info['metal_libraries'], 'metal_minimum_os': info['metal_minimum_os'],
+              'metal_reflections': len(list((cache / 'msl' / ('b-' + info['shader_chain'])).glob('*_b.json'))),
               'prepared_cache_hit': os.environ.get('MACOS_PREPARED_CACHE_HIT') == 'true',
               'native_build_seconds': round(time.monotonic() - started, 2),
               'runtime_generation_seconds': generation_seconds,

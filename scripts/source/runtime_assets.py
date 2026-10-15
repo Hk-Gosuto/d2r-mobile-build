@@ -177,19 +177,23 @@ def ios_payload(directory, info, dm, destination, workspace):
     manifest += [p.relative_to(stage).as_posix() for p in (stage / 'dm').iterdir() if p.is_file()]
     manifest += [p.name for p in stage.iterdir() if p.is_file()]
     (stage / 'dm/shell_manifest.txt').write_text('\n'.join(sorted(manifest)) + '\n')
-    licenses = [(dm.parent / 'LICENSE', 'd2r-mobile-MIT.txt')]
-    licenses += [(p, p.relative_to(dm).as_posix()) for folder in ('third_party', 'gfx/nvn/include')
-                 for p in (dm / folder).rglob('*') if p.is_file()
-                 and (p.name.upper().startswith(('LICENSE', 'COPYING', 'NOTICE')) or p.name == 'nvn.h')]
-    for source, name in licenses:
-        path = stage / 'Licenses' / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, path)
+    copy_licenses(dm, stage)
     with zipfile.ZipFile(destination, 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as output:
         for path in sorted(stage.rglob('*')):
             if path.is_file():
                 output.write(path, BASE + path.relative_to(stage).as_posix())
     return seconds
+
+
+def copy_licenses(dm, destination):
+    licenses = [(dm.parent / 'LICENSE', 'd2r-mobile-MIT.txt')]
+    licenses += [(p, p.relative_to(dm).as_posix()) for folder in ('third_party', 'gfx/nvn/include')
+                 for p in (dm / folder).rglob('*') if p.is_file()
+                 and (p.name.upper().startswith(('LICENSE', 'COPYING', 'NOTICE')) or p.name == 'nvn.h')]
+    for source, name in licenses:
+        path = destination / 'Licenses' / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, path)
 
 
 if __name__ == '__main__':

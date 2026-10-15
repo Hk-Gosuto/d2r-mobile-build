@@ -27,7 +27,7 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
    }
    ```
 
-   The prepared packages in this configuration are provided by community contributors: approximately **290 MB for iOS** and **295 MB for macOS**.
+   The prepared packages in this configuration are provided by community contributors: approximately **290 MB for iOS** and **299 MB for macOS**.
 
 3. Click **Run workflow** to start the build. Downloading, compiling, packaging and publishing typically takes **about 6 minutes for iOS** or **5 minutes for macOS**.
 
