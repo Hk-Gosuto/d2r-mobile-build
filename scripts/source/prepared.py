@@ -156,7 +156,7 @@ def prepare(root=ci.ROOT):
     write(out / 'source-input-report.json', report)
     with tarfile.open(out / 'native-inputs.tar.gz', 'w:gz') as tf:
         def include(item):
-            return None if any(p in ('.git', 'Gen', 'TouchArt', '__pycache__', 'bin', 'obj')
+            return None if any(p in ('.git', 'Gen', '__pycache__', 'bin', 'obj')
                                for p in Path(item.name).parts) else item
         tf.add(dm, arcname='upstream/dm', filter=include)
     print('Prepared package and source compatibility verified', flush=True)
