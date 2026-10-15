@@ -7,9 +7,8 @@ Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source 
 ## Configure
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
-2. Replace the workflows in your repository’s `.github/workflows/` with this branch’s [build.yml](.github/workflows/build.yml). This entry automatically uses the latest maintained build logic.
-3. Obtain an HTTPS download link for `D2RMobile-Prepared.zip` and its SHA-256 from `Prepared-SHA256SUMS.txt`.
-4. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret:
+2. Obtain an HTTPS download link for `D2RMobile-Prepared.zip` and its SHA-256 from `Prepared-SHA256SUMS.txt`.
+3. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret:
 
    ```json
    {
@@ -28,7 +27,7 @@ Open **Actions → Build IPA → Run workflow**:
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
 - To test your changes, set `source_repository` to your fork and `source_ref` to its branch. For private source repositories, add a **`SOURCE_TOKEN`** Secret with Contents read access to that repository.
 
-The workflow downloads and verifies the prepared package, checks source compatibility, then compiles and packages both IPAs. Completed downloads and native compiler modules are cached for later builds. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
+The build entry automatically uses the latest build logic maintained by this project. The workflow downloads and verifies the prepared package, checks source compatibility, then compiles and packages both IPAs. Completed downloads and native compiler modules are cached for later builds. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
 
 ## Download and use
 
@@ -47,7 +46,7 @@ After the build, download from your repository’s **Releases**:
 
 Device requirements: A14 / M1 or newer, with at least 6 GB of memory.
 
-## Update
+## Update the IPA
 
 Run **Build IPA** again to build the latest official upstream Release. Back up saves, keep the app identifier unchanged, and install over the existing app. Previously imported matching Data and Legacy resources remain reusable.
 

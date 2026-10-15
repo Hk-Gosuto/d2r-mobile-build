@@ -7,9 +7,8 @@
 ## 配置
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
-2. 将新仓库 `.github/workflows/` 中的工作流替换为本分支的 [build.yml](.github/workflows/build.yml)。这个入口会自动使用本项目维护的最新构建逻辑。
-3. 准备 `D2RMobile-Prepared.zip` 的 HTTPS 下载链接，从 `Prepared-SHA256SUMS.txt` 取得它的 SHA-256。
-4. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**：
+2. 准备 `D2RMobile-Prepared.zip` 的 HTTPS 下载链接，从 `Prepared-SHA256SUMS.txt` 取得它的 SHA-256。
+3. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**：
 
    ```json
    {
@@ -28,7 +27,7 @@ Google Drive 可使用 `https://drive.google.com/file/d/文件ID/view` 形式的
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。
 - 测试自己的修改：`source_repository` 填自己的 Fork，`source_ref` 填对应分支。私有源码仓库另配置 **`SOURCE_TOKEN`** Secret，授予该源码仓库 Contents 只读权限。
 
-工作流下载并校验预处理包，检查源码兼容性，再编译、打包两份 IPA。下载完成的预处理包和原生编译模块会缓存，供后续构建复用。同一上游版本支持多次构建及重跑，每次使用独立的 Release 和文件名。
+构建入口自动使用本项目维护的最新构建逻辑。工作流下载并校验预处理包，检查源码兼容性，再编译、打包两份 IPA。下载完成的预处理包和原生编译模块会缓存，供后续构建复用。同一上游版本支持多次构建及重跑，每次使用独立的 Release 和文件名。
 
 ## 下载和使用
 
@@ -47,7 +46,7 @@ Google Drive 可使用 `https://drive.google.com/file/d/文件ID/view` 形式的
 
 设备要求：A14 / M1 及更新芯片，至少 6 GB 内存。
 
-## 更新
+## 更新 IPA
 
 再次运行 **Build IPA** 即可构建上游最新正式 Release。更新 IPA 时备份存档，保持应用标识一致并覆盖安装，已导入的相同 Data 和 Legacy 可继续使用。
 
