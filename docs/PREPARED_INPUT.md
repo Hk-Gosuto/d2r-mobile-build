@@ -1,4 +1,4 @@
-# Prepared package
+# iOS prepared package
 
 [English](PREPARED_INPUT.md) | [简体中文](PREPARED_INPUT.zh-CN.md)
 

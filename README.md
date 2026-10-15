@@ -37,7 +37,7 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
 The build entry automatically uses this project's latest build logic. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
 
-To prepare your own inputs, see [Generate an iOS prepared package](docs/PREPARED_INPUT.md#generate-an-ios-prepared-package) or the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md).
+To prepare your own inputs, see [Generate an iOS prepared package](docs/PREPARED_INPUT.md#generate-an-ios-prepared-package) or [Generate a macOS prepared package](docs/MACOS_PREPARED_INPUT.md#generate-a-macos-prepared-package).
 
 ## Download and use on iOS
 

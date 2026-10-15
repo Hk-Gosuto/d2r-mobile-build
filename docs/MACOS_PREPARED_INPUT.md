@@ -1,4 +1,4 @@
-# Mac prepared package
+# macOS prepared package
 
 [English](MACOS_PREPARED_INPUT.md) | [简体中文](MACOS_PREPARED_INPUT.zh-CN.md)
 
@@ -32,7 +32,7 @@ c1_full.tsv
 
 Mac interface resources follow the selected upstream source, including keyboard glyphs. Matching generated outputs are cached and reused across native-code changes. Game-table headers are reused when their generator scripts are unchanged; modified generators rebuild their tables. Game programs and Metal libraries are reused while their generation rules remain compatible. Schema 1 packages retain their original compatibility checks.
 
-## Prepare your own input
+## Generate a macOS prepared package
 
 In a private repository, add a `GAME_ARCHIVE` Secret with a JSON object containing the HTTPS `url` and `sha256` of an archive with one `ExeFS`/`RomFS` pair. Use this workflow to generate the Mac prepared package:
 

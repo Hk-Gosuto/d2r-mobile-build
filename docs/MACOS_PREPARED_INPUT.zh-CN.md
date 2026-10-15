@@ -1,4 +1,4 @@
-# Mac 预处理包
+# macOS 预处理包
 
 [English](MACOS_PREPARED_INPUT.md) | [简体中文](MACOS_PREPARED_INPUT.zh-CN.md)
 
@@ -32,7 +32,7 @@ c1_full.tsv
 
 Mac 界面资源跟随所选上游源码生成，包括键盘键帽。输入一致时复用缓存，修改原生应用代码无需重新生成这些资源。游戏数据表在生成脚本未变时复用，脚本变化时重新生成。游戏程序与 Metal 着色器在对应生成规则兼容时复用。格式版本 1 的包沿用原有兼容性检查。
 
-## 准备自己的输入
+## 生成 macOS 预处理包
 
 在私有仓库添加 `GAME_ARCHIVE` Secret，JSON 中填写包含一对 `ExeFS`/`RomFS` 的压缩包 HTTPS 地址 `url` 和校验值 `sha256`。添加以下工作流生成 Mac 预处理包：
 

@@ -37,7 +37,7 @@
 
 构建入口自动使用本项目维护的最新构建逻辑。同一上游版本支持多次构建及重跑，每次使用独立的 Release 和文件名。
 
-需要自行准备输入时，见[生成 iOS 预处理包](docs/PREPARED_INPUT.zh-CN.md#生成-ios-预处理包)或 [Mac 预处理包格式](docs/MACOS_PREPARED_INPUT.zh-CN.md)。
+需要自行准备输入时，见[生成 iOS 预处理包](docs/PREPARED_INPUT.zh-CN.md#生成-ios-预处理包)或 [生成 macOS 预处理包](docs/MACOS_PREPARED_INPUT.zh-CN.md#生成-macos-预处理包)。
 
 ## iOS 下载和使用
 
