@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import tempfile
 import time
 from urllib.parse import parse_qs, urlsplit
@@ -36,6 +37,27 @@ def drive_file_id(url):
 def download_file(url, destination, expected=None, max_bytes=None):
     url = https_url(url)
     destination = Path(destination)
+    parsed = urlsplit(url)
+    repository = os.environ.get('GITHUB_REPOSITORY', '')
+    if (repository and parsed.hostname == 'api.github.com' and
+            re.fullmatch(r'/repos/' + re.escape(repository) + r'/releases/assets/\d+', parsed.path)):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        partial = destination.with_suffix(destination.suffix + '.part')
+        try:
+            with partial.open('wb') as output:
+                result = subprocess.run(['gh', 'api', parsed.path.lstrip('/'),
+                                         '-H', 'Accept: application/octet-stream'], stdout=output,
+                                        stderr=subprocess.DEVNULL)
+            if result.returncode or not partial.stat().st_size:
+                raise RuntimeError('Private input asset download failed')
+            if max_bytes and partial.stat().st_size > max_bytes:
+                raise ValueError('Download exceeds the supported size')
+            if expected and ci.sha256(partial) != expected:
+                raise ValueError('Download SHA256 mismatch: ' + destination.name)
+            partial.replace(destination)
+        finally:
+            partial.unlink(missing_ok=True)
+        return
     if drive_file_id(url) is None:
         ci.download(url, destination, expected, max_bytes=max_bytes)
         return

@@ -100,9 +100,9 @@ def resolve():
         f.write('input_revision=' + input_identity(url, digest) + '\n')
 
 
-def download(root=ci.ROOT):
-    url, digest = settings()
-    archive = root / '.prepared-downloads/prepared-input.archive'
+def download(root=ci.ROOT, secret_name='PREPARED_INPUT', cache_name='.prepared-downloads'):
+    url, digest = settings(secret_name)
+    archive = root / cache_name / 'prepared-input.archive'
     marker = archive.with_suffix('.json')
     if archive.is_file():
         try:

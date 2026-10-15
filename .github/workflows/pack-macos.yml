@@ -1,4 +1,4 @@
-name: Reusable macOS build
+name: Reusable prepared-input macOS build
 on:
   workflow_call:
     inputs:
@@ -9,7 +9,7 @@ on:
         type: string
         default: ''
     secrets:
-      GAME_ARCHIVE:
+      MACOS_PREPARED_INPUT:
         required: true
       SOURCE_TOKEN:
         required: false
@@ -23,17 +23,12 @@ concurrency:
 jobs:
   macos:
     runs-on: macos-26
-    timeout-minutes: 120
+    timeout-minutes: 30
     env:
       SOURCE_REPOSITORY: ${{ inputs.source_repository }}
       GH_TOKEN: ${{ github.token }}
-      HOMEBREW_NO_AUTO_UPDATE: '1'
-      HOMEBREW_NO_INSTALL_CLEANUP: '1'
       PIP_DISABLE_PIP_VERSION_CHECK: '1'
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_NOLOGO: '1'
       PYTHONUTF8: '1'
-      J: '3'
     steps:
       - name: Check destination and resolve the tools revision
         id: tools
@@ -62,7 +57,6 @@ jobs:
       - name: Record the selected source and build identity
         run: python3 scripts/source/configure.py
       - name: Select the Apple toolchain
-        id: xcode
         run: python3 scripts/source/select_xcode.py
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -71,82 +65,40 @@ jobs:
           cache-dependency-path: requirements.txt
       - name: Install the archive downloader
         run: python -m pip install -r requirements.txt
-      - name: Resolve input and generation cache keys
-        id: plan
+      - name: Resolve the Mac prepared input
+        id: input
         env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-          MACOS_TOOLCHAIN: ${{ steps.xcode.outputs.toolchain }}
-        run: python scripts/macos.py plan
-      - name: Restore the Mac preparation cache
-        id: cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .macos-prepared
-          key: ${{ steps.plan.outputs.prepared_key }}
-      - name: Verify cached Mac inputs
-        id: prepared
-        env:
-          MACOS_PREPARED_KEY: ${{ steps.plan.outputs.prepared_key }}
-        run: python scripts/macos.py verify
-      - name: Restore the original game archive
+          MACOS_PREPARED_INPUT: ${{ secrets.MACOS_PREPARED_INPUT }}
+        run: python scripts/macos.py plan-prepared
+      - name: Restore the original prepared package
         id: archive
-        if: steps.prepared.outputs.reused != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .game-downloads
-          key: input-archive-v1-${{ steps.plan.outputs.input_revision }}
-      - name: Verify the original archive or download it
-        if: steps.prepared.outputs.reused != 'true'
+          path: .macos-downloads
+          key: macos-input-v1-${{ steps.input.outputs.input_revision }}
+      - name: Download and verify the Mac prepared package
         env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-          INPUT_REVISION: ${{ steps.plan.outputs.input_revision }}
-        run: python scripts/macos.py download
-      - name: Check archive cache space
-        id: archive-budget
-        if: steps.prepared.outputs.reused != 'true' && steps.archive.outputs.cache-hit != 'true'
-        run: python scripts/cache_budget.py .game-downloads archive
-      - name: Save the completed archive before extraction
-        if: steps.archive-budget.outputs.archive == 'true'
+          MACOS_PREPARED_INPUT: ${{ secrets.MACOS_PREPARED_INPUT }}
+          INPUT_REVISION: ${{ steps.input.outputs.input_revision }}
+        run: python scripts/macos.py download-prepared
+      - name: Check input cache space
+        id: budget
+        if: steps.archive.outputs.cache-hit != 'true'
+        run: python scripts/cache_budget.py .macos-downloads macos
+      - name: Cache the completed download before extraction
+        if: steps.budget.outputs.macos == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .game-downloads
+          path: .macos-downloads
           key: ${{ steps.archive.outputs.cache-primary-key }}
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        if: steps.prepared.outputs.reused != 'true'
-        with:
-          dotnet-version: '10.0.x'
-      - name: Install upstream generation tools
-        if: steps.prepared.outputs.reused != 'true'
-        run: |
-          for tool in xcodegen spirv-cross; do
-            brew list "$tool" >/dev/null 2>&1 || brew install "$tool"
-          done
-          xcrun --sdk macosx metal --version || xcodebuild -downloadComponent MetalToolchain
-          df -h .
-      - name: Prepare game programs, Mac overlays and Metal libraries
-        if: steps.prepared.outputs.reused != 'true'
-        env:
-          GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
-          INPUT_REVISION: ${{ steps.plan.outputs.input_revision }}
-          MACOS_PREPARED_KEY: ${{ steps.plan.outputs.prepared_key }}
-        run: |
-          set -o pipefail
-          python scripts/macos.py prepare 2>&1 | tee outputs/macos-prepare.log
-      - name: Check prepared cache space
-        id: prepared-budget
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: python scripts/cache_budget.py .macos-prepared macos
-      - name: Save verified Mac build inputs
-        if: steps.prepared-budget.outputs.macos == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .macos-prepared
-          key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Verify prepared files and source compatibility
+        run: python scripts/macos.py import
+      - name: Check the Metal inspection tool
+        run: xcrun --sdk macosx metal-objdump --version >/dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
       - name: Compile, sign and package both Mac apps
         env:
           TOOLS_COMMIT: ${{ steps.tools.outputs.tools_commit }}
-          MACOS_PREPARED_KEY: ${{ steps.plan.outputs.prepared_key }}
-          MACOS_PREPARED_CACHE_HIT: ${{ steps.prepared.outputs.reused }}
+          MACOS_PREPARED_CACHE_HIT: ${{ steps.archive.outputs.cache-hit }}
         run: |
           set -o pipefail
           python scripts/macos.py build 2>&1 | tee outputs/macos-build.log

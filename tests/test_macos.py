@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 import macos
 from fixtures import source
+import zipfile
 
 
 class MacBuildTests(unittest.TestCase):
@@ -55,6 +56,35 @@ class MacBuildTests(unittest.TestCase):
         self.assertEqual(ci.macho_minimum_os(native, platform=1), (15, 0, 0))
         with self.assertRaises(ValueError):
             ci.macho_minimum_os(native)
+
+    def test_prepared_archive_allows_native_changes_and_rejects_generation_changes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            upstream, commit, _, _ = source(root)
+            package = root / 'package'
+            package.mkdir()
+            (package / 'program').write_bytes(b'Mac prepared program')
+            config = {'nso_sha256': {'main': 'a' * 64}}
+            info = {'format': 'd2r-mobile-macos-prepared', 'schema_version': 1,
+                    'source_commit': commit, 'nso_sha256': config['nso_sha256'],
+                    'input_revision': 'raw-archive', 'toolchain': 'producer-xcode',
+                    'key': macos.generation_key(upstream, 'raw-archive', 'producer-xcode'),
+                    'files': {'program': ci.sha256(package / 'program')}}
+            (package / 'manifest.json').write_text(json.dumps(info))
+            archive = root / '.macos-downloads/prepared-input.archive'
+            archive.parent.mkdir()
+            with zipfile.ZipFile(archive, 'w') as z:
+                for path in package.iterdir():
+                    z.write(path, path.name)
+            before = archive.read_bytes()
+            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config):
+                (upstream / 'dm/runtime.c').write_text('updated native runtime\n')
+                macos.import_prepared()
+                self.assertEqual((root / '.macos-prepared/program').read_bytes(), b'Mac prepared program')
+                (upstream / 'dm/tools/helper.py').write_text('changed_generation = True\n')
+                with self.assertRaisesRegex(ValueError, 'different inputs'):
+                    macos.import_prepared()
+            self.assertEqual(archive.read_bytes(), before)
 
     def test_mac_release_checks_both_packages_before_publishing(self):
         with tempfile.TemporaryDirectory() as temporary:

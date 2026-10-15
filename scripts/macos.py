@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci
@@ -17,6 +18,7 @@ from input_config import download_file, input_identity, settings
 from repository_access import require_private
 from source.compatibility import generation_paths
 from source.publish import publish_assets
+from source.prepared import download as download_prepared
 
 HEADERS = ('dm_vault_tab.h', 'dm_hud_exp.h', 'dm_bright_levels.inc')
 MAX_GAME_BYTES = 24 * 1024**3
@@ -100,7 +102,10 @@ def validate_game(game):
 def load_prepared():
     cache = ci.ROOT / '.macos-prepared'
     info = json.loads((cache / 'manifest.json').read_text())
-    if info['key'] != os.environ['MACOS_PREPARED_KEY']:
+    expected = os.environ.get('MACOS_PREPARED_KEY')
+    if expected is None:
+        expected = generation_key(ci.ROOT / 'upstream', info['input_revision'], info['toolchain'])
+    if info['key'] != expected:
         raise ValueError('Mac preparation cache belongs to different inputs')
     files = {p.relative_to(cache).as_posix() for p in cache.rglob('*') if p.is_file()}
     if files != set(info['files']) | {'manifest.json'}:
@@ -170,7 +175,9 @@ def prepare():
     libraries = list((stage / 'msl' / ('b-' + chain)).glob('*.metallib'))
     if not libraries or any(not p.read_bytes().startswith(b'MTLB') for p in libraries):
         raise ValueError('Mac Metal libraries are missing or uncompiled')
-    info = {'key': os.environ['MACOS_PREPARED_KEY'], 'source_commit': ci.CONFIG['upstream_commit'],
+    info = {'format': 'd2r-mobile-macos-prepared', 'schema_version': 1,
+            'toolchain': os.environ['MACOS_TOOLCHAIN'], 'nso_sha256': ci.CONFIG['nso_sha256'],
+            'key': os.environ['MACOS_PREPARED_KEY'], 'source_commit': ci.CONFIG['upstream_commit'],
             'input_revision': os.environ['INPUT_REVISION'], 'archive_sha256': settings('GAME_ARCHIVE')[1] or ci.sha256(archive),
             'product': product, 'shader_chain': chain, 'metal_libraries': len(libraries),
             'metal_minimum_os': '15.0', 'prepare_seconds': round(time.monotonic() - started, 2),
@@ -181,6 +188,58 @@ def prepare():
     stage.rename(cache)
     print('Mac preparation completed and verified; original archive retained', flush=True)
 
+
+
+def plan_prepared():
+    url, digest = settings('MACOS_PREPARED_INPUT')
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+        stream.write('input_revision=' + input_identity(url, digest) + '\n')
+
+
+def import_prepared():
+    root = ci.ROOT
+    target = root / '.macos-import'
+    shutil.rmtree(target, ignore_errors=True)
+    extract(root / '.macos-downloads/prepared-input.archive', target, max_members=100000)
+    manifest = target / 'manifest.json'
+    if manifest.stat().st_size > 8 * 1024**2:
+        raise ValueError('Mac prepared manifest is too large')
+    info = json.loads(manifest.read_text())
+    if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') != 1:
+        raise ValueError('Expected a macOS prepared package (schema 1)')
+    if info['nso_sha256'] != ci.CONFIG['nso_sha256']:
+        raise ValueError('Mac prepared package uses different game programs')
+    cache = root / '.macos-prepared'
+    shutil.rmtree(cache, ignore_errors=True)
+    target.rename(cache)
+    load_prepared()
+    print('Mac prepared input verified; ready for native compilation', flush=True)
+
+
+def export_prepared():
+    root = ci.ROOT
+    cache = root / '.macos-prepared'
+    info = load_prepared()
+    info.update(format='d2r-mobile-macos-prepared', schema_version=1,
+                toolchain=os.environ['MACOS_TOOLCHAIN'], nso_sha256=ci.CONFIG['nso_sha256'])
+    write(cache / 'manifest.json', info)
+    out = root / 'outputs'
+    out.mkdir(exist_ok=True)
+    package = out / 'D2RMobile-MacPrepared.zip'
+    with zipfile.ZipFile(package, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+        for path in sorted(cache.rglob('*')):
+            if path.is_file():
+                archive.write(path, path.relative_to(cache).as_posix())
+    digest = ci.sha256(package)
+    sums = out / 'MacPrepared-SHA256SUMS.txt'
+    sums.write_text(digest + '  ' + package.name + '\n')
+    body = out / 'MAC-PREPARED-RELEASE.md'
+    body.write_text('macOS prepared input / macOS 预处理包\n\n'
+                    f'Source / 源码：`{info["source_commit"]}`\n\n'
+                    'Use D2RMobile-MacPrepared.zip as MACOS_PREPARED_INPUT. / '
+                    '将此 ZIP 作为 MACOS_PREPARED_INPUT 使用。\n')
+    publish_assets(require_private(), info['key'], 'macOS prepared input', body, [package, sums])
+    print('Mac prepared archive SHA256:', digest, flush=True)
 
 def build():
     root = ci.ROOT
@@ -235,6 +294,7 @@ def build():
               'app_version': ci.CONFIG['app_version'], 'build_number': ci.CONFIG['build_number'],
               'release_tag': ci.release_tag() + '-macos', 'prepared_from_source': info['source_commit'],
               'input_revision': info['input_revision'], 'archive_sha256': info['archive_sha256'],
+              'prepared_archive_sha256': ci.sha256(root / '.macos-downloads/prepared-input.archive'),
               'product': info['product'], 'shader_chain': info['shader_chain'],
               'metal_libraries': info['metal_libraries'], 'metal_minimum_os': info['metal_minimum_os'],
               'prepared_cache_hit': os.environ.get('MACOS_PREPARED_CACHE_HIT') == 'true',
@@ -285,7 +345,9 @@ if __name__ == '__main__':
     require_private()
     try:
         {'plan': plan, 'download': download, 'prepare': prepare,
-         'verify': verify, 'build': build, 'publish': publish}[sys.argv[1]]()
+         'verify': verify, 'build': build, 'publish': publish,
+         'plan-prepared': plan_prepared, 'import': import_prepared, 'export': export_prepared,
+         'download-prepared': lambda: download_prepared(ci.ROOT, 'MACOS_PREPARED_INPUT', '.macos-downloads')}[sys.argv[1]]()
     except Exception as exc:
         print('::error::' + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__), file=sys.stderr)
         sys.exit(1)
