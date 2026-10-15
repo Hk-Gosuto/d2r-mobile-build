@@ -17,7 +17,7 @@
    }
    ```
 
-Google Drive 可使用 `https://drive.google.com/file/d/文件ID/view` 形式的链接，并将预处理包设为「知道链接的任何人 → 查看者」。其他网盘使用 HTTPS 直链。预处理包的结构见[格式说明](docs/PREPARED_INPUT.md)。
+Google Drive 可使用 `https://drive.google.com/file/d/文件ID/view` 形式的链接，并将预处理包设为「知道链接的任何人 → 查看者」。其他网盘使用 HTTPS 直链。预处理包的结构见[格式说明](docs/PREPARED_INPUT.zh-CN.md)。
 
 ## 构建
 
