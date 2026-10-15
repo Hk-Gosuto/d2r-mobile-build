@@ -19,16 +19,6 @@
 
 工作流会直接从 Google Drive 下载预处理包。包的结构见[格式说明](docs/PREPARED_INPUT.zh-CN.md)。
 
-## 需要准备的文件
-
-| 压缩包 | 下载大小 | 用途 |
-|---|---|---|
-| `D2RMobile-Prepared.zip` | 141 MB | 交给 GitHub Actions 构建两份 IPA |
-| `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 合计 5.42 GB | 所有支持设备均需导入的 Data，解压后为包含 18 个 `.data` 文件的 `D2R Mobile Resources` 文件夹 |
-| `Legacy-Device-Pack.zip` | 1.02 GB | A14–A16 设备需要的补充贴图，解压后为 `Legacy Device Pack` 文件夹 |
-
-IPA 工作流只下载预处理包。Data 和 Legacy 从 [Data + Legacy 共享目录](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)另行下载，安装 IPA 后按[下载和使用](#下载和使用)导入。
-
 ## 构建
 
 打开 **Actions → Build IPA → Run workflow**：
@@ -48,6 +38,13 @@ IPA 工作流只下载预处理包。Data 和 Legacy 从 [Data + Legacy 共享�
 | `D2RMobile-<版本>-build.<运行编号>.<尝试次数>.ipa` | iOS 26 及以上 |
 | `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`、`build-report.json` | 校验值与构建详情 |
+
+从 [Data + Legacy 共享目录](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)下载手机运行所需的资源：
+
+| 压缩包 | 下载大小 | 用途 |
+|---|---|---|
+| `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 合计 5.42 GB | 所有支持设备均需导入的 Data，解压后为包含 18 个 `.data` 文件的 `D2R Mobile Resources` 文件夹 |
+| `Legacy-Device-Pack.zip` | 1.02 GB | A14–A16 设备需要的补充贴图，解压后为 `Legacy Device Pack` 文件夹 |
 
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装 IPA。
 2. 从上方共享目录下载配套 Data。分卷形式需下载全部 `.001`、`.002`、`.003`，用支持分卷的解压工具打开 `.001`，将解压得到的 `D2R Mobile Resources` 文件夹通过 Finder 或“文件”App 导入应用。

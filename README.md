@@ -19,16 +19,6 @@ Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source 
 
 The workflow downloads the prepared package directly from Google Drive. See the [prepared package format](docs/PREPARED_INPUT.md).
 
-## Files to prepare
-
-| Package | Download size | Purpose |
-|---|---|---|
-| `D2RMobile-Prepared.zip` | 141 MB | Input to GitHub Actions for building both IPAs |
-| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | 5.42 GB total | Data required on every supported device; contains the `D2R Mobile Resources` folder with 18 `.data` files |
-| `Legacy-Device-Pack.zip` | 1.02 GB | Additional textures for A14–A16 devices; contains the `Legacy Device Pack` folder |
-
-The IPA workflow downloads only the prepared package. Download matching resources from the [Data + Legacy shared folder](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA), then follow [Download and use](#download-and-use) to import them after installing the IPA.
-
 ## Build
 
 Open **Actions → Build IPA → Run workflow**:
@@ -48,6 +38,13 @@ After the build, download from your repository’s **Releases**:
 | `D2RMobile-<version>-build.<run>.<attempt>.ipa` | iOS 26 and later |
 | `D2RMobile-<version>-build.<run>.<attempt>-ios18.ipa` | iOS 18–25 |
 | `SHA256SUMS.txt`, `build-report.json` | Checksums and build details |
+
+Download the resources used on your device from the [Data + Legacy shared folder](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA):
+
+| Package | Download size | Purpose |
+|---|---|---|
+| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | 5.42 GB total | Data required on every supported device; contains the `D2R Mobile Resources` folder with 18 `.data` files |
+| `Legacy-Device-Pack.zip` | 1.02 GB | Additional textures for A14–A16 devices; contains the `Legacy Device Pack` folder |
 
 1. Sign and install the IPA with [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/).
 2. Download matching Data from the shared folder linked above. For split archives, download all `.001`, `.002`, and `.003` parts and open `.001` with an extractor supporting split archives. Import the extracted `D2R Mobile Resources` folder into the app using Finder or Files.
