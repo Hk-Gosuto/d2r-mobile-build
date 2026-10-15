@@ -8,17 +8,17 @@
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
 2. 将新仓库 `.github/workflows/` 中的工作流替换为本分支的 [build.yml](.github/workflows/build.yml)。这个入口会自动使用本项目维护的最新构建逻辑。
-3. 准备 `D2RMobile-Prepared.zip` 和 `Prepared-SHA256SUMS.txt` 的 HTTPS 下载链接。
+3. 准备 `D2RMobile-Prepared.zip` 的 HTTPS 下载链接，从 `Prepared-SHA256SUMS.txt` 取得它的 SHA-256。
 4. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**：
 
    ```json
    {
      "url": "https://your-storage.example/D2RMobile-Prepared.zip",
-     "sha256_url": "https://your-storage.example/Prepared-SHA256SUMS.txt"
+     "sha256": "填入预处理包的 SHA-256"
    }
    ```
 
-Google Drive 可使用 `https://drive.google.com/file/d/文件ID/view` 形式的链接，并将上述两个文件设为「知道链接的任何人 → 查看者」。其他网盘使用 HTTPS 直链。预处理包的结构见[格式说明](docs/PREPARED_INPUT.md)。
+Google Drive 可使用 `https://drive.google.com/file/d/文件ID/view` 形式的链接，并将预处理包设为「知道链接的任何人 → 查看者」。其他网盘使用 HTTPS 直链。预处理包的结构见[格式说明](docs/PREPARED_INPUT.md)。
 
 ## 构建
 

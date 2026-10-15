@@ -8,17 +8,17 @@ Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source 
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
 2. Replace the workflows in your repository’s `.github/workflows/` with this branch’s [build.yml](.github/workflows/build.yml). This entry automatically uses the latest maintained build logic.
-3. Obtain HTTPS download links for `D2RMobile-Prepared.zip` and `Prepared-SHA256SUMS.txt`.
+3. Obtain an HTTPS download link for `D2RMobile-Prepared.zip` and its SHA-256 from `Prepared-SHA256SUMS.txt`.
 4. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret:
 
    ```json
    {
      "url": "https://your-storage.example/D2RMobile-Prepared.zip",
-     "sha256_url": "https://your-storage.example/Prepared-SHA256SUMS.txt"
+     "sha256": "SHA-256 of the prepared package"
    }
    ```
 
-Google Drive file links may use `https://drive.google.com/file/d/FILE_ID/view`; set these two files to **Anyone with the link → Viewer**. Other storage providers can use HTTPS direct links. See the [prepared package format](docs/PREPARED_INPUT.md).
+Google Drive file links may use `https://drive.google.com/file/d/FILE_ID/view`; set the prepared package to **Anyone with the link → Viewer**. Other storage providers can use HTTPS direct links. See the [prepared package format](docs/PREPARED_INPUT.md).
 
 ## Build
 
