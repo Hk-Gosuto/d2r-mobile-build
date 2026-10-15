@@ -13,8 +13,8 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmW43UFiP8g3tQv5kyahPoGgmVFTQbkfKpFKRCyMzZGp4L?filename=D2RMobile-Prepared.zip",
-     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+     "url": "https://ipfs.filebase.io/ipfs/QmeRo2bYjiMfP4fNfnCL18ZaJE4T8y7A9fLhu3bxwSZkw3?filename=D2RMobile-Prepared.zip",
+     "sha256": "4df138f1d31022aba7895d74e7e4b7ace0d3c3eadea43616d5e488b49f452e8d"
    }
    ```
 
@@ -22,16 +22,14 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmeM63VQnVGP2HMmiYCL39UHFJcnGBb4qqXqdaPvAY1U4b?filename=D2RMobile-MacPrepared.zip",
-     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
+     "url": "https://ipfs.filebase.io/ipfs/QmZBmNBhaAK7vXYKo4gKgoJJ9rKGDEGTYJgiURnFgf5X4j?filename=D2RMobile-MacPrepared.zip",
+     "sha256": "0195d999bb9700597b2375fa62c3e752f80b12043c40f3c5eaf19d0747328fa1"
    }
    ```
 
    The prepared packages in this configuration are provided by community contributors.
 
-   Google Drive mirrors: [iOS](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view) · [macOS](https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view). To use a mirror, replace only `url`; the checksum stays the same.
-
-3. Click **Run workflow** to start the build. Building and publishing typically takes **2–3 minutes**.
+3. Click **Run workflow** to start the build. Building and publishing typically takes **4–6 minutes on the first run**, or **2–3 minutes with matching caches**.
 
 - Run with the defaults to compile the latest official upstream Release.
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.

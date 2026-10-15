@@ -29,7 +29,7 @@ generated/host/
 | `legacy/` | Existing Legacy texture-pack descriptor and index. |
 | `generated/host/` | Game-table headers, reused when their generator scripts are unchanged. |
 
-Each build runs the selected source's generators for interface assets, layouts, strings and overlays. Game-table headers are reused when their generator scripts are unchanged; modified generators rebuild their tables. Game programs and Metal libraries are reused while their generation rules remain compatible. If those heavy generation rules change, generate a new prepared package.
+Interface assets, layouts, strings and overlays follow the selected source. Matching generated outputs are cached and reused across native-code changes. Game-table headers are reused when their generator scripts are unchanged; modified generators rebuild their tables. Game programs and Metal libraries are reused while their generation rules remain compatible. If those heavy generation rules change, generate a new prepared package.
 
 Schema 1 packages remain supported with their original compatibility checks.
 

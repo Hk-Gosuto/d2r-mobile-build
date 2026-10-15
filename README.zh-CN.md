@@ -13,8 +13,8 @@
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmW43UFiP8g3tQv5kyahPoGgmVFTQbkfKpFKRCyMzZGp4L?filename=D2RMobile-Prepared.zip",
-     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+     "url": "https://ipfs.filebase.io/ipfs/QmeRo2bYjiMfP4fNfnCL18ZaJE4T8y7A9fLhu3bxwSZkw3?filename=D2RMobile-Prepared.zip",
+     "sha256": "4df138f1d31022aba7895d74e7e4b7ace0d3c3eadea43616d5e488b49f452e8d"
    }
    ```
 
@@ -22,16 +22,14 @@
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmeM63VQnVGP2HMmiYCL39UHFJcnGBb4qqXqdaPvAY1U4b?filename=D2RMobile-MacPrepared.zip",
-     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
+     "url": "https://ipfs.filebase.io/ipfs/QmZBmNBhaAK7vXYKo4gKgoJJ9rKGDEGTYJgiURnFgf5X4j?filename=D2RMobile-MacPrepared.zip",
+     "sha256": "0195d999bb9700597b2375fa62c3e752f80b12043c40f3c5eaf19d0747328fa1"
    }
    ```
 
    配置中的预处理包由热心网友提供。
 
-   Google Drive 备用地址：[iOS](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view) · [macOS](https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view)。使用备用地址时只需替换 `url`，校验值不变。
-
-3. 点击 **Run workflow** 开始构建。预计 **2–3 分钟**完成打包并发布。
+3. 点击 **Run workflow** 开始构建。首次构建预计 **4–6 分钟**完成打包并发布，命中缓存后约 **2–3 分钟**。
 
 - 默认直接运行，自动编译上游最新正式 Release。
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。
