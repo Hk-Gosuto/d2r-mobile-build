@@ -87,6 +87,12 @@ Run **Build macOS** with the macOS JSON configuration above. After the build, do
 4. Open the app from **Applications**. If macOS blocks it because the developer cannot be verified, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).
 5. When the app asks for resources, select the entire **`D2R Mobile Resources`** folder containing `data`. The app remembers this location. Metal shaders are included precompiled.
 
-To update, run **Build macOS** again and replace the existing app with the new `.app`. Keep the resource folder in the same location. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
-
 The build checks the prepared package’s source compatibility before compiling. See the [Mac prepared package format](docs/MACOS_PREPARED_INPUT.md) for preparing your own input.
+
+## Update the macOS app
+
+Run **Build macOS** again with the macOS JSON configuration to build the latest official upstream Release. Quit the app and back up saves, then download and extract the ZIP for the same macOS 26 or macOS 15 app variant. Replace the existing `.app` in **Applications** with the new one.
+
+Keep the resource folder in the same location. Existing Data can be reused while the game resource version remains unchanged. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
+
+Ordinary app code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer Mac prepared package and update `prepared_input`.
