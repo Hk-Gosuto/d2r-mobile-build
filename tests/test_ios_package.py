@@ -4,6 +4,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
@@ -74,7 +75,22 @@ class IOSPackageTests(unittest.TestCase):
             (app / 'DmIOS').write_bytes(b'compiled executable')
             (app / 'Info.plist').write_bytes(b'compiled app metadata')
             destination = root / 'test.ipa'
-            package_ipa(app, payload, destination, resources)
+            guest = app / 'Frameworks/Guest.framework/Guest'
+            unsigned_guest = guest.read_bytes()
+            def codesign(command, *, check):
+                self.assertTrue(check)
+                if command[1] == '-f':
+                    self.assertEqual(command, ['codesign', '-f', '-s', '-', str(guest)])
+                    guest.write_bytes(unsigned_guest + b'fixture ad-hoc signature')
+                    signature = guest.parent / '_CodeSignature/CodeResources'
+                    signature.parent.mkdir(exist_ok=True)
+                    signature.write_bytes(b'framework signature resources')
+                else:
+                    self.assertEqual(command, ['codesign', '--verify', '--strict', str(guest)])
+            (app / '_CodeSignature').mkdir()
+            (app / '_CodeSignature/CodeResources').write_bytes(b'outer app signature')
+            with patch('source.build.subprocess.run', side_effect=codesign):
+                package_ipa(app, payload, destination, resources)
             verify_payload(destination, info['payload'])
             with zipfile.ZipFile(destination) as archive:
                 self.assertEqual(archive.read(BASE + 'DmIOS'), b'compiled executable')
@@ -84,10 +100,16 @@ class IOSPackageTests(unittest.TestCase):
                 self.assertEqual(archive.read(BASE + 'dm/asset_pointers.txt'), b'# fixture download pointers\n')
                 self.assertEqual(archive.read(BASE + 'dm_touch_joy.png'), b'current source joystick')
                 self.assertEqual(archive.read(BASE + 'Licenses/upstream.txt'), b'upstream license')
+                self.assertEqual(archive.read(BASE + 'Frameworks/Guest.framework/Guest'),
+                                 unsigned_guest + b'fixture ad-hoc signature')
+                self.assertEqual(archive.read(BASE + 'Frameworks/Guest.framework/_CodeSignature/CodeResources'),
+                                 b'framework signature resources')
+                self.assertNotIn(BASE + '_CodeSignature/CodeResources', archive.namelist())
                 self.assertTrue(resources.keys() <= set(archive.read(BASE + 'dm/shell_manifest.txt').decode().splitlines()))
                 self.assertEqual(len(archive.namelist()), len(set(archive.namelist())))
             (app / 'dm/shader_map.tsv').write_bytes(b'corrupt')
-            with self.assertRaisesRegex(ValueError, 'runtime resource changed'):
+            guest.write_bytes(unsigned_guest)
+            with patch('source.build.subprocess.run', side_effect=codesign), self.assertRaisesRegex(ValueError, 'runtime resource changed'):
                 package_ipa(app, payload, destination, resources)
 
     def test_missing_upstream_table_or_new_resource_folder_stops_preparation(self):

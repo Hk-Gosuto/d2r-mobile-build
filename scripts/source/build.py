@@ -85,21 +85,36 @@ def prepare_project(ios, payload, project, flags):
 def package_ipa(app, payload, destination, resources):
     """Archive the complete built app, then verify its prepared and source resources."""
     base = 'Payload/DmIOS.app/'
+    guest_name = 'Frameworks/Guest.framework/Guest'
+    guest = app / guest_name
+    with zipfile.ZipFile(payload) as prepared:
+        if guest.read_bytes() != prepared.read(base + guest_name):
+            raise ValueError('Generated Guest changed before signing')
+    # Give re-signers such as zsign an existing LC_CODE_SIGNATURE to replace.
+    subprocess.run(['codesign', '-f', '-s', '-', str(guest)], check=True)
+    subprocess.run(['codesign', '--verify', '--strict', str(guest)], check=True)
+    guest_sha256 = ci.sha256(guest)
     with zipfile.ZipFile(destination, 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
         for path in sorted(app.rglob('*')):
-            if path.is_file() and '_CodeSignature' not in path.parts and path.name != 'embedded.mobileprovision':
-                archive.write(path, base + path.relative_to(app).as_posix())
+            relative = path.relative_to(app)
+            guest_framework = relative.parts[:2] == ('Frameworks', 'Guest.framework')
+            if (path.is_file() and path.name != 'embedded.mobileprovision'
+                    and ('_CodeSignature' not in relative.parts or guest_framework)):
+                archive.write(path, base + relative.as_posix())
     with zipfile.ZipFile(destination) as final, zipfile.ZipFile(payload) as prepared:
         for name in prepared.namelist():
-            if (not name.endswith('/') and name not in (base + 'Info.plist', base + 'dm/shell_manifest.txt')
+            if (not name.endswith('/') and name not in (base + 'Info.plist', base + 'dm/shell_manifest.txt', base + guest_name)
                     and name.removeprefix(base) not in resources and final.read(name) != prepared.read(name)):
                 raise ValueError('Generated payload changed or missing: ' + name)
+        if hashlib.sha256(final.read(base + guest_name)).hexdigest() != guest_sha256:
+            raise ValueError('Signed Guest changed during IPA packaging')
         for name, digest in resources.items():
             if hashlib.sha256(final.read(base + name)).hexdigest() != digest:
                 raise ValueError('Upstream runtime resource changed or missing: ' + name)
         manifest = final.read(base + 'dm/shell_manifest.txt').decode().splitlines()
         if not resources.keys() <= set(manifest):
             raise ValueError('Runtime resources missing from the launch manifest')
+    return guest_sha256
 
 
 def main():
@@ -155,7 +170,7 @@ def main():
     destination=root/'outputs'/name
     base='Payload/DmIOS.app/'
     package_started=time.monotonic()
-    package_ipa(app, payload, destination, resources)
+    guest_sha256 = package_ipa(app, payload, destination, resources)
     with zipfile.ZipFile(destination) as final:
         if final.read(base+plist['CFBundleExecutable'])!=native:
             raise ValueError('Native executable changed during IPA packaging')
@@ -167,6 +182,7 @@ def main():
                   app_version=ci.CONFIG['app_version'],build_number=ci.CONFIG['build_number'],
                   release_tag=ci.CONFIG['release_tag'],
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
+                  guest_signature='ad-hoc',guest_sha256=guest_sha256,
                   runtime_resources_sha256=resources,
                   upstream_project=True,project_prepare_seconds=project_prepare_seconds,
                   ipa_package_seconds=round(time.monotonic()-package_started,2),
