@@ -2,13 +2,12 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-使用自己的预处理包，在 GitHub Actions 中从 [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 源码构建 IPA。默认选择上游最新正式 Release，在 macOS 26 上并行编译 iOS 18 和 iOS 26 两份 IPA，发布到自己的私有仓库。
+在 GitHub Actions 中从 [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 源码构建 IPA。默认选择上游最新正式 Release，在 macOS 26 上并行编译 iOS 18 和 iOS 26 两份 IPA，发布到自己的私有仓库。
 
-## 配置
+## 构建
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
-2. 使用 [D2RMobile-Prepared.zip](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view)（141 MB）作为构建输入，将下方配置复制到 Secret。
-3. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**：
+2. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**，将以下 JSON 粘贴为它的值：
 
    ```json
    {
@@ -17,11 +16,7 @@
    }
    ```
 
-工作流会直接从 Google Drive 下载预处理包。包的结构见[格式说明](docs/PREPARED_INPUT.zh-CN.md)。
-
-## 构建
-
-打开 **Actions → Build IPA → Run workflow**：
+3. 打开 **Actions → Build IPA → Run workflow**。
 
 - 默认直接运行，自动编译上游最新正式 Release。
 - 测试开发代码：`source_ref` 填 `main`、其他分支、标签或提交。

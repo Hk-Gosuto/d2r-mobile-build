@@ -2,13 +2,12 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source using your prepared package and GitHub Actions. Each run defaults to the latest official upstream Release, compiles iOS 18 and iOS 26 variants in parallel on macOS 26, and publishes to your private repository.
+Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source with GitHub Actions. Each run defaults to the latest official upstream Release, compiles iOS 18 and iOS 26 variants in parallel on macOS 26, and publishes to your private repository.
 
-## Configure
+## Build
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
-2. Use [D2RMobile-Prepared.zip](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view) (141 MB) as the build input. Copy the configuration below into the Secret.
-3. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret:
+2. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret and paste the following JSON as its value:
 
    ```json
    {
@@ -17,11 +16,7 @@ Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source 
    }
    ```
 
-The workflow downloads the prepared package directly from Google Drive. See the [prepared package format](docs/PREPARED_INPUT.md).
-
-## Build
-
-Open **Actions → Build IPA → Run workflow**:
+3. Open **Actions → Build IPA → Run workflow**.
 
 - Run with the defaults to compile the latest official upstream Release.
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
