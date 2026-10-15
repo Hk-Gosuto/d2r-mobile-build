@@ -7,17 +7,27 @@ Build IPAs from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) source 
 ## Configure
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
-2. Obtain an HTTPS download link for `D2RMobile-Prepared.zip` and its SHA-256 from `Prepared-SHA256SUMS.txt`.
+2. Use [D2RMobile-Prepared.zip](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view) (141 MB) as the build input. Copy the configuration below into the Secret.
 3. Under **Settings → Secrets and variables → Actions**, add a **`PREPARED_INPUT`** Secret:
 
    ```json
    {
-     "url": "https://your-storage.example/D2RMobile-Prepared.zip",
-     "sha256": "SHA-256 of the prepared package"
+     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
    }
    ```
 
-Google Drive file links may use `https://drive.google.com/file/d/FILE_ID/view`; set the prepared package to **Anyone with the link → Viewer**. Other storage providers can use HTTPS direct links. See the [prepared package format](docs/PREPARED_INPUT.md).
+The workflow downloads the prepared package directly from Google Drive. See the [prepared package format](docs/PREPARED_INPUT.md).
+
+## Files to prepare
+
+| Package | Download size | Purpose |
+|---|---|---|
+| `D2RMobile-Prepared.zip` | 141 MB | Input to GitHub Actions for building both IPAs |
+| `D2R-Mobile-Resources.zip.001`, `.002`, `.003` | 5.42 GB total | Data required on every supported device; contains the `D2R Mobile Resources` folder with 18 `.data` files |
+| `Legacy-Device-Pack.zip` | 1.02 GB | Additional textures for A14–A16 devices; contains the `Legacy Device Pack` folder |
+
+The IPA workflow downloads only the prepared package. Download matching Data and Legacy archives from your resource provider’s storage, then follow [Download and use](#download-and-use) to import them after installing the IPA.
 
 ## Build
 

@@ -7,17 +7,27 @@
 ## 配置
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
-2. 准备 `D2RMobile-Prepared.zip` 的 HTTPS 下载链接，从 `Prepared-SHA256SUMS.txt` 取得它的 SHA-256。
+2. 使用 [D2RMobile-Prepared.zip](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view)（141 MB）作为构建输入，将下方配置复制到 Secret。
 3. 在 **Settings → Secrets and variables → Actions** 添加 Secret **`PREPARED_INPUT`**：
 
    ```json
    {
-     "url": "https://your-storage.example/D2RMobile-Prepared.zip",
-     "sha256": "填入预处理包的 SHA-256"
+     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
    }
    ```
 
-Google Drive 可使用 `https://drive.google.com/file/d/文件ID/view` 形式的链接，并将预处理包设为「知道链接的任何人 → 查看者」。其他网盘使用 HTTPS 直链。预处理包的结构见[格式说明](docs/PREPARED_INPUT.zh-CN.md)。
+工作流会直接从 Google Drive 下载预处理包。包的结构见[格式说明](docs/PREPARED_INPUT.zh-CN.md)。
+
+## 需要准备的文件
+
+| 压缩包 | 下载大小 | 用途 |
+|---|---|---|
+| `D2RMobile-Prepared.zip` | 141 MB | 交给 GitHub Actions 构建两份 IPA |
+| `D2R-Mobile-Resources.zip.001`、`.002`、`.003` | 合计 5.42 GB | 所有支持设备均需导入的 Data，解压后为包含 18 个 `.data` 文件的 `D2R Mobile Resources` 文件夹 |
+| `Legacy-Device-Pack.zip` | 1.02 GB | A14–A16 设备需要的补充贴图，解压后为 `Legacy Device Pack` 文件夹 |
+
+IPA 工作流只下载预处理包。Data 和 Legacy 从资源提供者的网盘另行下载，安装 IPA 后按[下载和使用](#下载和使用)导入。
 
 ## 构建
 
