@@ -7,18 +7,23 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 ## Configure and build
 
 1. Click [Use this template](https://github.com/jiayx/d2r-mobile-build/generate) and create a **Private** repository.
-2. In **Actions**, select **Build IPA** (iOS) or **Build macOS**, click **Run workflow**, and paste the following JSON into **`prepared_input`**:
+2. In **Actions**, select **Build IPA** (iOS) or **Build macOS**, click **Run workflow**, and paste the JSON for your platform into **`prepared_input`**:
+
+   **Build IPA (iOS)**
 
    ```json
    {
-     "ios": {
-       "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
-       "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
-     },
-     "macos": {
-       "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
-       "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
-     }
+     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+   }
+   ```
+
+   **Build macOS**
+
+   ```json
+   {
+     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
    }
    ```
 
@@ -66,7 +71,7 @@ To generate your own iOS prepared input, see [Generate an iOS prepared package](
 
 ## Download and use on macOS
 
-Run **Build macOS** with the shared `prepared_input` configuration above. After the build, download the ZIP matching your Mac from your repository’s **Releases**:
+Run **Build macOS** with the macOS JSON configuration above. After the build, download the ZIP matching your Mac from your repository’s **Releases**:
 
 | File | Purpose |
 |---|---|

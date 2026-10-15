@@ -2,7 +2,7 @@
 
 [English](PREPARED_INPUT.md) | [简体中文](PREPARED_INPUT.zh-CN.md)
 
-Supply an HTTPS link to a ZIP, tar.gz, or tar.xz package in the `prepared_input` workflow parameter’s `ios` object. The required files are shown below; one enclosing directory is supported.
+Supply an HTTPS link to a ZIP, tar.gz, or tar.xz package in the `prepared_input` workflow parameter. The required files are shown below; one enclosing directory is supported.
 
 ```text
 prepared.json
@@ -69,4 +69,4 @@ jobs:
 
 The workflow defaults to the latest official upstream Release. It generates the rewritten game programs, interface assets, overlays, host headers, and precompiled iOS Metal shaders. The existing Legacy index is used to produce older-device overlays, reusing the matching texture pack.
 
-The original game archive and completed preparation outputs are cached by their inputs and generation dependencies. The workflow publishes `D2RMobile-Prepared.zip` and `Prepared-SHA256SUMS.txt` to your private Releases. Set the ZIP’s URL and checksum in the `ios` object of your `prepared_input` JSON, then use **Build IPA** for ordinary builds.
+The original game archive and completed preparation outputs are cached by their inputs and generation dependencies. The workflow publishes `D2RMobile-Prepared.zip` and `Prepared-SHA256SUMS.txt` to your private Releases. Set the ZIP’s URL and checksum in your `prepared_input` JSON, then use **Build IPA** for ordinary builds.

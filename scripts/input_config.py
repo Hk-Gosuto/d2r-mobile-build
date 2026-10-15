@@ -108,9 +108,9 @@ def parse_checksum(text):
     return entries[0]
 
 
-def settings(secret_name='PREPARED_INPUT', platform='ios'):
-    label = 'prepared_input' if secret_name == 'PREPARED_INPUT' else secret_name
-    raw = os.environ.get(secret_name, '').strip()
+def settings(input_name='PREPARED_INPUT'):
+    label = 'prepared_input' if input_name == 'PREPARED_INPUT' else input_name
+    raw = os.environ.get(input_name, '').strip()
     if not raw:
         raise ValueError(label + ' is empty; supply a JSON configuration')
     try:
@@ -119,13 +119,7 @@ def settings(secret_name='PREPARED_INPUT', platform='ios'):
         raise ValueError(f'{label} is not valid JSON (line {exc.lineno}, column {exc.colno})') from None
     if not isinstance(config, dict):
         raise ValueError(label + ' must be a JSON object')
-    if secret_name == 'PREPARED_INPUT' and isinstance(config, dict) and {'ios', 'macos'} & config.keys():
-        if set(config) - {'ios', 'macos'}:
-            raise ValueError('prepared_input supports ios and macos configurations')
-        config = config.get(platform)
-        if not isinstance(config, dict):
-            raise ValueError('prepared_input must contain a ' + platform + ' configuration')
-    if not isinstance(config, dict) or not isinstance(config.get('url'), str):
+    if not isinstance(config.get('url'), str):
         raise ValueError(label + ' must contain a download url')
     if set(config) - {'url', 'sha256', 'sha256_url'}:
         raise ValueError(label + ' supports url, sha256 and sha256_url')

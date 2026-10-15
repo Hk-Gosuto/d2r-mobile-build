@@ -7,18 +7,23 @@
 ## 配置和构建
 
 1. 点击 [Use this template](https://github.com/jiayx/d2r-mobile-build/generate)，创建 **Private** 仓库。
-2. 在 **Actions** 中选择 **Build IPA**（iOS）或 **Build macOS**，点击 **Run workflow**，将以下 JSON 粘贴到 **`prepared_input`**：
+2. 在 **Actions** 中选择 **Build IPA**（iOS）或 **Build macOS**，点击 **Run workflow**，将对应平台的 JSON 粘贴到 **`prepared_input`**：
+
+   **Build IPA（iOS）**
 
    ```json
    {
-     "ios": {
-       "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
-       "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
-     },
-     "macos": {
-       "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
-       "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
-     }
+     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+     "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
+   }
+   ```
+
+   **Build macOS**
+
+   ```json
+   {
+     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+     "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
    }
    ```
 
@@ -66,7 +71,7 @@
 
 ## macOS 下载和使用
 
-使用上方共用的 `prepared_input` 配置运行 **Build macOS**。构建完成后，在自己仓库的 **Releases** 下载适合当前 Mac 的 ZIP：
+使用上方 macOS 的 JSON 配置运行 **Build macOS**。构建完成后，在自己仓库的 **Releases** 下载适合当前 Mac 的 ZIP：
 
 | 文件 | 用途 |
 |---|---|

@@ -99,8 +99,8 @@ def resolve():
         f.write('input_revision=' + input_identity(url, digest) + '\n')
 
 
-def download(root=ci.ROOT, cache_name='.prepared-downloads', platform='ios'):
-    url, digest = settings(platform=platform)
+def download(root=ci.ROOT, cache_name='.prepared-downloads'):
+    url, digest = settings()
     archive = root / cache_name / 'prepared-input.archive'
     marker = archive.with_suffix('.json')
     if archive.is_file():

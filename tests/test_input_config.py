@@ -25,16 +25,6 @@ class InputTests(unittest.TestCase):
                     inputs.settings()
                 self.assertNotIn('sensitive-token', str(error.exception))
 
-    def test_each_platform_selects_its_own_prepared_input(self):
-        config = {'ios': {'url': 'https://storage.invalid/ios.zip', 'sha256': 'a' * 64},
-                  'macos': {'url': 'https://storage.invalid/mac.zip', 'sha256': 'b' * 64}}
-        with patch.dict(os.environ, PREPARED_INPUT=json.dumps(config)):
-            self.assertEqual(inputs.settings(), (config['ios']['url'], 'a' * 64))
-            self.assertEqual(inputs.settings(platform='macos'), (config['macos']['url'], 'b' * 64))
-        with patch.dict(os.environ, PREPARED_INPUT=json.dumps({'ios': config['ios']})):
-            with self.assertRaisesRegex(ValueError, 'macos configuration'):
-                inputs.settings(platform='macos')
-
     def test_json_url_checksum_and_identity(self):
         url = 'https://drive.google.com/file/d/file_123/view'
         for digest in ('a' * 64, '', None):

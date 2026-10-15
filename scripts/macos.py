@@ -136,7 +136,7 @@ def prepare():
 
 
 def plan_prepared():
-    url, digest = settings(platform='macos')
+    url, digest = settings()
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
         stream.write('input_revision=' + input_identity(url, digest) + '\n')
 
@@ -176,8 +176,8 @@ def export_prepared():
     body = out / 'MAC-PREPARED-RELEASE.md'
     body.write_text('macOS prepared input / macOS 预处理包\n\n'
                     f'Source / 源码：`{info["source_commit"]}`\n\n'
-                    'Set its URL and SHA-256 in the macos object of the prepared_input workflow parameter. / '
-                    '将此 ZIP 的地址和校验值填入运行参数 prepared_input 的 macos 配置。\n')
+                    'Set its URL and SHA-256 in the prepared_input workflow parameter. / '
+                    '将此 ZIP 的地址和校验值填入运行参数 prepared_input。\n')
     publish_assets(os.environ['GITHUB_REPOSITORY'], info['key'], 'macOS prepared input', body, [package, sums])
     print('Mac prepared archive SHA256:', digest, flush=True)
 
@@ -289,7 +289,7 @@ def main(command):
     {'plan': plan, 'download': download, 'prepare': prepare,
      'verify': verify, 'build': build, 'publish': publish,
      'plan-prepared': plan_prepared, 'import': import_prepared, 'export': export_prepared,
-     'download-prepared': lambda: download_prepared(ci.ROOT, cache_name='.macos-downloads', platform='macos')}[command]()
+     'download-prepared': lambda: download_prepared(ci.ROOT, cache_name='.macos-downloads')}[command]()
 
 
 if __name__ == '__main__':

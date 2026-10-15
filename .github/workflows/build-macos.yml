@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       prepared_input:
-        description: Prepared package configuration (paste JSON from the README)
+        description: macOS prepared package JSON (url and sha256; see README)
         type: string
         required: true
       source_repository:
