@@ -9,7 +9,6 @@ import shutil
 import subprocess
 import sys
 import time
-import tarfile
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -103,6 +102,8 @@ def validate_game(game):
 def load_prepared():
     cache = ci.ROOT / '.macos-prepared'
     info = json.loads((cache / 'manifest.json').read_text())
+    if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') != 1:
+        raise ValueError('Expected a macOS prepared package (schema 1)')
     expected = os.environ.get('MACOS_PREPARED_KEY')
     if expected is None:
         expected = generation_key(ci.ROOT / 'upstream', info['input_revision'], info['toolchain'])
@@ -125,31 +126,8 @@ def verify():
         reused = False
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
         stream.write('reused=' + str(reused).lower() + '\n')
-        metadata_missing = not (ci.ROOT / '.macos-prepared/resources/data/build_manifest.psv').is_file()
-        stream.write('metadata_missing=' + str(metadata_missing).lower() + '\n')
     print('Reused verified Mac inputs:', reused, flush=True)
 
-
-def copy_resource_metadata(archive, target):
-    target.mkdir(parents=True, exist_ok=True)
-    if zipfile.is_zipfile(archive):
-        package = zipfile.ZipFile(archive)
-        names = package.namelist()
-        read = package.open
-    else:
-        package = tarfile.open(archive)
-        names = package.getnames()
-        read = package.extractfile
-    with package:
-        for name in ('build_manifest.psv', '.build.config'):
-            candidates = [n for n in names if n.endswith('/RomFS/data/' + name) or n == 'RomFS/data/' + name]
-            if len(candidates) != 1:
-                raise ValueError('Cannot identify Mac resource metadata: ' + name)
-            with read(candidates[0]) as source:
-                body = source.read(64 * 1024**2 + 1)
-            if not body or len(body) > 64 * 1024**2:
-                raise ValueError('Invalid Mac resource metadata size')
-            (target / name).write_bytes(body)
 
 def prepare():
     root = ci.ROOT
@@ -232,8 +210,6 @@ def import_prepared():
     if manifest.stat().st_size > 8 * 1024**2:
         raise ValueError('Mac prepared manifest is too large')
     info = json.loads(manifest.read_text())
-    if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') != 1:
-        raise ValueError('Expected a macOS prepared package (schema 1)')
     if info['nso_sha256'] != ci.CONFIG['nso_sha256']:
         raise ValueError('Mac prepared package uses different game programs')
     cache = root / '.macos-prepared'
@@ -247,13 +223,6 @@ def export_prepared():
     root = ci.ROOT
     cache = root / '.macos-prepared'
     info = load_prepared()
-    if not (cache / 'resources/data/build_manifest.psv').is_file():
-        copy_resource_metadata(root / '.game-downloads/game-input.archive', cache / 'resources/data')
-        info['files'] = {p.relative_to(cache).as_posix(): ci.sha256(p)
-                         for p in sorted(cache.rglob('*')) if p.is_file() and p.name != 'manifest.json'}
-    info.update(format='d2r-mobile-macos-prepared', schema_version=1,
-                toolchain=os.environ['MACOS_TOOLCHAIN'], nso_sha256=ci.CONFIG['nso_sha256'])
-    write(cache / 'manifest.json', info)
     out = root / 'outputs'
     out.mkdir(exist_ok=True)
     package = out / 'D2RMobile-MacPrepared.zip'

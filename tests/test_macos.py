@@ -7,12 +7,12 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 import macos
 from fixtures import source
-import zipfile
 
 
 class MacBuildTests(unittest.TestCase):
@@ -45,7 +45,8 @@ class MacBuildTests(unittest.TestCase):
             cache.mkdir()
             payload = cache / 'program'
             payload.write_bytes(b'prepared')
-            (cache / 'manifest.json').write_text(json.dumps({'key': 'cache-key', 'files': {'program': ci.sha256(payload)}}))
+            (cache / 'manifest.json').write_text(json.dumps({'format': 'd2r-mobile-macos-prepared',
+                'schema_version': 1, 'key': 'cache-key', 'files': {'program': ci.sha256(payload)}}))
             with patch.object(ci, 'ROOT', root), patch.dict(os.environ, MACOS_PREPARED_KEY='cache-key'):
                 self.assertEqual(macos.load_prepared()['key'], 'cache-key')
                 payload.write_bytes(b'damaged')
@@ -85,19 +86,6 @@ class MacBuildTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'different inputs'):
                     macos.import_prepared()
             self.assertEqual(archive.read_bytes(), before)
-
-    def test_resource_metadata_is_read_without_extracting_the_game(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            archive = root / 'game.zip'
-            with zipfile.ZipFile(archive, 'w') as z:
-                z.writestr('game/RomFS/data/build_manifest.psv', b'manifest')
-                z.writestr('game/RomFS/data/.build.config', b'config')
-                z.writestr('game/RomFS/data/00-00000001.data', b'archive bytes')
-            macos.copy_resource_metadata(archive, root / 'metadata')
-            self.assertEqual({p.name for p in (root / 'metadata').iterdir()}, {'build_manifest.psv', '.build.config'})
-            self.assertEqual((root / 'metadata/.build.config').read_bytes(), b'config')
-            self.assertTrue(archive.is_file())
 
     def test_mac_release_checks_both_packages_before_publishing(self):
         with tempfile.TemporaryDirectory() as temporary:

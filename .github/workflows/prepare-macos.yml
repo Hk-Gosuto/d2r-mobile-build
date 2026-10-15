@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .macos-prepared
-          key: ${{ steps.plan.outputs.prepared_key }}
+          key: ${{ steps.plan.outputs.prepared_key }}-schema1
       - name: Verify cached Mac inputs
         id: prepared
         env:
@@ -90,13 +90,13 @@ jobs:
         run: python scripts/macos.py verify
       - name: Restore the original game archive
         id: archive
-        if: steps.prepared.outputs.reused != 'true' || steps.prepared.outputs.metadata_missing == 'true'
+        if: steps.prepared.outputs.reused != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .game-downloads
           key: input-archive-v1-${{ steps.plan.outputs.input_revision }}
       - name: Verify the original archive or download it
-        if: steps.prepared.outputs.reused != 'true' || steps.prepared.outputs.metadata_missing == 'true'
+        if: steps.prepared.outputs.reused != 'true'
         env:
           GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
           INPUT_REVISION: ${{ steps.plan.outputs.input_revision }}
@@ -130,9 +130,7 @@ jobs:
           INPUT_REVISION: ${{ steps.plan.outputs.input_revision }}
           MACOS_PREPARED_KEY: ${{ steps.plan.outputs.prepared_key }}
           MACOS_TOOLCHAIN: ${{ steps.xcode.outputs.toolchain }}
-        run: |
-          set -o pipefail
-          python scripts/macos.py prepare 2>&1 | tee outputs/macos-prepare.log
+        run: python scripts/macos.py prepare
       - name: Check prepared cache space
         id: prepared-budget
         if: steps.cache.outputs.cache-hit != 'true'
@@ -145,16 +143,5 @@ jobs:
           key: ${{ steps.cache.outputs.cache-primary-key }}
       - name: Export the Mac prepared package to your private Releases
         env:
-          MACOS_TOOLCHAIN: ${{ steps.xcode.outputs.toolchain }}
           MACOS_PREPARED_KEY: ${{ steps.plan.outputs.prepared_key }}
         run: python scripts/macos.py export
-      - name: Upload failure diagnostics
-        if: failure() && steps.tools.outputs.tools_commit != ''
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: macos-diagnostics
-          path: |
-            outputs/macos-*.log
-            .macos-work/build/cache/dm/shaders.log
-          if-no-files-found: ignore
-          retention-days: 3
