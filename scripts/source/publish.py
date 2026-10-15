@@ -20,7 +20,7 @@ CHINESE_INSTALLER_LINKS = '、'.join(f'[{name}]({url})' for name, url in INSTALL
 
 def notes():
     standard, compatibility = ci.ipa_names()
-    base = 'https://github.com/jiayx/d2r-mobile-build/blob/feat/build-template/'
+    base = 'https://github.com/jiayx/d2r-mobile-build/blob/main/'
     english, chinese = (
         f'Source: `{ci.CONFIG["upstream_commit"]}`.\n\n'
         f'- iOS 26 and later: `{standard}`.\n'
