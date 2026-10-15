@@ -3,7 +3,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import plistlib
 import re
 import shutil
 import subprocess
@@ -18,6 +17,8 @@ from source.compatibility import generation_paths
 from source.game_input import download, unpack
 from source.prepared import FORMAT, GENERATED, verify_directory, verify_source, write
 from source.publish import publish_assets
+from source.romfs_input import create
+from source.runtime_assets import HEAVY_DM
 
 BASE = 'Payload/DmIOS.app/'
 
@@ -39,6 +40,7 @@ def plan():
         if path.is_file():
             digest.update((name + '\0' + ci.sha256(path) + '\0').encode())
     digest.update(Path(__file__).read_bytes())
+    digest.update((Path(__file__).parent / 'romfs_input.py').read_bytes())
     with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
         output.write(f'input_revision={game}\nlegacy_revision={legacy}\n')
         output.write('prepared_key=ios-prepared-v1-' + digest.hexdigest() + '\n')
@@ -90,7 +92,32 @@ def legacy_metadata(workspace):
     if (type(pack.get('size')) is not int or pack['size'] <= 0
             or not re.fullmatch('[a-f0-9]{64}', pack.get('sha256', ''))):
         raise ValueError('Legacy pack identity is incomplete')
+    if (candidates[0] / 'pack_index.tsv').read_text().splitlines()[0].split('\t')[:2] != ['# pack', pack['name']]:
+        raise ValueError('Legacy index does not match its pack descriptor')
     return candidates[0], pack
+
+
+def write_payload(dm, workspace, python, destination, chain, product):
+    stage = workspace / 'prepared-payload'
+    shutil.rmtree(stage, ignore_errors=True)
+    (stage / 'dm').mkdir(parents=True)
+    rewritten = workspace / 'build/cache/dm/out' / (product + '-touch')
+    subprocess.run([str(python), str(dm / 'tools/guest_dylib.py'), str(rewritten),
+                    str(stage / 'Frameworks'), 'main', 'sdk'], check=True)
+    (stage / 'Frameworks/Guest.framework/Guest').chmod(0o755)
+    shutil.copytree(workspace / 'build/ios/dmsh_b' / ('b-' + chain), stage / 'msl' / ('b-' + chain))
+    shutil.copy2(dm / 'gfx/nvn/c1_full.tsv', stage / 'dm/c1_full.tsv')
+    for name in sorted(HEAVY_DM - {'c1_full.tsv'}):
+        if (rewritten / name).is_file():
+            shutil.copy2(rewritten / name, stage / 'dm' / name)
+    (stage / 'dm/shell_info.txt').write_text(f'PRODUCT={product}\nCHAIN={chain}\nKIND=ios\n')
+    manifest = [f'msl/b-{chain}/', 'Frameworks/Guest.framework/']
+    manifest += sorted('dm/' + p.name for p in (stage / 'dm').iterdir())
+    (stage / 'dm/shell_manifest.txt').write_text('\n'.join(manifest) + '\n')
+    with zipfile.ZipFile(destination, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as output:
+        for path in sorted(stage.rglob('*')):
+            if path.is_file():
+                output.write(path, BASE + path.relative_to(stage).as_posix())
 
 
 def prepare():
@@ -106,38 +133,24 @@ def prepare():
     environment = dict(os.environ, DM_ROOT=str(workspace))
     subprocess.run(['bash', str(upstream / 'setup.sh')], env=environment, check=True)
     python = workspace / 'build/cache/dm/venv/bin/python3'
-    subprocess.run([str(python), str(ios / 'tools/gen_assets.py'), str(game / 'RomFS')],
-                   env=environment, check=True)
     chain = run(python, dm / 'gfx/tools/dmsh_chain.py', '--header', env=environment)
     product = (dm / 'PRODUCT').read_text().strip()
-    manifest = [f'msl/b-{chain}/', 'romfs_overlay/', 'romfs_overlay_variants/',
-                'hud_v4_ui/', 'mapgoal/', 'mercslots/', 'Frameworks/Guest.framework/',
-                'dm/derived.tsv', 'dm/main.cuts.tsv', 'dm/c1_full.tsv']
-    manifest += [f'dm/{module}{suffix}' for module in ('main', 'sdk')
-                 for suffix in ('.fixups.tsv', '.gates.tsv')]
-    manifest += sorted(p.name for p in (ios / 'Sources/TouchArt').iterdir() if p.is_file())
-    contract = workspace / 'source-contract.zip'
-    with zipfile.ZipFile(contract, 'w') as package:
-        package.writestr(BASE + 'Info.plist', plistlib.dumps(
-            {'CFBundleExecutable': 'DmIOS', 'MinimumOSVersion': '26.0'}))
-        package.writestr(BASE + 'dm/shell_manifest.txt', '\n'.join(manifest) + '\n')
-        package.writestr(BASE + 'dm/shell_info.txt', f'PRODUCT={product}\nCHAIN={chain}\nKIND=ios\n')
     stage = root / '.ios-prepared.partial'
     shutil.rmtree(stage, ignore_errors=True)
     stage.mkdir()
     payload = stage / 'source-payload.zip'
-    subprocess.run([str(python), str(dm / 'tools/d2rm_pack.py'), str(contract), str(game), str(payload)],
-                   env=dict(environment, D2RM_ASTC_PACK=str(legacy)), check=True)
-    with (dm / 'host/dm_bright_levels.inc').open('w') as output:
-        subprocess.run([str(python), str(dm / 'tools/gen_bright_levels.py'), str(game / 'RomFS')],
-                       env=environment, stdout=output, check=True)
-    with zipfile.ZipFile(payload, 'a', zipfile.ZIP_DEFLATED) as package:
-        package.write(upstream / 'LICENSE', BASE + 'Licenses/d2r-mobile-MIT.txt')
-        for directory in ('third_party', 'gfx/nvn/include'):
-            for path in sorted((dm / directory).rglob('*')):
-                if path.is_file() and (path.name.upper().startswith(('LICENSE', 'COPYING', 'NOTICE'))
-                                       or path.name == 'nvn.h'):
-                    package.write(path, BASE + 'Licenses/' + path.relative_to(dm).as_posix())
+    write_payload(dm, workspace, python, payload, chain, product)
+    for name, script in zip(GENERATED, ('ios/tools/gen_vault_table.py', 'ios/tools/gen_hud_exp.py',
+                                       'tools/gen_bright_levels.py')):
+        destination = stage / 'generated' / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open('w') as output:
+            subprocess.run([str(python), str(dm / script), str(game / 'RomFS')],
+                           env=environment, stdout=output, check=True)
+    (stage / 'legacy').mkdir()
+    for name in ('pack.json', 'pack_index.tsv'):
+        shutil.copy2(legacy / name, stage / 'legacy' / name)
+    runtime_bytes = create(game.parent, stage / 'romfs-inputs.zip')
     record = run(python, '-c', 'import ios_metal; print(ios_metal.RECORD)',
                  cwd=ios / 'tools', env=environment)
     metal = {'metal': run('xcrun', '-sdk', 'iphoneos', 'metal', '--version').splitlines()[0],
@@ -161,17 +174,13 @@ def prepare():
         raise ValueError('Cannot read the Switch resource version from upstream docs/GAME_FILES.md')
     game_version = game.parent.name
     resources = {'game_version': game_version, 'switch_version': version[1],
-                 'files': [{'name': name, 'bytes': size, 'sha256': ci.sha256(game / 'RomFS/data' / name)}
+                 'files': [{'name': name, 'bytes': size}
                            for name, size in sorted(ci.resource_sizes().items())]}
     resources.update(archive_count=len(resources['files']),
                      resource_bytes=sum(item['bytes'] for item in resources['files']))
     write(stage / 'resource-manifest.json', resources)
     shutil.copy2(dm / 'gfx/tools/dmsh_chain.lock', stage / 'shader-chain.lock')
-    for name in GENERATED:
-        destination = stage / 'generated' / name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(dm / name, destination)
-    info = {'format': FORMAT, 'schema_version': 1, 'game_version': game_version,
+    info = {'format': FORMAT, 'schema_version': 2, 'game_version': game_version,
             'switch_version': version[1], 'nso_sha256': ci.CONFIG['nso_sha256'],
             'prepare_key': os.environ['IOS_PREPARED_KEY'],
             'original_input_identity': os.environ['GAME_REVISION'],
@@ -179,12 +188,10 @@ def prepare():
             'producer': {'source_commit': ci.CONFIG['upstream_commit'],
                          'tools_commit': os.environ['TOOLS_COMMIT']},
             'payload': report,
+            'runtime_input_bytes': runtime_bytes,
             'files': {p.relative_to(stage).as_posix(): {'bytes': p.stat().st_size, 'sha256': ci.sha256(p)}
                       for p in sorted(stage.rglob('*')) if p.is_file()}}
     write(stage / 'prepared.json', info)
-    verify_directory(stage)
-    from source.upgrade_prepared import upgrade
-    upgrade(stage, game.parent, legacy / 'pack_index.tsv', upstream)
     info = verify_directory(stage)
     verify_source(stage, info, upstream, ci.CONFIG)
     target = root / '.ios-prepared'

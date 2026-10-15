@@ -24,14 +24,12 @@ generated/host/
 | `prepared.json` | 格式标识 `d2r-mobile-prepared`、格式版本 `2`、游戏版本、程序校验值、payload 元数据及各文件大小和 SHA-256。`producer.source_commit` 标识生成此包时的源码提交。 |
 | `source-payload.zip` | `Payload/DmIOS.app/` 下改写后的游戏程序、装载表和预编译 iOS Metal 着色器。 |
 | `shader-chain.lock` | 着色器工具链指纹。 |
-| `resource-manifest.json` | 该游戏资源版本共用的 18 个 Data 文件的名称、大小和校验值；iOS 与 macOS 共用。 |
+| `resource-manifest.json` | 该游戏资源版本共用的 18 个 Data 文件的名称和大小；iOS 与 macOS 共用。 |
 | `romfs-inputs.zip` | 上游资源生成器需要的原版布局、文案、图片、字体、数据表及 CASC 元数据子集。 |
 | `legacy/` | 现有 Legacy 贴图包的描述和索引。 |
 | `generated/host/` | 游戏数据表头文件，生成脚本未变时直接复用。 |
 
 界面图片、布局、文案和覆盖层跟随所选源码生成；输入一致时复用缓存，修改原生应用代码无需重新生成这些资源。游戏数据表在生成脚本未变时复用，脚本变化时重新生成。游戏程序与 Metal 着色器在对应生成规则兼容时复用；这些重步骤的生成规则变化时，需要生成新的预处理包。
-
-格式版本 1 的包仍可使用，沿用原有兼容性检查。
 
 工作流下载此包，并将所选源码编译成两份 IPA。Data 和 Legacy Device Pack 从资源提供者的网盘另行下载，导入方式见[安装说明](../README.zh-CN.md#ios-下载和使用)。
 

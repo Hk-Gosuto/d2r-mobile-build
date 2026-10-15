@@ -13,10 +13,10 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 from archive_input import extract
-from source import prepared
-from source.compatibility import verify_generation
+from source import prepared, prepare_ios
+from source.metal import verify_payload
 from source.configure import configure
-from fixtures import git, package, source
+from fixtures import BASE, CHAIN, git, package
 
 
 class PreparedTests(unittest.TestCase):
@@ -29,7 +29,7 @@ class PreparedTests(unittest.TestCase):
             git(upstream, 'commit', '-m', 'runtime update')
             with patch.dict(os.environ, GITHUB_RUN_NUMBER='7', GITHUB_RUN_ATTEMPT='2', SOURCE_REPOSITORY='owner/fork', INPUT_REVISION='f' * 64):
                 config = configure(root)
-                with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config):
+                with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch('source.runtime_assets.generation_key', return_value='fixture-interface'):
                     prepared.prepare(root)
             report = json.loads((root / 'outputs/source-input-report.json').read_text())
             self.assertEqual(report['source_commit'], git(upstream, 'rev-parse', 'HEAD'))
@@ -37,16 +37,35 @@ class PreparedTests(unittest.TestCase):
             self.assertEqual(json.loads((root / 'outputs/build-context.json').read_text())['build_number'], '7.2')
             with tarfile.open(root / 'outputs/native-inputs.tar.gz') as archive:
                 self.assertEqual(archive.extractfile('upstream/dm/runtime.c').read(), b'updated runtime\n')
+            with zipfile.ZipFile(root / 'outputs/source-payload.zip') as archive:
+                self.assertEqual(archive.read('Payload/DmIOS.app/hud_v4_ui/ui.json'), b'original')
+            self.assertIsInstance(report['runtime_generation_seconds'], (int, float))
 
-    def test_generation_changes_require_updated_input(self):
-        for name in ('dm/tools/helper.py', 'dm/gfx/tools/kernel.py', 'dm/data/new-table.tsv'):
-            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
-                upstream, commit, _, _ = source(Path(temporary))
-                path = upstream / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text('changed_generation = True\n')
-                with self.assertRaisesRegex(ValueError, 'updated prepared package'):
-                    verify_generation(upstream, commit)
+    def test_setup_outputs_produce_a_verified_game_and_metal_payload(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            upstream, directory, info = package(root)
+            dm = upstream / 'dm'
+            workspace = root / 'workspace'
+            rewritten = workspace / 'build/cache/dm/out/fixture-product-touch'
+            rewritten.mkdir(parents=True)
+            (rewritten / 'main.fixups.tsv').write_text('fixture main loader table\n')
+            (dm / 'gfx/nvn/c1_full.tsv').write_text(f'# chain b-{CHAIN} fixture\n')
+            (dm / 'tools/guest_dylib.py').write_text(
+                "from pathlib import Path\nimport sys\np=Path(sys.argv[2])/'Guest.framework'\n"
+                "p.mkdir(parents=True)\n(p/'Guest').write_bytes(bytes.fromhex('cffaedfe0c000001'))\n"
+                "(p/'Info.plist').write_text('fixture framework metadata')\n")
+            libraries = workspace / 'build/ios/dmsh_b' / ('b-' + CHAIN)
+            libraries.mkdir(parents=True)
+            (libraries / 'one_b.metallib').write_bytes(b'MTLBfixture shader')
+            (libraries / 'one_b.json').write_text(json.dumps({'chain': CHAIN, 'chain_metal': 'fixture-metal'}))
+            payload = root / 'payload.zip'
+            prepare_ios.write_payload(dm, workspace, sys.executable, payload, CHAIN, 'fixture-product')
+            verify_payload(payload, info['payload'])
+            with zipfile.ZipFile(payload) as archive:
+                self.assertEqual(archive.read(BASE + 'dm/main.fixups.tsv'), b'fixture main loader table\n')
+                self.assertEqual(archive.read(BASE + 'Frameworks/Guest.framework/Info.plist'), b'fixture framework metadata')
+                self.assertEqual(archive.getinfo(BASE + 'Frameworks/Guest.framework/Guest').external_attr >> 16 & 0o777, 0o755)
 
     def test_modified_payload_or_wrong_program_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -62,10 +62,19 @@ class RuntimeInputTests(unittest.TestCase):
             upstream, commit, _, _ = source(Path(temporary))
             path = upstream / 'dm/ios/tools/touch_layout.py'
             path.write_text('new_quality_setting = True\n')
-            verify_generation(upstream, commit, heavy=True)
-            (upstream / 'dm/tools/helper.py').write_text('changed_program_rewrite = True\n')
-            with self.assertRaisesRegex(ValueError, 'updated prepared package'):
-                verify_generation(upstream, commit, heavy=True)
+            verify_generation(upstream, commit)
+            for name in ('dm/tools/helper.py', 'dm/gfx/tools/kernel.py', 'dm/data/bootlist_fixture.tsv'):
+                with self.subTest(name=name):
+                    path = upstream / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    original = path.read_bytes() if path.is_file() else None
+                    path.write_text('changed_program_rewrite = True\n')
+                    with self.assertRaisesRegex(ValueError, 'updated prepared package'):
+                        verify_generation(upstream, commit)
+                    if original is None:
+                        path.unlink()
+                    else:
+                        path.write_bytes(original)
 
 
 class InterfaceCacheTests(unittest.TestCase):

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 import macos
 from source import game_input
-from fixtures import source
+from fixtures import runtime_input, source
 
 
 class MacBuildTests(unittest.TestCase):
@@ -46,8 +46,14 @@ class MacBuildTests(unittest.TestCase):
             cache.mkdir()
             payload = cache / 'program'
             payload.write_bytes(b'prepared')
+            runtime_input(cache / 'romfs-inputs.zip')
+            (cache / 'generated').mkdir()
+            for name in macos.HEADERS:
+                (cache / 'generated' / name).write_text('fixture table\n')
             (cache / 'manifest.json').write_text(json.dumps({'format': 'd2r-mobile-macos-prepared',
-                'schema_version': 1, 'key': 'cache-key', 'files': {'program': ci.sha256(payload)}}))
+                'schema_version': 2, 'key': 'cache-key',
+                'files': {p.relative_to(cache).as_posix(): ci.sha256(p)
+                          for p in cache.rglob('*') if p.is_file()}}))
             with patch.object(ci, 'ROOT', root), patch.dict(os.environ, MACOS_PREPARED_KEY='cache-key'):
                 self.assertEqual(macos.load_prepared()['key'], 'cache-key')
                 payload.write_bytes(b'damaged')
@@ -66,25 +72,33 @@ class MacBuildTests(unittest.TestCase):
             package = root / 'package'
             package.mkdir()
             (package / 'program').write_bytes(b'Mac prepared program')
+            runtime_input(package / 'romfs-inputs.zip')
+            (package / 'generated').mkdir()
+            for name in macos.HEADERS:
+                (package / 'generated' / name).write_text('fixture table\n')
             config = {'nso_sha256': {'main': 'a' * 64}}
-            info = {'format': 'd2r-mobile-macos-prepared', 'schema_version': 1,
+            info = {'format': 'd2r-mobile-macos-prepared', 'schema_version': 2,
                     'source_commit': commit, 'nso_sha256': config['nso_sha256'],
                     'input_revision': 'raw-archive', 'toolchain': 'producer-xcode',
                     'key': macos.generation_key(upstream, 'raw-archive', 'producer-xcode'),
-                    'files': {'program': ci.sha256(package / 'program')}}
+                    'files': {p.relative_to(package).as_posix(): ci.sha256(p)
+                              for p in package.rglob('*') if p.is_file()}}
             (package / 'manifest.json').write_text(json.dumps(info))
             archive = root / '.macos-downloads/prepared-input.archive'
             archive.parent.mkdir()
             with zipfile.ZipFile(archive, 'w') as z:
-                for path in package.iterdir():
-                    z.write(path, path.name)
+                for path in package.rglob('*'):
+                    if path.is_file():
+                        z.write(path, path.relative_to(package))
             before = archive.read_bytes()
             with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config):
                 (upstream / 'dm/runtime.c').write_text('updated native runtime\n')
                 macos.import_prepared()
                 self.assertEqual((root / '.macos-prepared/program').read_bytes(), b'Mac prepared program')
+                (upstream / 'dm/ios/tools/gen_assets.py').write_text('updated_interface = True\n')
+                macos.import_prepared()
                 (upstream / 'dm/tools/helper.py').write_text('changed_generation = True\n')
-                with self.assertRaisesRegex(ValueError, 'different inputs'):
+                with self.assertRaisesRegex(ValueError, 'changed generation inputs'):
                     macos.import_prepared()
             self.assertEqual(archive.read_bytes(), before)
 

@@ -17,7 +17,8 @@ from input_config import input_identity, settings
 from source.compatibility import generation_paths, verify_generation
 from source.game_input import download, unpack
 from source.publish import publish_assets
-from source.prepared import download as download_prepared
+from source.prepared import download as download_prepared, resolve as plan_prepared
+from source.romfs_input import create
 
 HEADERS = ('dm_vault_tab.h', 'dm_hud_exp.h', 'dm_bright_levels.inc')
 
@@ -32,7 +33,7 @@ def write(path, value):
 
 def generation_key(upstream, identity, toolchain):
     paths = generation_paths(upstream, None)
-    paths.update(('setup.sh', 'dm/host/Makefile', 'dm/tools/mac_app.sh', 'dm/tools/product.sh',
+    paths.update(('setup.sh', 'dm/tools/product.sh',
                   'dm/gfx/tools/msl_retarget.sh', 'dm/ios/tools/gen_vault_table.py',
                   'dm/ios/tools/gen_hud_exp.py', 'dm/tools/gen_bright_levels.py'))
     digest = hashlib.sha256((identity + '\0' + toolchain).encode())
@@ -40,6 +41,8 @@ def generation_key(upstream, identity, toolchain):
         path = upstream / name
         if path.is_file():
             digest.update((name + '\0' + ci.sha256(path) + '\0').encode())
+    digest.update(Path(__file__).read_bytes())
+    digest.update((Path(__file__).parent / 'source/romfs_input.py').read_bytes())
     return 'macos-prepared-v1-' + digest.hexdigest()
 
 
@@ -54,16 +57,14 @@ def plan():
 def load_prepared():
     cache = ci.ROOT / '.macos-prepared'
     info = json.loads((cache / 'manifest.json').read_text())
-    if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') not in (1, 2):
-        raise ValueError('Expected a macOS prepared package (schema 1 or 2)')
-    if info['schema_version'] == 2 and not {'romfs-inputs.zip', *('generated/' + n for n in HEADERS)} <= info['files'].keys():
+    if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') != 2:
+        raise ValueError('Expected a macOS prepared package (schema 2)')
+    if not {'romfs-inputs.zip', *('generated/' + n for n in HEADERS)} <= info['files'].keys():
         raise ValueError('Mac prepared package is missing original inputs or game tables')
     expected = os.environ.get('MACOS_PREPARED_KEY')
-    if expected is None and info['schema_version'] == 2:
-        verify_generation(ci.ROOT / 'upstream', info['source_commit'], heavy=True)
+    if expected is None:
+        verify_generation(ci.ROOT / 'upstream', info['source_commit'])
         expected = info['key']
-    elif expected is None:
-        expected = generation_key(ci.ROOT / 'upstream', info['input_revision'], info['toolchain'])
     if info['key'] != expected:
         raise ValueError('Mac preparation cache belongs to different inputs')
     files = {p.relative_to(cache).as_posix() for p in cache.rglob('*') if p.is_file()}
@@ -110,9 +111,6 @@ def prepare():
                     ignore=shutil.ignore_patterns('*.log'))
     subprocess.run(['bash', str(dm / 'gfx/tools/msl_retarget.sh'), '15.0', str(stage / 'msl')],
                    env=environment, check=True)
-    subprocess.run([str(python), str(dm / 'ios/tools/gen_romfs_overlay.py'),
-                    str(game / 'RomFS'), str(stage / 'romfs_overlay')],
-                   env=dict(environment, DM_OVERLAY_MAC='1'), check=True)
     generators = ('ios/tools/gen_vault_table.py', 'ios/tools/gen_hud_exp.py',
                   'tools/gen_bright_levels.py')
     (stage / 'generated').mkdir()
@@ -126,26 +124,20 @@ def prepare():
     libraries = list((stage / 'msl' / ('b-' + chain)).glob('*.metallib'))
     if not libraries or any(not p.read_bytes().startswith(b'MTLB') for p in libraries):
         raise ValueError('Mac Metal libraries are missing or uncompiled')
-    info = {'format': 'd2r-mobile-macos-prepared', 'schema_version': 1,
+    size = create(game.parent, stage / 'romfs-inputs.zip')
+    info = {'format': 'd2r-mobile-macos-prepared', 'schema_version': 2,
             'toolchain': os.environ['MACOS_TOOLCHAIN'], 'nso_sha256': ci.CONFIG['nso_sha256'],
             'key': os.environ['MACOS_PREPARED_KEY'], 'source_commit': ci.CONFIG['upstream_commit'],
             'input_revision': os.environ['INPUT_REVISION'], 'archive_sha256': settings('GAME_ARCHIVE')[1] or ci.sha256(archive),
             'product': product, 'shader_chain': chain, 'metal_libraries': len(libraries),
-            'metal_minimum_os': '15.0', 'prepare_seconds': round(time.monotonic() - started, 2),
+            'metal_minimum_os': '15.0', 'runtime_input_bytes': size,
+            'prepare_seconds': round(time.monotonic() - started, 2),
             'files': {p.relative_to(stage).as_posix(): ci.sha256(p)
                       for p in sorted(stage.rglob('*')) if p.is_file()}}
     write(stage / 'manifest.json', info)
-    from source.upgrade_prepared import upgrade_macos
-    upgrade_macos(stage, game.parent, upstream)
     shutil.rmtree(cache, ignore_errors=True)
     stage.rename(cache)
     print('Mac preparation completed and verified; original archive retained', flush=True)
-
-
-def plan_prepared():
-    url, digest = settings()
-    with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
-        stream.write('input_revision=' + input_identity(url, digest) + '\n')
 
 
 def import_prepared():
@@ -195,14 +187,9 @@ def build():
     cache = root / '.macos-prepared'
     info = load_prepared()
     workspace = root / '.macos-runtime'
-    generation_seconds = None
-    if info['schema_version'] == 2:
-        from source.runtime_assets import generate
-        generation_seconds = generate(dm, cache / 'romfs-inputs.zip', workspace, macos=True,
-                                      headers=cache / 'generated', baseline=info['source_commit'])
-    else:
-        for name in HEADERS:
-            shutil.copyfile(cache / 'generated' / name, dm / 'host' / name)
+    from source.runtime_assets import generate
+    generation_seconds = generate(dm, cache / 'romfs-inputs.zip', workspace, macos=True,
+                                  headers=cache / 'generated', baseline=info['source_commit'])
     shutil.copyfile(cache / 'shader-chain.lock', dm / 'gfx/tools/dmsh_chain.lock')
     shutil.copyfile(cache / 'c1_full.tsv', dm / 'gfx/nvn/c1_full.tsv')
     if run(sys.executable, dm / 'gfx/tools/dmsh_chain.py', '--header') != info['shader_chain']:
@@ -213,7 +200,7 @@ def build():
     out = root / 'outputs'
     out.mkdir(exist_ok=True)
     environment = dict(os.environ, DM_ROOT=str(workspace), DM_MAC_LINK='0',
-                       DM_MAC_OVERLAY=str((workspace if info['schema_version'] == 2 else cache) / 'romfs_overlay'), DM_MSL_DIR=str(cache / 'msl'),
+                       DM_MAC_OVERLAY=str(workspace / 'romfs_overlay'), DM_MSL_DIR=str(cache / 'msl'),
                        DM_MAC_VERSION=ci.CONFIG['app_version'], DM_MAC_BUILD=ci.CONFIG['build_number'],
                        MACOS_MIN='26.0', MACOS_MIN_M3='15.0')
     # Compile both upstream targets together; make shares header dependencies safely.

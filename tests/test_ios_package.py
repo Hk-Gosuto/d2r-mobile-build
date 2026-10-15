@@ -42,6 +42,7 @@ class IOSPackageTests(unittest.TestCase):
             (art / 'native_art_manifest.json').write_bytes(b'source placeholder')
             payload = prepared / 'source-payload.zip'
             with zipfile.ZipFile(payload, 'a') as archive:
+                archive.writestr(BASE + 'romfs_overlay_astc/pack.json', '{}')
                 archive.writestr(BASE + 'Info.plist', b'prepared metadata')
                 archive.writestr(BASE + 'native_art_manifest.json', b'prepared art metadata')
                 archive.writestr(BASE + 'dm_touch_joy.png', b'old joystick')
@@ -97,6 +98,8 @@ class IOSPackageTests(unittest.TestCase):
                 ios = upstream / 'dm/ios'
                 (ios / 'Gen').mkdir()
                 spec = project()
+                with zipfile.ZipFile(prepared / 'source-payload.zip', 'a') as archive:
+                    archive.writestr(BASE + 'romfs_overlay_astc/pack.json', '{}')
                 if missing == 'table':
                     (upstream / 'dm/gfx/nvn/shader_map.tsv').unlink()
                     message = 'Missing upstream runtime resource: dm/shader_map.tsv'

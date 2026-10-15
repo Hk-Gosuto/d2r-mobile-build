@@ -30,7 +30,7 @@ c1_full.tsv
 | `generated/` | Game-table headers, reused when their generator scripts are unchanged |
 | `shader-chain.lock`, `c1_full.tsv` | Matching shader tool fingerprints and index metadata |
 
-Mac interface resources follow the selected upstream source, including keyboard glyphs. Matching generated outputs are cached and reused across native-code changes. Game-table headers are reused when their generator scripts are unchanged; modified generators rebuild their tables. Game programs and Metal libraries are reused while their generation rules remain compatible. Schema 1 packages retain their original compatibility checks.
+Mac interface resources follow the selected upstream source, including keyboard glyphs. Matching generated outputs are cached and reused across native-code changes. Game-table headers are reused when their generator scripts are unchanged; modified generators rebuild their tables. Game programs and Metal libraries are reused while their generation rules remain compatible.
 
 ## Generate a macOS prepared package
 

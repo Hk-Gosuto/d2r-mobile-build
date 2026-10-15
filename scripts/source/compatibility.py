@@ -5,14 +5,9 @@ import posixpath
 import re
 import subprocess
 
-ROOTS = ('LICENSE', 'dm/PRODUCT', 'dm/data', 'dm/ios/tools/native_art',
-         'dm/ios/docs', 'dm/ios/NativeHUD', 'dm/gfx/tex', 'dm/gfx/nvn/include',
-         'dm/gfx/nvn/nvn_tex.c', 'dm/gfx/nvn/nvn_tex.h', 'dm/third_party',
-         'dm/ios/Sources/TouchArt/native_art_manifest.json')
-SCRIPTS = ('dm/tools/patch_nso.py', 'dm/ios/tools/gen_assets.py',
-           'dm/tools/d2rm_pack.py', 'dm/ios/tools/gen_romfs_overlay.py',
-           'dm/ios/tools/gen_bright_levels.py', 'dm/ios/tools/shell_stubs.py',
-           'dm/tools/dmx.py', 'dm/gfx/tools/nometal_run.py')
+ROOTS = ('dm/PRODUCT', 'dm/tools/product.sh', 'dm/gfx/tools/msl_retarget.sh')
+SCRIPTS = ('dm/tools/patch_nso.py', 'dm/tools/guest_dylib.py',
+           'dm/ios/tools/gen_embed.py', 'dm/gfx/tools/c1_guard.py')
 
 
 def git(upstream, *args):
@@ -20,7 +15,7 @@ def git(upstream, *args):
                                    stderr=subprocess.DEVNULL).decode()
 
 
-def generation_paths(upstream, revision, *, heavy=False):
+def generation_paths(upstream, revision):
     if revision:
         names = set(git(upstream, 'ls-tree', '-r', '--name-only', '-z', revision).split('\0')) - {''}
     else:
@@ -30,13 +25,9 @@ def generation_paths(upstream, revision, *, heavy=False):
     def read(name):
         return git(upstream, 'show', revision + ':' + name) if revision else (upstream / name).read_text()
 
-    roots = ('dm/PRODUCT', 'dm/tools/product.sh', 'dm/gfx/tools/msl_retarget.sh') if heavy else ROOTS
-    paths = {n for n in names if any(n == p or n.startswith(p + '/') for p in roots)}
-    if heavy:
-        paths.update(n for n in names if n.startswith('dm/data/bootlist_'))
-    scripts = ('dm/tools/patch_nso.py', 'dm/tools/guest_dylib.py',
-               'dm/ios/tools/gen_embed.py', 'dm/gfx/tools/c1_guard.py') if heavy else SCRIPTS
-    pending = [n for n in scripts if n in names]
+    paths = {n for n in names if any(n == p or n.startswith(p + '/') for p in ROOTS)}
+    paths.update(n for n in names if n.startswith('dm/data/bootlist_'))
+    pending = [n for n in SCRIPTS if n in names]
     while pending:
         name = pending.pop()
         if name in paths:
@@ -69,7 +60,7 @@ def generation_paths(upstream, revision, *, heavy=False):
     return paths
 
 
-def verify_generation(upstream, baseline, *, heavy=False):
+def verify_generation(upstream, baseline):
     upstream = Path(upstream)
     if not isinstance(baseline, str) or not re.fullmatch('[a-f0-9]{40}', baseline):
         raise ValueError('Prepared package source commit is invalid')
@@ -82,7 +73,7 @@ def verify_generation(upstream, baseline, *, heavy=False):
     changed.discard('')
     if not changed:
         return
-    dependencies = generation_paths(upstream, baseline, heavy=heavy) | generation_paths(upstream, None, heavy=heavy)
+    dependencies = generation_paths(upstream, baseline) | generation_paths(upstream, None)
     affected = sorted(changed & dependencies)
     if affected:
         raise ValueError('Selected source changed generation inputs (' + ', '.join(affected[:5]) +
