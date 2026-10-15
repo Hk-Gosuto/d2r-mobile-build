@@ -62,6 +62,8 @@ Run **Build IPA** again to build the latest official upstream Release. Back up s
 
 Ordinary native code changes can reuse the prepared package. If the workflow reports incompatible generation rules, obtain a newer prepared package and update `PREPARED_INPUT`.
 
+To generate your own iOS prepared input, see [Generate an iOS prepared package](docs/PREPARED_INPUT.md#generate-an-ios-prepared-package).
+
 ## Download and use on macOS
 
 Run **Build macOS** with the shared `PREPARED_INPUT` configuration above. After the build, download the ZIP matching your Mac from your repository’s **Releases**:

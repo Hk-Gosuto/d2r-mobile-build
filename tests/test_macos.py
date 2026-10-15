@@ -12,6 +12,7 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 import macos
+from source import game_input
 from fixtures import source
 
 
@@ -48,7 +49,7 @@ class MacBuildTests(unittest.TestCase):
             archive.parent.mkdir()
             archive.write_bytes(b'existing ExeFS/RomFS archive')
             digest = ci.sha256(archive)
-            with patch.object(ci, 'ROOT', root), patch.object(macos, 'settings', return_value=('https://storage.invalid/game.zip', digest)), patch.object(macos, 'download_file') as download:
+            with patch.object(ci, 'ROOT', root), patch.object(game_input, 'settings', return_value=('https://storage.invalid/game.zip', digest)), patch.object(game_input, 'download_file') as download:
                 macos.download()
                 download.assert_not_called()
             self.assertEqual(archive.read_bytes(), b'existing ExeFS/RomFS archive')

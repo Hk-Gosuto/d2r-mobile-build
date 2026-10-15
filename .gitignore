@@ -9,3 +9,5 @@ __pycache__/
 *.ipa
 .game-downloads/
 .macos-*/
+
+.ios-*/

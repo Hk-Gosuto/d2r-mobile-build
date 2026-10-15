@@ -27,3 +27,46 @@ generated/
 构建会检查包完整性、游戏程序、资源元数据和着色器的一致性，并在所选源码仓库中对照 `producer.source_commit` 检查生成依赖。原生运行时代码修改可复用此包；生成规则变化时需使用配套的新包。
 
 工作流下载此包，并将所选源码编译成两份 IPA。Data 和 Legacy Device Pack 从资源提供者的网盘另行下载，导入方式见[安装说明](../README.zh-CN.md#ios-下载和使用)。
+
+## 生成 iOS 预处理包
+
+在自己的私有仓库配置两个 Secret，均使用包含 HTTPS 下载地址 `url` 和校验值 `sha256` 的 JSON：
+
+| Secret | 输入 |
+|---|---|
+| `GAME_ARCHIVE` | 包含一对 `ExeFS` / `RomFS` 的原始游戏文件压缩包，与 Mac 预处理使用同一份输入 |
+| `LEGACY_METADATA` | 包含 `pack.json` 和 `pack_index.tsv` 的 ZIP，两份文件取自同一游戏资源版本的 Legacy 包生成结果 |
+
+将以下内容保存为 `.github/workflows/prepare-ios-input.yml`，然后在 **Actions → Prepare iOS input → Run workflow** 执行：
+
+```yaml
+name: Prepare iOS input
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository:
+        description: Source repository
+        type: string
+        default: jhaizhou-ops/d2r-mobile
+      source_ref:
+        description: Branch, tag or commit; empty selects the latest release
+        type: string
+        default: ''
+permissions:
+  contents: write
+  actions: write
+jobs:
+  prepare:
+    uses: jiayx/d2r-mobile-build/.github/workflows/prepare-ios.yml@main
+    with:
+      source_repository: ${{ inputs.source_repository }}
+      source_ref: ${{ inputs.source_ref }}
+    secrets:
+      GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
+      LEGACY_METADATA: ${{ secrets.LEGACY_METADATA }}
+      SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}
+```
+
+工作流默认使用上游最新正式 Release，生成改写后的游戏程序、界面素材、覆盖层、宿主表头和预编译 iOS Metal 着色器。Legacy 索引用于生成老设备覆盖层，沿用现有贴图包。
+
+原始游戏压缩包和完成的预处理结果会按输入与生成规则缓存。结果发布到自己的私有 Releases，包含 `D2RMobile-Prepared.zip` 和 `Prepared-SHA256SUMS.txt`。将 ZIP 的地址和校验值填入 `PREPARED_INPUT` JSON 的 `ios` 对象，日常运行 **Build IPA** 使用它。

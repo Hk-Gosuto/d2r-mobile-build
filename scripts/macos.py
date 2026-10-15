@@ -2,9 +2,8 @@
 import hashlib
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import plistlib
-import re
 import shutil
 import subprocess
 import sys
@@ -14,14 +13,14 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci
 from archive_input import extract
-from input_config import download_file, input_identity, settings
+from input_config import input_identity, settings
 from repository_access import require_private
 from source.compatibility import generation_paths
+from source.game_input import download, unpack
 from source.publish import publish_assets
 from source.prepared import download as download_prepared
 
 HEADERS = ('dm_vault_tab.h', 'dm_hud_exp.h', 'dm_bright_levels.inc')
-MAX_GAME_BYTES = 24 * 1024**3
 
 
 def run(*args, **kwargs):
@@ -30,14 +29,6 @@ def run(*args, **kwargs):
 
 def write(path, value):
     path.write_text(json.dumps(value, indent=2) + '\n')
-
-
-def game_path(upstream, workspace):
-    match = re.search(r'^GAME=\$DM_ROOT/(data/switch/[^\s;]+)(?:[;\s]|$)',
-                      (upstream / 'setup.sh').read_text(), re.M)
-    if not match or '..' in PurePosixPath(match[1]).parts or '$' in match[1]:
-        raise ValueError('Cannot determine the game directory from upstream setup.sh')
-    return workspace / match[1]
 
 
 def generation_key(upstream, identity, toolchain):
@@ -59,44 +50,6 @@ def plan():
     key = generation_key(ci.ROOT / 'upstream', identity, os.environ['MACOS_TOOLCHAIN'])
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
         stream.write('input_revision=' + identity + '\nprepared_key=' + key + '\n')
-
-
-def download():
-    url, digest = settings('GAME_ARCHIVE')
-    archive = ci.ROOT / '.game-downloads/game-input.archive'
-    marker = archive.with_suffix('.json')
-    if archive.is_file():
-        actual = ci.sha256(archive)
-        if digest:
-            valid = actual == digest
-        else:
-            try:
-                saved = json.loads(marker.read_text())
-                valid = (saved['identity'] == input_identity(url, digest)
-                         and saved['bytes'] == archive.stat().st_size
-                         and saved.get('sha256', actual) == actual)
-            except (OSError, ValueError, KeyError):
-                valid = False
-        if valid:
-            print('Reused verified original game archive; download skipped', flush=True)
-            return
-    download_file(url, archive, digest or None, max_bytes=MAX_GAME_BYTES)
-    if not archive.stat().st_size:
-        raise ValueError('Game archive is empty')
-    write(marker, {'identity': input_identity(url, digest), 'bytes': archive.stat().st_size,
-                   'sha256': ci.sha256(archive)})
-    print('Original game archive downloaded and verified; ready to cache', flush=True)
-
-
-def validate_game(game):
-    for name, digest in ci.CONFIG['nso_sha256'].items():
-        if ci.sha256(game / 'ExeFS' / name) != digest:
-            raise ValueError('Game program differs from the selected source: ' + name)
-    if not (game / 'RomFS/data/build_manifest.psv').is_file():
-        raise ValueError('RomFS/data/build_manifest.psv is missing')
-    for name, size in ci.resource_sizes().items():
-        if (game / 'RomFS/data' / name).stat().st_size != size:
-            raise ValueError('Game resource size mismatch: ' + name)
 
 
 def load_prepared():
@@ -135,19 +88,7 @@ def prepare():
     dm = upstream / 'dm'
     workspace = root / '.macos-work'
     archive = root / '.game-downloads/game-input.archive'
-    game = game_path(upstream, workspace)
-    temporary = workspace / 'unpack'
-    shutil.rmtree(temporary, ignore_errors=True)
-    extract(archive, temporary, max_bytes=MAX_GAME_BYTES, max_members=100000)
-    candidates = [p.parent for p in temporary.rglob('ExeFS')
-                  if p.is_dir() and (p.parent / 'RomFS').is_dir()]
-    if len(candidates) != 1:
-        raise ValueError('Archive must contain exactly one ExeFS/RomFS pair')
-    validate_game(candidates[0])
-    game.parent.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(game, ignore_errors=True)
-    shutil.move(str(candidates[0]), game)
-    shutil.rmtree(temporary, ignore_errors=True)
+    game = unpack(workspace)
     started = time.monotonic()
     environment = dict(os.environ, DM_ROOT=str(workspace))
     subprocess.run(['bash', str(upstream / 'setup.sh')], env=environment, check=True)

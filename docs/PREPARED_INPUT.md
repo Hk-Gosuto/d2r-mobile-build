@@ -27,3 +27,46 @@ generated/
 The build checks package integrity, game programs, resource metadata, and shader consistency. It compares generation dependencies with `producer.source_commit` in the selected source repository. Native runtime changes can reuse the package; changes to generation rules require a matching updated package.
 
 The workflow downloads this package and compiles the selected source into two IPAs. Download Data and the Legacy Device Pack separately from your resource provider, then follow the [installation instructions](../README.md#download-and-use-on-ios).
+
+## Generate an iOS prepared package
+
+In your private repository, configure two Secrets. Each contains a JSON object with an HTTPS download `url` and `sha256`:
+
+| Secret | Input |
+|---|---|
+| `GAME_ARCHIVE` | An archive containing one `ExeFS` / `RomFS` pair; the same original input used for Mac preparation |
+| `LEGACY_METADATA` | A ZIP containing `pack.json` and `pack_index.tsv` from the Legacy pack generation output for the same game resource version |
+
+Save the following as `.github/workflows/prepare-ios-input.yml`, then run **Actions → Prepare iOS input → Run workflow**:
+
+```yaml
+name: Prepare iOS input
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository:
+        description: Source repository
+        type: string
+        default: jhaizhou-ops/d2r-mobile
+      source_ref:
+        description: Branch, tag or commit; empty selects the latest release
+        type: string
+        default: ''
+permissions:
+  contents: write
+  actions: write
+jobs:
+  prepare:
+    uses: jiayx/d2r-mobile-build/.github/workflows/prepare-ios.yml@main
+    with:
+      source_repository: ${{ inputs.source_repository }}
+      source_ref: ${{ inputs.source_ref }}
+    secrets:
+      GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
+      LEGACY_METADATA: ${{ secrets.LEGACY_METADATA }}
+      SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}
+```
+
+The workflow defaults to the latest official upstream Release. It generates the rewritten game programs, interface assets, overlays, host headers, and precompiled iOS Metal shaders. The existing Legacy index is used to produce older-device overlays, reusing the matching texture pack.
+
+The original game archive and completed preparation outputs are cached by their inputs and generation dependencies. The workflow publishes `D2RMobile-Prepared.zip` and `Prepared-SHA256SUMS.txt` to your private Releases. Set the ZIP’s URL and checksum in the `ios` object of your `PREPARED_INPUT` JSON, then use **Build IPA** for ordinary builds.

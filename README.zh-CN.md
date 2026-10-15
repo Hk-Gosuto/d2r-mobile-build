@@ -62,6 +62,8 @@
 
 普通原生代码更新可复用预处理包；工作流提示生成规则不兼容时，取得新版预处理包并更新 `PREPARED_INPUT`。
 
+需要自行生成 iOS 预处理包时，见[生成 iOS 预处理包](docs/PREPARED_INPUT.zh-CN.md#生成-ios-预处理包)。
+
 ## macOS 下载和使用
 
 使用上方共用的 `PREPARED_INPUT` 配置运行 **Build macOS**。构建完成后，在自己仓库的 **Releases** 下载适合当前 Mac 的 ZIP：
