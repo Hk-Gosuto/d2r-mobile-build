@@ -9,22 +9,24 @@ prepared.json
 source-payload.zip
 shader-chain.lock
 resource-manifest.json
-generated/
-  host/dm_vault_tab.h
-  host/dm_hud_exp.h
-  host/dm_bright_levels.inc
-  ios/Sources/dm_touch_native_art.c
+romfs-inputs.zip
+legacy/
+  pack.json
+  pack_index.tsv
 ```
 
 | 文件 | 内容 |
 |---|---|
-| `prepared.json` | 格式标识 `d2r-mobile-prepared`、格式版本 `1`、游戏版本、程序校验值、payload 元数据及各文件大小和 SHA-256。`producer.source_commit` 标识生成此包时的源码提交。 |
-| `source-payload.zip` | `Payload/DmIOS.app/` 下已生成的游戏程序、界面素材、覆盖层和二进制 iOS Metal 着色器。 |
+| `prepared.json` | 格式标识 `d2r-mobile-prepared`、格式版本 `2`、游戏版本、程序校验值、payload 元数据及各文件大小和 SHA-256。`producer.source_commit` 标识生成此包时的源码提交。 |
+| `source-payload.zip` | `Payload/DmIOS.app/` 下改写后的游戏程序、装载表和预编译 iOS Metal 着色器。 |
 | `shader-chain.lock` | 着色器工具链指纹。 |
 | `resource-manifest.json` | 该游戏资源版本共用的 18 个 Data 文件的名称、大小和校验值；iOS 与 macOS 共用。 |
-| `generated/` | 从游戏资源生成的数据表头文件和技能图集索引 C 源文件，供上游 iOS 应用的界面及运行时代码编译使用。 |
+| `romfs-inputs.zip` | 上游资源生成器需要的原版布局、文案、图片、字体、数据表及 CASC 元数据子集。 |
+| `legacy/` | 现有 Legacy 贴图包的描述和索引。 |
 
-构建会检查包完整性、游戏程序、资源元数据和着色器的一致性，并在所选源码仓库中对照 `producer.source_commit` 检查生成依赖。只修改上游 iOS 应用的界面、输入处理或运行时等 C/Objective-C 代码，且不涉及生成依赖时，可复用此包；生成规则变化时需使用配套的新包。
+每次构建使用所选源码的脚本生成界面图片、布局、文案、覆盖层和数据表。游戏程序与 Metal 着色器在对应生成规则兼容时复用；这些重步骤的生成规则变化时，需要生成新的预处理包。
+
+格式版本 1 的包仍可使用，沿用原有兼容性检查。
 
 工作流下载此包，并将所选源码编译成两份 IPA。Data 和 Legacy Device Pack 从资源提供者的网盘另行下载，导入方式见[安装说明](../README.zh-CN.md#ios-下载和使用)。
 
@@ -67,6 +69,6 @@ jobs:
       SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}
 ```
 
-工作流默认使用上游最新正式 Release，生成改写后的游戏程序、界面素材、覆盖层、宿主表头和预编译 iOS Metal 着色器。Legacy 索引用于生成老设备覆盖层，沿用现有贴图包。
+工作流默认使用上游最新正式 Release，准备改写后的游戏程序、预编译 iOS Metal 着色器，以及生成界面所需的小份原始输入；同时带上现有 Legacy 索引，供构建时生成老设备覆盖层。
 
 原始游戏压缩包和完成的预处理结果会按输入与生成规则缓存。结果发布到自己的私有 Releases，包含 `D2RMobile-Prepared.zip` 和 `Prepared-SHA256SUMS.txt`。将 ZIP 的地址和校验值填入 `prepared_input` JSON，日常运行 **Build IPA** 使用它。

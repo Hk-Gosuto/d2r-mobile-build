@@ -9,22 +9,24 @@ prepared.json
 source-payload.zip
 shader-chain.lock
 resource-manifest.json
-generated/
-  host/dm_vault_tab.h
-  host/dm_hud_exp.h
-  host/dm_bright_levels.inc
-  ios/Sources/dm_touch_native_art.c
+romfs-inputs.zip
+legacy/
+  pack.json
+  pack_index.tsv
 ```
 
 | File | Contents |
 |---|---|
-| `prepared.json` | Format `d2r-mobile-prepared`, schema `1`, game versions, program checksums, payload metadata and each file’s size and SHA-256. `producer.source_commit` identifies the source used to generate the package. |
-| `source-payload.zip` | Generated game program, interface resources, overlays and binary iOS Metal libraries under `Payload/DmIOS.app/`. |
+| `prepared.json` | Format `d2r-mobile-prepared`, schema `2`, game versions, program checksums, payload metadata and each file’s size and SHA-256. `producer.source_commit` identifies the source used to generate the package. |
+| `source-payload.zip` | Rewritten game program, loader tables and precompiled iOS Metal libraries under `Payload/DmIOS.app/`. |
 | `shader-chain.lock` | Shader toolchain fingerprints. |
 | `resource-manifest.json` | Names, sizes and checksums of the 18 Data files for this game resource version, shared by iOS and macOS. |
-| `generated/` | Data-table headers and a skill-atlas index C source file generated from game resources, used to compile the upstream iOS app's interface and runtime code. |
+| `romfs-inputs.zip` | Selected original layouts, strings, images, fonts, tables and CASC metadata needed by upstream resource generators. |
+| `legacy/` | Existing Legacy texture-pack descriptor and index. |
 
-The build checks package integrity, game programs, resource metadata, and shader consistency. It compares generation dependencies with `producer.source_commit` in the selected source repository. Changes to the upstream iOS app's C/Objective-C interface, input handling, or runtime code can reuse the package when generation dependencies are unchanged; changes to generation rules require a matching updated package.
+Each build runs the selected source's generators for interface assets, layouts, strings, overlays and data tables. Game programs and Metal libraries are reused while their generation rules remain compatible. If those heavy generation rules change, generate a new prepared package.
+
+Schema 1 packages remain supported with their original compatibility checks.
 
 The workflow downloads this package and compiles the selected source into two IPAs. Download Data and the Legacy Device Pack separately from your resource provider, then follow the [installation instructions](../README.md#download-and-use-on-ios).
 
@@ -67,6 +69,6 @@ jobs:
       SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}
 ```
 
-The workflow defaults to the latest official upstream Release. It generates the rewritten game programs, interface assets, overlays, host headers, and precompiled iOS Metal shaders. The existing Legacy index is used to produce older-device overlays, reusing the matching texture pack.
+The workflow defaults to the latest official upstream Release. It prepares rewritten game programs, precompiled iOS Metal libraries and the small original inputs needed to generate interface resources. The existing Legacy index is included for older-device overlays.
 
 The original game archive and completed preparation outputs are cached by their inputs and generation dependencies. The workflow publishes `D2RMobile-Prepared.zip` and `Prepared-SHA256SUMS.txt` to your private Releases. Set the ZIP’s URL and checksum in your `prepared_input` JSON, then use **Build IPA** for ordinary builds.

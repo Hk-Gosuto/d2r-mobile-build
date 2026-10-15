@@ -8,29 +8,24 @@
 manifest.json
 product/
 msl/b-<着色器链版本>/
-romfs_overlay/
+romfs-inputs.zip
 resources/data/
   build_manifest.psv
   .build.config
-generated/
-  dm_vault_tab.h
-  dm_hud_exp.h
-  dm_bright_levels.inc
 shader-chain.lock
 c1_full.tsv
 ```
 
 | 路径 | 内容 |
 |---|---|
-| `manifest.json` | 格式标识 `d2r-mobile-macos-prepared`、格式版本 `1`、源码提交、游戏程序校验值、生成规则标识、生成工具链及各文件 SHA-256 |
+| `manifest.json` | 格式标识 `d2r-mobile-macos-prepared`、格式版本 `2`、源码提交、游戏程序校验值、生成规则标识、生成工具链及各文件 SHA-256 |
 | `product/` | 上游改写后的 `touch` 游戏程序与装载表 |
 | `msl/` | 最低面向 macOS 15.0 的 Metal 着色器库与反射元数据，两份 Mac 应用共用 |
-| `romfs_overlay/` | 包含键盘键帽的 Mac 界面资源 |
+| `romfs-inputs.zip` | 生成 Mac 布局、文案、图片、字体、数据表和覆盖层需要的原始输入子集 |
 | `resources/data/` | Mac 资源选择器需要的小型元数据，可配合现有 Data 使用 |
-| `generated/` | 从游戏资源生成的数据表头文件，供上游 macOS 应用的界面及运行时代码编译使用 |
 | `shader-chain.lock`、`c1_full.tsv` | 配套着色器工具指纹与下标清单 |
 
-只修改上游 macOS 应用的界面、输入处理或运行时等 C/Objective-C 代码，且不涉及生成依赖时，可复用此包。构建会对照所选源码核对游戏程序和生成依赖，逐个校验文件后再编译。
+每次构建使用所选上游源码生成 Mac 界面资源和数据表，包括键盘键帽。游戏程序与 Metal 着色器在对应生成规则兼容时复用。格式版本 1 的包沿用原有兼容性检查。
 
 ## 准备自己的输入
 
@@ -49,4 +44,4 @@ jobs:
       GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
 ```
 
-工作流优先恢复原始压缩包缓存，准备 Mac 游戏程序、界面资源及着色器，并将 `D2RMobile-MacPrepared.zip` 和 `MacPrepared-SHA256SUMS.txt` 发布到自己的私有 Releases。将此 ZIP 作为 **Build macOS** 的输入。同一私有仓库的附件可使用 `https://api.github.com/repos/OWNER/REPO/releases/assets/附件ID` 形式的地址，下载时由该仓库的工作流令牌认证。
+工作流优先恢复原始压缩包缓存，准备 Mac 游戏程序、着色器和生成界面所需的小份原始输入，并将 `D2RMobile-MacPrepared.zip` 和 `MacPrepared-SHA256SUMS.txt` 发布到自己的私有 Releases。将此 ZIP 作为 **Build macOS** 的输入。同一私有仓库的附件可使用 `https://api.github.com/repos/OWNER/REPO/releases/assets/附件ID` 形式的地址，下载时由该仓库的工作流令牌认证。
