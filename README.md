@@ -13,8 +13,8 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmeRo2bYjiMfP4fNfnCL18ZaJE4T8y7A9fLhu3bxwSZkw3?filename=D2RMobile-Prepared.zip",
-     "sha256": "4df138f1d31022aba7895d74e7e4b7ace0d3c3eadea43616d5e488b49f452e8d"
+     "url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/D2RMobile-Prepared.zip",
+     "sha256_url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/Prepared-SHA256SUMS.txt"
    }
    ```
 
@@ -22,12 +22,12 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmZBmNBhaAK7vXYKo4gKgoJJ9rKGDEGTYJgiURnFgf5X4j?filename=D2RMobile-MacPrepared.zip",
-     "sha256": "0195d999bb9700597b2375fa62c3e752f80b12043c40f3c5eaf19d0747328fa1"
+     "url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/D2RMobile-MacPrepared.zip",
+     "sha256_url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/MacPrepared-SHA256SUMS.txt"
    }
    ```
 
-   The prepared packages in this configuration are provided by community contributors.
+   The prepared packages in this configuration are provided by community contributors: approximately **290 MB for iOS** and **295 MB for macOS**.
 
 3. Click **Run workflow** to start the build. Building and publishing typically takes **4–6 minutes on the first run**, or **2–3 minutes with matching caches**.
 

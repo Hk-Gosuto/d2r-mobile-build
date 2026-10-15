@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       prepared_input:
-        description: Prepared package configuration as JSON (url and sha256)
+        description: Prepared package configuration as JSON
         type: string
         required: true
       source_repository:

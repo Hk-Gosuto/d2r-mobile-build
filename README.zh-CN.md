@@ -13,8 +13,8 @@
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmeRo2bYjiMfP4fNfnCL18ZaJE4T8y7A9fLhu3bxwSZkw3?filename=D2RMobile-Prepared.zip",
-     "sha256": "4df138f1d31022aba7895d74e7e4b7ace0d3c3eadea43616d5e488b49f452e8d"
+     "url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/D2RMobile-Prepared.zip",
+     "sha256_url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/Prepared-SHA256SUMS.txt"
    }
    ```
 
@@ -22,12 +22,12 @@
 
    ```json
    {
-     "url": "https://ipfs.filebase.io/ipfs/QmZBmNBhaAK7vXYKo4gKgoJJ9rKGDEGTYJgiURnFgf5X4j?filename=D2RMobile-MacPrepared.zip",
-     "sha256": "0195d999bb9700597b2375fa62c3e752f80b12043c40f3c5eaf19d0747328fa1"
+     "url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/D2RMobile-MacPrepared.zip",
+     "sha256_url": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkbfnqcjbd6jlgbckojtl4gu7m1kgu8esex1zg4oo485o5cjop2/MacPrepared-SHA256SUMS.txt"
    }
    ```
 
-   配置中的预处理包由热心网友提供。
+   配置中的预处理包由热心网友提供，iOS 约 **290 MB**，macOS 约 **295 MB**。
 
 3. 点击 **Run workflow** 开始构建。首次构建预计 **4–6 分钟**完成打包并发布，命中缓存后约 **2–3 分钟**。
 

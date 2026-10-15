@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       prepared_input:
-        description: iOS prepared package JSON (url and sha256; see README)
+        description: iOS prepared package JSON (see README)
         type: string
         required: true
       source_repository:
