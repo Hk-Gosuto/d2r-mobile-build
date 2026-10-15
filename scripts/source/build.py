@@ -11,6 +11,7 @@ import yaml
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import ci
+from source.metal import verify_payload
 
 
 def run(*args, **kwargs):
@@ -24,6 +25,9 @@ def main():
     report=json.loads((root/'outputs/source-input-report.json').read_text())
     payload=root/'outputs/source-payload.zip'
     if ci.sha256(payload)!=report['payload_sha256']:raise ValueError('Payload checksum mismatch')
+    verify_payload(payload, report)
+    if f'#define DMSH_CHAIN "{report["shader_chain"]}"' not in (root/'upstream/dm/gfx/nvn/dmsh_chain.h').read_text():
+        raise ValueError('Native shader chain differs from compiled libraries')
     shutil.rmtree(gen,ignore_errors=True);gen.mkdir()
     flags=run(sys.executable,ios/'tools/gen_build.py',ios.parent/'host',gen)
     settings=dict(line.split(' = ',1) for line in flags.splitlines() if ' = ' in line)
@@ -98,6 +102,7 @@ def main():
         if guest[:8]!=bytes.fromhex('cffaedfe0c000001'):raise ValueError('Guest is not arm64')
         pack=json.loads(final.read(base+'romfs_overlay_astc/pack.json'))
         if pack!=report['legacy_pack']:raise ValueError('Legacy pack mismatch')
+    verify_payload(destination, report)
     report.update(ipa_name=name,ipa_sha256=ci.sha256(destination),ipa_bytes=destination.stat().st_size,
                   upstream_commit=report['source_commit'],game_version=ci.CONFIG['game_version'],
                   switch_version=ci.CONFIG['switch_version'],input_revision=os.environ.get('INPUT_REVISION'),

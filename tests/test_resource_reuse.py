@@ -211,7 +211,7 @@ class ResourceReuseTests(unittest.TestCase):
                 packages = []
                 for name, minimum in ((publish.ci.ipa_names()[0], '26.0'), (publish.ci.ipa_names()[1], '18.0')):
                     (output / name).write_bytes(content)
-                    packages.append(dict(report, ipa_name=name, minimum_os=minimum, native_built_from_source=True, payload_verified=True))
+                    packages.append(dict(report, ipa_name=name, minimum_os=minimum, native_built_from_source=True, payload_verified=True, metal_precompiled=True, phone_shader_compilation_required=False))
                 report['packages'] = packages
                 (output / 'build-report.json').write_text(json.dumps(report))
                 (output / 'SHA256SUMS.txt').write_text(''.join(f"{digest}  {r['ipa_name']}\n" for r in packages))

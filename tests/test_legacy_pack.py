@@ -158,7 +158,7 @@ class LegacyPackTests(unittest.TestCase):
                 for name, minimum in ((ci.ipa_names()[0], '26.0'), (ci.ipa_names()[1], '18.0')):
                     (root / name).write_bytes(b'ipa')
                     packages.append(dict({k: ci.CONFIG[k] for k in ('upstream_commit', 'game_version', 'switch_version')},
-                                         ipa_name=name, minimum_os=minimum, native_built_from_source=True, payload_verified=True,
+                                         ipa_name=name, minimum_os=minimum, native_built_from_source=True, payload_verified=True, metal_precompiled=True, phone_shader_compilation_required=False,
                                          ipa_bytes=3, ipa_sha256=ci.sha256(root / name)))
                 (root / 'SHA256SUMS.txt').write_text(''.join(f"{p['ipa_sha256']}  {p['ipa_name']}\n" for p in packages))
                 self.assertEqual(len(publish.validate_packages({'packages': packages})), 2)

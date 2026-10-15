@@ -3,6 +3,7 @@
 .downloads/
 .game-downloads/
 .input-metadata/
+.metal-cache/
 native-build/
 .release-assets/
 upstream/

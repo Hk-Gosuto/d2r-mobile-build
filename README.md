@@ -85,7 +85,7 @@ The app's version follows the upstream source version. Every run and rerun gets 
 1. Sign and install the matching IPA using [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/).
 2. Download all three `D2R-Mobile-Resources.zip.001`–`.003` parts from your linked Data Release. Follow `RESOURCE-INSTALL.txt` to join them, extract the ZIP, and copy the `D2R Mobile Resources` folder into the app using Finder or Files.
 3. **A14–A16 devices** also need the linked `Legacy-Device-Pack.zip`. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
-4. Open the app and import/select the resource folder. Initial shader compilation takes several minutes; approximately 6 minutes is a reference for iPhone 17 Pro Max.
+4. Open the app and import/select the resource folder. Metal shaders are precompiled during the build; the app skips the first-launch shader compilation screen.
 
 When updating, keep the same app identifier, back up your saves, and install the new IPA over the existing app.
 
@@ -108,6 +108,7 @@ Each new run automatically uses the maintained shared workflow's latest build lo
 - Matching Legacy conversion inputs and settings reuse your existing Legacy pack.
 - Legacy reuse downloads only its verified index and descriptor; the phone's texture archive stays in its existing Release.
 - Completed generation stages are cached immediately. Both iOS variants compile in parallel on macOS 26.
+- A shared macOS stage precompiles iOS Metal shaders once for both IPAs. Unchanged shaders reuse verified compiler-specific results; failed builds retain completed shaders for the next attempt.
 - Retain older Data and Legacy Releases referenced by your app Releases.
 - GitHub can evict caches; retain your source archive. Keep the ZIP and checksum links in `GAME_ARCHIVE` current when replacing input files.
 

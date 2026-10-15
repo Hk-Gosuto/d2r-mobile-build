@@ -85,7 +85,7 @@ App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Rel
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装对应 IPA。
 2. 从正文链接的 Data Release 下载全部三个 `D2R-Mobile-Resources.zip.001`–`.003` 分卷，按 `RESOURCE-INSTALL.txt` 合并、解压，再通过 Finder 或“文件”App 将 `D2R Mobile Resources` 文件夹导入应用。
 3. **A14–A16 设备**还需下载正文链接的 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片和 M 系列 iPad 使用标准 Data 即可。
-4. 打开应用并导入或选择资源文件夹。首次编译着色器需要数分钟，iPhone 17 Pro Max 可参考约 6 分钟。
+4. 打开应用并导入或选择资源文件夹。Metal 着色器已在构建时预编译，首次启动无需等待批量着色器编译。
 
 更新时保持应用标识一致，提前备份存档，再覆盖安装新版 IPA。
 
@@ -108,6 +108,7 @@ App 内部版本跟随上游源码版本。每次运行或重跑使用独立 Rel
 - Legacy 转换输入和设置相同时，恢复已有的 Legacy 包。
 - 复用 Legacy 时只下载校验通过的索引和描述文件，手机使用的大贴图包保留在已有 Release。
 - 各生成阶段完成后立即缓存；两份 iOS 版本在 macOS 26 上并行编译。
+- 两份 IPA 共用一次 macOS Metal 预编译。未变的着色器复用同一编译器下校验通过的结果，失败重试时也会保留已完成的着色器。
 - 保留仍被 App Release 引用的旧 Data 和 Legacy Release。
 - GitHub 可能清理缓存，请保留原始压缩包；更换输入时，保持 `GAME_ARCHIVE` 中 ZIP 和校验文件的链接有效。
 

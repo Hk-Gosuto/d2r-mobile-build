@@ -135,11 +135,11 @@ def write_install_guide(destination, reference=None):
         'Windows：在分卷所在目录用命令提示符执行：\n'
         f"copy /b {'+'.join(RESOURCE_PART_NAMES)} D2R-Mobile-Resources.zip\n\n"
         '解压后将 D2R Mobile Resources 文件夹通过 Finder → iPhone → 文件 → D2R Mobile 拷入应用。\n'
-        '打开应用点击重试，等待首次着色器编译完成。配套 Data 不变时无需重新导入。\n'
+        '打开应用点击重试。着色器已预编译；配套 Data 不变时无需重新导入。\n'
         'IPA 可使用 Sideloadly、iloader、AltStore Classic 或 SideStore 签名安装，工具链接见 README。\n'
         f'{standard} 用于 iOS 26+；{compatibility} 用于 iOS 18–25。\n'
         'A16 及更早设备还需下载本 IPA Release 正文链接的 Legacy-Device-Pack.zip，解压后将 Legacy Device Pack 文件夹与 D2R Mobile Resources 并排导入。\n'
-        '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
+        'Metal 着色器已在构建时预编译，首次启动无需等待批量着色器编译。当前版本包尚未进行真机运行验证。\n')
     return path
 
 
@@ -355,6 +355,8 @@ def validate_packages(report):
         name = item['ipa_name']
         if item['minimum_os'] != expected[name] or not item.get('native_built_from_source') or not item.get('payload_verified'):
             raise ValueError('IPA source build or minimum system mismatch: ' + name)
+        if not item.get('metal_precompiled') or item.get('phone_shader_compilation_required') is not False:
+            raise ValueError('IPA Metal shader precompilation verification missing: ' + name)
         for key in ('app_version', 'build_number', 'release_tag'):
             if key in ci.CONFIG and item.get(key) != ci.CONFIG[key]:
                 raise ValueError('IPA build identity mismatch: ' + key)

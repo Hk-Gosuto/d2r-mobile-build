@@ -650,10 +650,10 @@ jobs:
         with:
           path: .dm-work/build/payload-cache
           key: ${{ steps.payload.outputs.cache-primary-key }}
-      - name: Upload intermediate native build inputs
+      - name: Upload translated source build inputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: native-source-inputs
+          name: translated-source-inputs
           overwrite: true
           path: |
             outputs/native-inputs.tar.gz
@@ -674,9 +674,70 @@ jobs:
             outputs/legacy-resources.json
           retention-days: 3
           if-no-files-found: error
-  native:
+  metal:
     needs: [resolve, prepare]
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    runs-on: macos-26
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INPUT_REVISION: ${{ needs.resolve.outputs.input_revision }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: jiayx/d2r-mobile-build
+          ref: ${{ needs.resolve.outputs.tools_commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: translated-source-inputs
+          path: outputs
+      - name: Select macOS 26 and iOS 26.4+ SDK
+        run: python3 scripts/source/select_xcode.py
+      - name: Resolve the Metal compiler and shader cache
+        id: metal-key
+        run: |
+          tar -xzf outputs/native-inputs.tar.gz
+          python3 scripts/source/metal.py keys
+      - name: Restore compiled iOS shaders
+        id: metal-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .metal-cache
+          key: ${{ steps.metal-key.outputs.key }}
+          restore-keys: ${{ steps.metal-key.outputs.prefix }}
+      - name: Precompile and verify shared iOS Metal libraries
+        id: compile
+        run: |
+          set -o pipefail
+          python3 -u scripts/source/metal.py compile 2>&1 | tee outputs/metal-build.log
+      - name: Cache verified compiled shaders
+        if: success() && steps.metal-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .metal-cache
+          key: ${{ steps.metal-key.outputs.key }}
+      - name: Preserve completed shaders after a failed compilation
+        if: failure() && steps.compile.outcome == 'failure'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .metal-cache
+          key: ${{ steps.metal-key.outputs.key }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Upload source inputs with precompiled Metal shaders
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-source-inputs
+          path: |
+            outputs/native-inputs.tar.gz
+            outputs/source-payload.zip
+            outputs/source-input-report.json
+            outputs/build-context.json
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+  native:
+    needs: [resolve, metal]
+    if: ${{ !cancelled() && needs.metal.result == 'success' }}
     runs-on: macos-26
     timeout-minutes: 90
     strategy:
@@ -758,6 +819,6 @@ jobs:
           repo, run = os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_RUN_ID']
           data = json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run}/artifacts'],text=True))
           for item in data['artifacts']:
-              if item['name'] in ('native-source-inputs','build-metadata','game-input-metadata','data-metadata','legacy-metadata','legacy-worker-0','legacy-worker-1'):
+              if item['name'] in ('translated-source-inputs','native-source-inputs','build-metadata','game-input-metadata','data-metadata','legacy-metadata','legacy-worker-0','legacy-worker-1'):
                   subprocess.run(['gh','api','--method','DELETE',f"repos/{repo}/actions/artifacts/{item['id']}"],check=True)
           PYCODE

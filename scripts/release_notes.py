@@ -44,7 +44,7 @@ def ipa(repo, config, reference, legacy=None):
         'and both checksum files, then follow `RESOURCE-INSTALL.txt` to combine and import them.\n\n'
         + links + '\n\n'
         f'Resource ID: `{identity}`. If this data is already imported, you do not need to download or import it again.\n\n'
-        'First-launch shader compilation reference: about 6 minutes on iPhone 17 Pro Max. '
+        'Metal shaders are precompiled during the build; no first-launch shader compilation screen is needed. '
         'The current packages have not yet been verified on physical devices.\n')
     chinese = (
         f"游戏版本 **{config['game_version']}**，Switch 更新 **{config['switch_version']}**。\n\n"
@@ -58,7 +58,7 @@ def ipa(repo, config, reference, legacy=None):
         '按本页 `RESOURCE-INSTALL.txt` 合并并导入。\n\n'
         + links + '\n\n'
         f'资源标识：`{identity}`。已导入相同资源时无需重复下载或导入。\n\n'
-        '首次着色器编译参考：iPhone 17 Pro Max 约 6 分钟。当前版本包尚未进行真机运行验证。\n')
+        'Metal 着色器已在构建时预编译，首次启动无需等待批量着色器编译。当前版本包尚未进行真机运行验证。\n')
     return bilingual(english, chinese)
 
 
