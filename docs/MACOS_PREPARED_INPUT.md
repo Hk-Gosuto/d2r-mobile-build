@@ -12,6 +12,10 @@ romfs-inputs.zip
 resources/data/
   build_manifest.psv
   .build.config
+generated/
+  dm_vault_tab.h
+  dm_hud_exp.h
+  dm_bright_levels.inc
 shader-chain.lock
 c1_full.tsv
 ```
@@ -23,9 +27,10 @@ c1_full.tsv
 | `msl/` | macOS Metal libraries targeting macOS 15.0, and their reflection metadata; shared by both Mac apps |
 | `romfs-inputs.zip` | Selected original inputs for generating Mac layouts, strings, images, fonts, data tables and overlays |
 | `resources/data/` | Small metadata files needed by the Mac resource picker; used alongside existing Data |
+| `generated/` | Game-table headers, reused when their generator scripts are unchanged |
 | `shader-chain.lock`, `c1_full.tsv` | Matching shader tool fingerprints and index metadata |
 
-Each build generates Mac interface resources and data tables with the selected upstream source, including keyboard glyphs. Game programs and Metal libraries are reused while their generation rules remain compatible. Schema 1 packages retain their original compatibility checks.
+Each build generates Mac interface resources with the selected upstream source, including keyboard glyphs. Game-table headers are reused when their generator scripts are unchanged; modified generators rebuild their tables. Game programs and Metal libraries are reused while their generation rules remain compatible. Schema 1 packages retain their original compatibility checks.
 
 ## Prepare your own input
 

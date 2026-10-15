@@ -13,6 +13,10 @@ romfs-inputs.zip
 legacy/
   pack.json
   pack_index.tsv
+generated/host/
+  dm_vault_tab.h
+  dm_hud_exp.h
+  dm_bright_levels.inc
 ```
 
 | File | Contents |
@@ -23,8 +27,9 @@ legacy/
 | `resource-manifest.json` | Names, sizes and checksums of the 18 Data files for this game resource version, shared by iOS and macOS. |
 | `romfs-inputs.zip` | Selected original layouts, strings, images, fonts, tables and CASC metadata needed by upstream resource generators. |
 | `legacy/` | Existing Legacy texture-pack descriptor and index. |
+| `generated/host/` | Game-table headers, reused when their generator scripts are unchanged. |
 
-Each build runs the selected source's generators for interface assets, layouts, strings, overlays and data tables. Game programs and Metal libraries are reused while their generation rules remain compatible. If those heavy generation rules change, generate a new prepared package.
+Each build runs the selected source's generators for interface assets, layouts, strings and overlays. Game-table headers are reused when their generator scripts are unchanged; modified generators rebuild their tables. Game programs and Metal libraries are reused while their generation rules remain compatible. If those heavy generation rules change, generate a new prepared package.
 
 Schema 1 packages remain supported with their original compatibility checks.
 

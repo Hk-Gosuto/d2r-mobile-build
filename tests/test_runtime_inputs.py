@@ -22,18 +22,19 @@ class RuntimeInputTests(unittest.TestCase):
             original = root / 'original.zip'
             rows = []
             for path, offset, size in (('data/global/ui/layouts/settings.json', 64, 8),
-                                       ('data/hd/world/huge.texture', 80, 16)):
+                                       ('data/hd/world/huge.texture', 80, 16),
+                                       ('data/global/excel/base/inventory.bin', 200, 8)):
                 rows.append(f'1|0|0|0|unused|{size}|{key(offset)}|{size}|n|data:{path}|0')
             manifest = '\n'.join(rows) + '\n'
             config = f'vfs-1 = unused {key(128)}\nvfs-1-size = 8 8\nvfs-root = unused {key(144)}\nvfs-root-size = 4 4\n'
             data = bytearray(1024 * 1024)
-            data[64:72] = b'original'; data[80:96] = b'not needed large'; data[128:136] = b'tvfs-one'; data[144:148] = b'root'
+            data[64:72] = b'original'; data[80:96] = b'not needed large'; data[128:136] = b'tvfs-one'; data[144:148] = b'root'; data[200:208] = b'invtable'
             with zipfile.ZipFile(original, 'w', zipfile.ZIP_DEFLATED) as archive:
                 archive.writestr('Update/RomFS/data/build_manifest.psv', manifest)
                 archive.writestr('Update/RomFS/data/.build.config', config)
                 archive.writestr('Update/RomFS/data/00-00000000.data', data)
             package = root / 'inputs.zip'
-            self.assertEqual(create(original, package), 20)
+            self.assertEqual(create(original, package), 28)
             romfs = restore(package, root / 'RomFS')
             self.assertEqual((romfs / 'data/build_manifest.psv').read_text(), manifest)
             self.assertEqual((romfs / 'data/.build.config').read_text(), config)
@@ -42,6 +43,7 @@ class RuntimeInputTests(unittest.TestCase):
                 stream.seek(80); self.assertEqual(stream.read(16), bytes(16))
                 stream.seek(128); self.assertEqual(stream.read(8), b'tvfs-one')
                 stream.seek(144); self.assertEqual(stream.read(4), b'root')
+                stream.seek(200); self.assertEqual(stream.read(8), b'invtable')
             self.assertLess(package.stat().st_size, 2048)
             self.assertEqual((romfs / 'data/00-00000000.data').stat().st_size, len(data))
 

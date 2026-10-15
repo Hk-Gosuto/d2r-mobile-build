@@ -37,7 +37,8 @@ def upgrade(directory, original, legacy_index, upstream):
             output.writestr(BASE + 'dm/shell_manifest.txt', '\n'.join(sorted(names)) + '\n')
     temporary.replace(directory / 'source-payload.zip')
     size = create(original, directory / 'romfs-inputs.zip')
-    shutil.rmtree(directory / 'generated', ignore_errors=True)
+    (directory / 'generated/ios/Sources/dm_touch_native_art.c').unlink()
+    shutil.rmtree(directory / 'generated/ios')
     info['schema_version'] = 2
     info['payload']['payload_sha256'] = ci.sha256(directory / 'source-payload.zip')
     info['runtime_input_bytes'] = size
@@ -59,7 +60,7 @@ def upgrade_macos(directory, original, upstream):
             raise ValueError('Mac prepared package checksum mismatch')
     verify_generation(Path(upstream), info['source_commit'], heavy=True)
     size = create(original, directory / 'romfs-inputs.zip')
-    for name in ('romfs_overlay', 'romfs_overlay_variants', 'generated'):
+    for name in ('romfs_overlay', 'romfs_overlay_variants'):
         shutil.rmtree(directory / name, ignore_errors=True)
     info['schema_version'] = 2
     info['runtime_input_bytes'] = size

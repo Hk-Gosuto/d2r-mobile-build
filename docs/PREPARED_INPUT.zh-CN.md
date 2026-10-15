@@ -13,6 +13,10 @@ romfs-inputs.zip
 legacy/
   pack.json
   pack_index.tsv
+generated/host/
+  dm_vault_tab.h
+  dm_hud_exp.h
+  dm_bright_levels.inc
 ```
 
 | 文件 | 内容 |
@@ -23,8 +27,9 @@ legacy/
 | `resource-manifest.json` | 该游戏资源版本共用的 18 个 Data 文件的名称、大小和校验值；iOS 与 macOS 共用。 |
 | `romfs-inputs.zip` | 上游资源生成器需要的原版布局、文案、图片、字体、数据表及 CASC 元数据子集。 |
 | `legacy/` | 现有 Legacy 贴图包的描述和索引。 |
+| `generated/host/` | 游戏数据表头文件，生成脚本未变时直接复用。 |
 
-每次构建使用所选源码的脚本生成界面图片、布局、文案、覆盖层和数据表。游戏程序与 Metal 着色器在对应生成规则兼容时复用；这些重步骤的生成规则变化时，需要生成新的预处理包。
+每次构建使用所选源码的脚本生成界面图片、布局、文案和覆盖层；游戏数据表在生成脚本未变时复用，脚本变化时重新生成。游戏程序与 Metal 着色器在对应生成规则兼容时复用；这些重步骤的生成规则变化时，需要生成新的预处理包。
 
 格式版本 1 的包仍可使用，沿用原有兼容性检查。
 

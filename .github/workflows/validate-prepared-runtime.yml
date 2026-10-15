@@ -15,7 +15,16 @@ jobs:
         with:
           persist-credentials: false
       - name: Reserve space on the disposable runner
-        run: sudo rm -rf /usr/local/lib/android /usr/share/swift /usr/local/.ghcup /opt/ghc
+        run: |
+          python3 - <<'PYCODE'
+          import shutil,subprocess
+          print('Initial free GiB:',round(shutil.disk_usage('.').free/1024**3,1),flush=True)
+          if shutil.disk_usage('.').free < 28*1024**3:
+              subprocess.run(['sudo','rm','-rf','/usr/local/lib/android'],check=True)
+          if shutil.disk_usage('.').free < 28*1024**3:
+              subprocess.run(['sudo','rm','-rf','/usr/share/swift','/usr/local/.ghcup','/opt/ghc'],check=True)
+          print('Free GiB:',round(shutil.disk_usage('.').free/1024**3,1),flush=True)
+          PYCODE
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .game-downloads
@@ -76,7 +85,7 @@ jobs:
           path: .tools/png-zlib-ng-2.3.2
           key: png-backend-Linux-X64-de36b50f9835da2b2e986c78e2cad72cb4205fff047625df49188bc876543ee8
           fail-on-cache-miss: true
-      - name: Migrate existing prepared packages and generate current interface
+      - name: Migrate reusable inputs and validate current interface
         env:
           LD_PRELOAD: ${{ github.workspace }}/.tools/png-zlib-ng-2.3.2/lib/libz.so.1
           SOURCE_REPOSITORY: jhaizhou-ops/d2r-mobile

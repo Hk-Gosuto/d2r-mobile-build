@@ -56,6 +56,8 @@ def load_prepared():
     info = json.loads((cache / 'manifest.json').read_text())
     if info.get('format') != 'd2r-mobile-macos-prepared' or info.get('schema_version') not in (1, 2):
         raise ValueError('Expected a macOS prepared package (schema 1 or 2)')
+    if info['schema_version'] == 2 and not {'romfs-inputs.zip', *('generated/' + n for n in HEADERS)} <= info['files'].keys():
+        raise ValueError('Mac prepared package is missing original inputs or game tables')
     expected = os.environ.get('MACOS_PREPARED_KEY')
     if expected is None and info['schema_version'] == 2:
         verify_generation(ci.ROOT / 'upstream', info['source_commit'], heavy=True)
@@ -137,7 +139,6 @@ def prepare():
     create(game.parent, stage / 'romfs-inputs.zip')
     shutil.rmtree(stage / 'romfs_overlay')
     shutil.rmtree(stage / 'romfs_overlay_variants', ignore_errors=True)
-    shutil.rmtree(stage / 'generated')
     info['schema_version'] = 2
     info['files'] = {p.relative_to(stage).as_posix(): ci.sha256(p)
                      for p in sorted(stage.rglob('*')) if p.is_file() and p.name != 'manifest.json'}
@@ -203,7 +204,8 @@ def build():
     generation_seconds = None
     if info['schema_version'] == 2:
         from source.runtime_assets import generate
-        generation_seconds = generate(dm, cache / 'romfs-inputs.zip', workspace, macos=True)
+        generation_seconds = generate(dm, cache / 'romfs-inputs.zip', workspace, macos=True,
+                                      headers=cache / 'generated', baseline=info['source_commit'])
     else:
         for name in HEADERS:
             shutil.copyfile(cache / 'generated' / name, dm / 'host' / name)

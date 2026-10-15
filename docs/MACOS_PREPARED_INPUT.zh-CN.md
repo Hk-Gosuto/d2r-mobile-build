@@ -12,6 +12,10 @@ romfs-inputs.zip
 resources/data/
   build_manifest.psv
   .build.config
+generated/
+  dm_vault_tab.h
+  dm_hud_exp.h
+  dm_bright_levels.inc
 shader-chain.lock
 c1_full.tsv
 ```
@@ -23,9 +27,10 @@ c1_full.tsv
 | `msl/` | 最低面向 macOS 15.0 的 Metal 着色器库与反射元数据，两份 Mac 应用共用 |
 | `romfs-inputs.zip` | 生成 Mac 布局、文案、图片、字体、数据表和覆盖层需要的原始输入子集 |
 | `resources/data/` | Mac 资源选择器需要的小型元数据，可配合现有 Data 使用 |
+| `generated/` | 游戏数据表头文件，生成脚本未变时直接复用 |
 | `shader-chain.lock`、`c1_full.tsv` | 配套着色器工具指纹与下标清单 |
 
-每次构建使用所选上游源码生成 Mac 界面资源和数据表，包括键盘键帽。游戏程序与 Metal 着色器在对应生成规则兼容时复用。格式版本 1 的包沿用原有兼容性检查。
+每次构建使用所选上游源码生成 Mac 界面资源，包括键盘键帽。游戏数据表在生成脚本未变时复用，脚本变化时重新生成。游戏程序与 Metal 着色器在对应生成规则兼容时复用。格式版本 1 的包沿用原有兼容性检查。
 
 ## 准备自己的输入
 

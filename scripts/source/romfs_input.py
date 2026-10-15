@@ -28,6 +28,7 @@ def archive_reader(path):
 def selected(path):
     path = path.lower()
     return (path.endswith(('.json', '.txt', '.ttf', '.otf', '.particles'))
+            or '/global/excel/' in path
             or '/ui/' in path and path.endswith('.sprite'))
 
 

@@ -24,7 +24,8 @@ FORMAT = 'd2r-mobile-prepared'
 FILES = {'source-payload.zip', 'shader-chain.lock', 'resource-manifest.json',
          *('generated/' + p for p in GENERATED)}
 RUNTIME_FILES = {'source-payload.zip', 'shader-chain.lock', 'resource-manifest.json',
-                 'romfs-inputs.zip', 'legacy/pack.json', 'legacy/pack_index.tsv'}
+                 'romfs-inputs.zip', 'legacy/pack.json', 'legacy/pack_index.tsv',
+                 *('generated/' + name for name in GENERATED[:3])}
 
 
 def read(path):

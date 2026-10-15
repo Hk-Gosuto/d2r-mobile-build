@@ -8,6 +8,7 @@ import time
 import zipfile
 
 from source.romfs_input import restore
+from source.compatibility import git
 
 BASE = 'Payload/DmIOS.app/'
 HEAVY_DM = {'c1_full.tsv', 'bootlist.tsv', 'main.cuts.tsv',
@@ -19,7 +20,7 @@ def heavy_member(name):
     return relative.startswith(('msl/', 'Frameworks/Guest.framework/')) or relative in {'dm/' + n for n in HEAVY_DM}
 
 
-def generate(dm, inputs, workspace, *, macos=False, legacy=None):
+def generate(dm, inputs, workspace, *, macos=False, legacy=None, headers=None, baseline=None):
     started = time.monotonic()
     romfs = restore(inputs, workspace / 'RomFS')
     environment = dict(os.environ, DM_ROOT=str(workspace), DM_ROMFS_SRC=str(romfs))
@@ -30,12 +31,20 @@ def generate(dm, inputs, workspace, *, macos=False, legacy=None):
     if legacy:
         environment['DM_ASTC_PACK'] = str(legacy)
     def run(script, *args, **kwargs):
+        before = time.monotonic()
         subprocess.run([sys.executable, str(dm / script), *map(str, args)],
                        env=environment, check=True, **kwargs)
+        print(f'{script}: {time.monotonic() - before:.1f}s', flush=True)
     run('ios/tools/gen_assets.py', romfs)
     for output, script in (('dm_vault_tab.h', 'ios/tools/gen_vault_table.py'),
                            ('dm_hud_exp.h', 'ios/tools/gen_hud_exp.py'),
                            ('dm_bright_levels.inc', 'tools/gen_bright_levels.py')):
+        # These tables depend on the same original game and their generator script.
+        # Reuse them across unrelated interface changes; source changes regenerate them.
+        if headers and baseline and git(dm.parent, 'show', baseline + ':dm/' + script) == (dm / script).read_text():
+            shutil.copy2(headers / output, dm / 'host' / output)
+            print('Reused game table:', output, flush=True)
+            continue
         with (dm / 'host' / output).open('w') as stream:
             run(script, romfs, stdout=stream)
     overlay = workspace / 'romfs_overlay'
@@ -46,7 +55,8 @@ def generate(dm, inputs, workspace, *, macos=False, legacy=None):
 
 
 def ios_payload(directory, info, dm, destination, workspace):
-    seconds = generate(dm, directory / 'romfs-inputs.zip', workspace, legacy=directory / 'legacy')
+    seconds = generate(dm, directory / 'romfs-inputs.zip', workspace, legacy=directory / 'legacy',
+                       headers=directory / 'generated/host', baseline=info['producer']['source_commit'])
     stage = workspace / 'payload'
     shutil.rmtree(stage, ignore_errors=True)
     (stage / 'dm').mkdir(parents=True)

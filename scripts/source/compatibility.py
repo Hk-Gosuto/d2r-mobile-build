@@ -30,11 +30,12 @@ def generation_paths(upstream, revision, *, heavy=False):
     def read(name):
         return git(upstream, 'show', revision + ':' + name) if revision else (upstream / name).read_text()
 
-    roots = ('dm/PRODUCT',) if heavy else ROOTS
+    roots = ('dm/PRODUCT', 'dm/tools/product.sh', 'dm/gfx/tools/msl_retarget.sh') if heavy else ROOTS
     paths = {n for n in names if any(n == p or n.startswith(p + '/') for p in roots)}
     if heavy:
         paths.update(n for n in names if n.startswith('dm/data/bootlist_'))
-    scripts = ('dm/tools/patch_nso.py', 'dm/tools/guest_dylib.py') if heavy else SCRIPTS
+    scripts = ('dm/tools/patch_nso.py', 'dm/tools/guest_dylib.py',
+               'dm/ios/tools/gen_embed.py', 'dm/gfx/tools/c1_guard.py') if heavy else SCRIPTS
     pending = [n for n in scripts if n in names]
     while pending:
         name = pending.pop()
