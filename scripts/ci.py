@@ -2,25 +2,16 @@
 """Shared input validation and native executable inspection."""
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
-import shutil
 import struct
-import subprocess
-import sys
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = json.loads((ROOT / 'build-config.json').read_text())
+CONFIG = {}
 CONTEXT = ROOT / 'outputs/build-context.json'
 if CONTEXT.is_file():
     CONFIG.update(json.loads(CONTEXT.read_text()))
-DM = Path(os.environ.get('DM_ROOT', str(ROOT / '.dm-work')))
-GAME = DM / 'data/switch' / CONFIG['game_version'] / 'Update'
-TOOLS = ROOT / '.tools'
-WORK = ROOT / '.downloads'
-RAW = ROOT / '.game-downloads'
 
 
 def build_label(config=None):
@@ -67,12 +58,12 @@ def download(url, dest, expected=None, max_bytes=None):
                 raise ValueError('Download returned an HTML page; supply a direct file URL')
             length = r.headers.get('Content-Length')
             if max_bytes and length is not None and int(length) > max_bytes:
-                raise ValueError('Checksum file is too large')
+                raise ValueError('Download exceeds the supported size')
             with partial.open('wb') as f:
                 while block := r.read(8 * 1024 * 1024):
                     f.write(block)
                     if max_bytes and f.tell() > max_bytes:
-                        raise ValueError('Checksum file is too large')
+                        raise ValueError('Download exceeds the supported size')
             if length is not None and partial.stat().st_size != int(length):
                 raise ValueError('Download incomplete: ' + dest.name)
         if expected and sha256(partial) != expected.lower():
@@ -90,35 +81,13 @@ def resource_sizes():
     src = (ROOT / 'upstream/dm/host/romfs_validate.c').read_text()
     names = re.search(r'static const char \*need\[\] = \{(.*?)\};', src, re.S)
     sizes = re.search(r'static const long long size\[\] = \{(.*?)\};', src, re.S)
+    if names is None or sizes is None:
+        raise ValueError('Cannot read upstream resource table')
     files = re.findall(r'"([^"]+\.data)"', names.group(1))
     lengths = [int(n) for n in re.findall(r'\d+', sizes.group(1))]
-    if len(files) != 18 or len(lengths) != 18:
+    if not files or len(files) != len(lengths) or len(set(files)) != len(files):
         raise ValueError('Unexpected upstream resource manifest')
     return dict(zip(files, lengths))
-
-
-def validate_game(game=GAME):
-    game = Path(game)
-    for name, expected in CONFIG['nso_sha256'].items():
-        path = game / 'ExeFS' / name
-        if not path.is_file() or sha256(path) != expected:
-            raise ValueError(f'ExeFS/{name} does not match the program required by the selected upstream source')
-    for name, length in resource_sizes().items():
-        path = game / 'RomFS/data' / name
-        if not path.is_file() or path.stat().st_size != length:
-            raise ValueError(f'Resource missing or incomplete: {name}')
-    if not (game / 'RomFS/data/build_manifest.psv').is_file():
-        raise ValueError('RomFS/data/build_manifest.psv missing')
-    print('Game verified: ExeFS checksums and resource sizes match the selected upstream source')
-
-
-def run(args, logfile, env=None):
-    logfile = Path(logfile)
-    with logfile.open('wb') as f:
-        p = subprocess.run([str(a) for a in args], stdout=f, stderr=subprocess.STDOUT, env=env)
-    if p.returncode:
-        raise RuntimeError(f'{Path(str(args[0])).name} failed; inspect private runner log {logfile.name}')
-    return logfile.read_text(errors='replace')
 
 
 def macho_minimum_os(data):
@@ -147,16 +116,3 @@ def macho_minimum_os(data):
     if offset != end or len(versions) != 1:
         raise ValueError('Missing or ambiguous Mach-O build version')
     return versions[0]
-
-
-def diagnostics():
-    target = ROOT / 'outputs/diagnostics'
-    target.mkdir(parents=True, exist_ok=True)
-    sources = list(WORK.glob('*.log')) + list((DM / 'build/pack/stage').glob('*.log'))
-    sources += list((DM / 'build/cache/dm/out').glob('*/*.patch.log'))
-    for i, path in enumerate(sources):
-        content = path.read_text(errors='replace')
-        # Never publish 128-bit (or longer) key values from tool diagnostics.
-        content = re.sub(r'(?i)(?<![0-9a-f])[0-9a-f]{32,}(?![0-9a-f])', '[hex redacted]', content)
-        (target / f'{i:02}-{path.name}').write_text(content)
-    print('Sanitized diagnostic logs:', len(sources))

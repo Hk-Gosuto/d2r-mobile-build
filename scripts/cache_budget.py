@@ -1,58 +1,30 @@
-"""Save optional speed caches only when existing downloads can remain in place."""
+"""Save the compiler module cache only when repository cache space permits."""
 import json
 import os
 from pathlib import Path
-import urllib.error
-import urllib.request
+import subprocess
 
 LIMIT = 10 * 1024**3
 RESERVE = 256 * 1024**2
-ORDER = ('native',)
-PATHS = {'native': '.native-module-cache'}
 
 
-def choose(used, sizes, limit=LIMIT, reserve=RESERVE):
-    remaining = max(0, limit - used - reserve)
-    result = {}
-    for name in ORDER:
-        size = sizes.get(name, 0)
-        result[name] = size > 0 and size <= remaining
-        if result[name]:
-            remaining -= size
-    return result
-
-
-def usage(repository):
-    url = f'https://api.github.com/repos/{repository}/actions/cache/usage'
-    # Public main does not need extra workflow permissions. Private callers may
-    # use an existing Actions-readable token; unavailable usage means no saves.
-    for token in dict.fromkeys((os.environ.get('GH_TOKEN', ''), '')):
-        headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'd2r-build-cache-budget'}
-        if token:
-            headers['Authorization'] = 'Bearer ' + token
-        try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=20) as response:
-                return json.load(response)['active_caches_size_in_bytes']
-        except (OSError, ValueError, KeyError):
-            pass
-    return None
+def can_save(used, size, limit=LIMIT, reserve=RESERVE):
+    return used is not None and size > 0 and used + size + reserve <= limit
 
 
 def main():
-    used = usage(os.environ['GITHUB_REPOSITORY'])
-    sizes = {}
-    for name, directory in PATHS.items():
-        if os.environ.get('SAVE_' + name.upper()) != 'true':
-            continue
-        files = [p for p in Path(directory).rglob('*') if p.is_file()]
-        if files:
-            # An uncompressed upper bound also covers tar headers and padding.
-            sizes[name] = sum(p.stat().st_size + 4096 for p in files) + 16 * 1024**2
-    selected = choose(used, sizes) if used is not None else dict.fromkeys(ORDER, False)
-    with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-        for name, enabled in selected.items():
-            f.write(f'{name}={str(enabled).lower()}\n')
-    print('Optional cache saves:', json.dumps(selected), '; existing caches are never deleted')
+    try:
+        result = subprocess.check_output(['gh', 'api', 'repos/' + os.environ['GITHUB_REPOSITORY'] +
+                                          '/actions/cache/usage'], text=True, stderr=subprocess.DEVNULL)
+        used = json.loads(result)['active_caches_size_in_bytes']
+    except (subprocess.CalledProcessError, ValueError, KeyError):
+        used = None
+    files = [p for p in Path('.native-module-cache').rglob('*') if p.is_file()]
+    size = sum(p.stat().st_size + 4096 for p in files) + 16 * 1024**2 if files else 0
+    enabled = can_save(used, size)
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+        out.write('native=' + str(enabled).lower() + '\n')
+    print('Save compiler module cache:', enabled)
 
 
 if __name__ == '__main__':

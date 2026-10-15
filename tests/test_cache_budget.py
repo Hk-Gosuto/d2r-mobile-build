@@ -3,12 +3,11 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
-from cache_budget import choose
+from cache_budget import can_save
 
 
-class CacheBudgetTests(unittest.TestCase):
-    def test_optional_module_cache_preserves_space_for_existing_downloads(self):
-        self.assertEqual(choose(800, {'native': 100}, limit=1000, reserve=50), {'native': True})
-        for used in (900, 950, 1100):
-            self.assertEqual(choose(used, {'native': 100}, limit=1000, reserve=50), {'native': False})
-        self.assertEqual(choose(0, {'native': 0}), {'native': False})
+class CacheTests(unittest.TestCase):
+    def test_cache_requires_free_space_and_available_usage(self):
+        self.assertTrue(can_save(800, 100, limit=1000, reserve=50))
+        for used, size in ((None, 100), (900, 100), (0, 0), (1100, 100)):
+            self.assertFalse(can_save(used, size, limit=1000, reserve=50))

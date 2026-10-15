@@ -81,9 +81,9 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: requirements-inputs.txt
+          cache-dependency-path: requirements.txt
       - name: Install the input downloader
-        run: python -m pip install -r requirements-inputs.txt
+        run: python -m pip install -r requirements.txt
       - name: Resolve the prepared package checksum
         id: input
         env:
@@ -174,8 +174,6 @@ jobs:
       - name: Check compiler cache budget
         id: budget
         if: steps.modules.outputs.cache-hit != 'true'
-        env:
-          SAVE_NATIVE: 'true'
         run: python3 scripts/cache_budget.py
       - name: Save native compiler modules when space permits
         if: steps.modules.outputs.cache-hit != 'true' && steps.budget.outputs.native == 'true'
@@ -216,7 +214,7 @@ jobs:
           path: outputs
       - name: Publish to your private Releases
         run: |
-          python3 scripts/source/finalize.py
+          python3 scripts/source/publish.py
       - name: Delete intermediate inputs after a successful build
         run: |
           python3 - <<'PYCODE'

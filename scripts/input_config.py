@@ -11,14 +11,14 @@ from urllib.parse import parse_qs, urlsplit
 import ci
 
 
-def https_url(value, field='url'):
+def https_url(value):
     if not isinstance(value, str):
-        raise ValueError(field + ' must be an HTTPS URL')
+        raise ValueError('url must be an HTTPS URL')
     value = value.strip()
     parsed = urlsplit(value)
     if (parsed.scheme != 'https' or not parsed.hostname or parsed.username or
             parsed.password or any(c in value for c in '\r\n\x00')):
-        raise ValueError(field + ' must be an HTTPS URL without embedded credentials')
+        raise ValueError('url must be an HTTPS URL without embedded credentials')
     return value
 
 
@@ -36,38 +36,8 @@ def drive_file_id(url):
 def download_file(url, destination, expected=None, max_bytes=None):
     url = https_url(url)
     destination = Path(destination)
-    # Authenticated downloads are restricted to the caller's own repository.
-    # Never forward a GitHub token to an arbitrary input host or repository.
-    parsed = urlsplit(url)
-    repository = os.environ.get('GITHUB_REPOSITORY', '')
-    if (repository and parsed.hostname == 'api.github.com' and
-            re.fullmatch(r'/repos/' + re.escape(repository) + r'/releases/assets/\d+', parsed.path)):
-        import subprocess
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        partial = destination.with_suffix(destination.suffix + '.part')
-        try:
-            with partial.open('wb') as stream:
-                result = subprocess.run(['gh', 'api', parsed.path.lstrip('/'),
-                                         '-H', 'Accept: application/octet-stream'], stdout=stream,
-                                        stderr=subprocess.DEVNULL)
-            if result.returncode or not partial.stat().st_size:
-                raise RuntimeError('Private input asset download failed')
-            if max_bytes and partial.stat().st_size > max_bytes:
-                raise ValueError('Input file is too large')
-            if expected and ci.sha256(partial) != expected:
-                raise ValueError('Download SHA256 mismatch: ' + destination.name)
-            partial.replace(destination)
-        finally:
-            partial.unlink(missing_ok=True)
-        return
     if drive_file_id(url) is None:
-        if max_bytes:
-            ci.download(url, destination, expected, max_bytes=max_bytes)
-        else:
-            ci.download(url, destination, expected)
-        if max_bytes and destination.stat().st_size > max_bytes:
-            destination.unlink()
-            raise ValueError('Checksum file is too large')
+        ci.download(url, destination, expected, max_bytes=max_bytes)
         return
     import gdown
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -78,7 +48,7 @@ def download_file(url, destination, expected=None, max_bytes=None):
     def progress(done, total):
         nonlocal last
         if max_bytes and done > max_bytes:
-            raise ValueError('Checksum file is too large')
+            raise ValueError('Download exceeds the supported size')
         if time.monotonic() - last >= 30:
             print(f'Archive download: {done / 1e9:.2f} GB' +
                   (f' / {total / 1e9:.2f} GB' if total else ''), flush=True)
@@ -116,13 +86,15 @@ def parse_checksum(text):
     return entries[0]
 
 
-def settings(secret_name='GAME_ARCHIVE'):
+def settings():
     try:
-        config = json.loads(os.environ.get(secret_name, ''))
+        config = json.loads(os.environ.get('PREPARED_INPUT', ''))
     except ValueError:
-        raise ValueError(secret_name + ' must be a JSON object with url and optional sha256 or sha256_url') from None
+        raise ValueError('PREPARED_INPUT must be a JSON object with url and sha256') from None
     if not isinstance(config, dict) or not isinstance(config.get('url'), str):
-        raise ValueError(secret_name + ' must contain a download url')
+        raise ValueError('PREPARED_INPUT must contain a download url')
+    if set(config) - {'url', 'sha256', 'sha256_url'}:
+        raise ValueError('PREPARED_INPUT supports url, sha256 and sha256_url')
     url = https_url(config['url'])
     drive_file_id(url)
     digest = config.get('sha256')
@@ -137,7 +109,7 @@ def settings(secret_name='GAME_ARCHIVE'):
     if checksum_url is not None:
         if digest:
             raise ValueError('Set sha256 or sha256_url, not both')
-        checksum_url = https_url(checksum_url, 'sha256_url')
+        checksum_url = https_url(checksum_url)
         with tempfile.TemporaryDirectory(prefix='d2r-checksum-') as temporary:
             path = Path(temporary) / 'SHA256SUMS.txt'
             download_file(checksum_url, path, max_bytes=64 * 1024)

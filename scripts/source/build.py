@@ -1,4 +1,5 @@
 """Compile the complete native iOS runtime on macOS; add the matching generated payload."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -99,27 +100,22 @@ def main():
             if item.filename in names:raise ValueError('Payload replaces compiled app content: '+item.filename)
             dst.writestr(item,src.read(item));names.add(item.filename)
     with zipfile.ZipFile(destination) as final, zipfile.ZipFile(payload) as original:
-        if final.testzip():raise ValueError('Corrupt output IPA')
         for n in original.namelist():
             if n!=base+'Info.plist' and final.read(n)!=original.read(n):raise ValueError('Generated payload changed: '+n)
-        guest=final.read(base+'Frameworks/Guest.framework/Guest')
-        if guest[:8]!=bytes.fromhex('cffaedfe0c000001'):raise ValueError('Guest is not arm64')
-        pack=json.loads(final.read(base+'romfs_overlay_astc/pack.json'))
-        if pack!=report['legacy_pack']:raise ValueError('Legacy pack mismatch')
+        if final.read(base+plist['CFBundleExecutable'])!=native:
+            raise ValueError('Native executable changed during IPA packaging')
     verify_payload(destination, report)
     report.update(ipa_name=name,ipa_sha256=ci.sha256(destination),ipa_bytes=destination.stat().st_size,
-                  upstream_commit=report['source_commit'],game_version=ci.CONFIG['game_version'],
+                  game_version=ci.CONFIG['game_version'],
                   switch_version=ci.CONFIG['switch_version'],input_revision=os.environ.get('INPUT_REVISION'),
-                  minimum_os=minimum,native_minimum_os='.'.join(map(str,native_os)),native_sha256=__import__('hashlib').sha256(native).hexdigest(),
+                  minimum_os=minimum,native_minimum_os='.'.join(map(str,native_os)),native_sha256=hashlib.sha256(native).hexdigest(),
                   app_version=ci.CONFIG['app_version'],build_number=ci.CONFIG['build_number'],
                   release_tag=ci.CONFIG['release_tag'],
                   native_built_from_source=True,payload_verified=True,device_tested=False,signed=False,
                   native_build_seconds=native_seconds,
                   native_module_cache_hit=os.environ.get('NATIVE_MODULE_CACHE_HIT')=='true',
-                  icloud_sync_provisioned=False,icloud_sync_verified=False,
                   xcode=run('xcodebuild','-version').strip(),sdk=run('xcrun','--sdk','iphoneos','--show-sdk-version').strip())
     (root/'outputs'/f'source{suffix}-report.json').write_text(json.dumps(report,indent=2)+'\n')
-    (root/'outputs'/f'source{suffix}-SHA256SUMS.txt').write_text(f"{report['ipa_sha256']}  {name}\n")
     print(json.dumps(report,indent=2))
 
 

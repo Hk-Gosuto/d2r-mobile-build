@@ -1,61 +1,35 @@
-# Prepared input package / 预处理包
+# Prepared package / 预处理包
 
-[English README](../README.md) | [中文 README](../README.zh-CN.md)
+[English](../README.md) | [简体中文](../README.zh-CN.md)
 
-The workflow accepts a ZIP, tar.gz, or tar.xz containing this layout, optionally inside one enclosing directory:
+Supply an HTTPS link to a ZIP, tar.gz, or tar.xz package in the `PREPARED_INPUT` Secret. The required files are shown below; one enclosing directory is supported.
 
-工作流接受 ZIP、tar.gz 或 tar.xz，目录如下；允许外面再套一层文件夹：
+在 `PREPARED_INPUT` Secret 中填写 ZIP、tar.gz 或 tar.xz 预处理包的 HTTPS 链接。必需文件如下，允许外面再套一层文件夹。
 
 ```text
 prepared.json
 source-payload.zip
 shader-chain.lock
+resource-manifest.json
 generated/
   host/dm_vault_tab.h
   host/dm_hud_exp.h
   host/dm_bright_levels.inc
   ios/Sources/dm_touch_native_art.c
-resource-manifest.json
-resources.json
-legacy-resources.json
 ```
 
-- `source-payload.zip`: generated game program, interface resources, overlays, and binary iOS Metal libraries. / 已生成的游戏程序、界面素材、覆盖层和二进制 iOS Metal 着色器。
-- `shader-chain.lock`: tool fingerprints corresponding to the compiled shader chain. / 该着色器链对应的工具指纹。
-- `generated/`: game-derived inputs used by the fresh native compilation. / 编译最新原生源码时使用的生成文件。
-- `resource-manifest.json`: identities, sizes, and checksums of the required phone resources. / 手机资源的内容标识、大小和校验值。
-- `resources.json`, `legacy-resources.json`: matching Data and Legacy download descriptors. Their links can point to HTTPS storage or Google Drive and must be accessible to the package's users. / 配套 Data 与 Legacy 下载描述，可指向 HTTPS 存储或 Google Drive，使用者需有权下载。
-- `prepared.json`: schema, producer provenance, per-file checksums, and generation compatibility fingerprints. / 格式、生成来源、各文件校验值和生成规则的兼容性指纹。
+| File / 文件 | Contents / 内容 |
+|---|---|
+| `prepared.json` | Format `d2r-mobile-prepared`, schema `1`, game versions, program checksums, payload metadata and each file’s size and SHA-256. `producer.source_commit` identifies the source used to generate the package. / 格式标识、版本号 `1`、游戏版本、程序校验值、payload 元数据及各文件大小和 SHA-256。`producer.source_commit` 标识生成此包时的源码提交。 |
+| `source-payload.zip` | Generated game program, interface resources, overlays and binary iOS Metal libraries under `Payload/DmIOS.app/`. / `Payload/DmIOS.app/` 下已生成的游戏程序、界面素材、覆盖层和二进制 iOS Metal 着色器。 |
+| `shader-chain.lock` | Shader toolchain fingerprints. / 着色器工具链指纹。 |
+| `resource-manifest.json` | Names, sizes and checksums of the matching phone Data files. / 配套手机 Data 文件的名称、大小和校验值。 |
+| `generated/` | Headers and native artwork source required for compilation. / 原生编译所需的头文件和界面素材源码。 |
 
-Data and Legacy archives are downloaded separately by users from their storage provider. The IPA build downloads only this prepared package. Its resource descriptors are checked locally for package consistency. Native runtime sources come from the selected upstream checkout on every run.
+The build checks package integrity, game programs, resource metadata, and shader consistency. It compares generation dependencies with `producer.source_commit` in the selected source repository. Native runtime changes can reuse the package; changes to generation rules require a matching updated package.
 
-Data 和 Legacy 由用户另外从网盘下载。IPA 构建只下载这个预处理包，包内资源描述用于本地一致性检查；每次构建的原生运行时代码来自当次选择的上游源码。
+构建会检查包完整性、游戏程序、资源元数据和着色器的一致性，并在所选源码仓库中对照 `producer.source_commit` 检查生成依赖。原生运行时代码修改可复用此包；生成规则变化时需使用配套的新包。
 
-## Export / 导出
+The workflow downloads this package and compiles the selected source into two IPAs. Download Data and the Legacy Device Pack separately from your resource provider, then follow the [installation instructions](../README.md#download-and-use).
 
-In a private producer workflow, after payload generation and Metal precompilation have completed, run from the build workspace root:
-
-在自己的私有生成工作流中，游戏 payload 和 Metal 预编译完成后，在构建工作区根目录执行：
-
-```sh
-python scripts/source/prepared.py export
-```
-
-The exporter reads `outputs/source-payload.zip`, `outputs/source-input-report.json`, resource descriptors in `outputs/`, and the generated files and shader lock in `upstream/dm`. It verifies them together, then writes:
-
-导出工具读取 `outputs/source-payload.zip`、`outputs/source-input-report.json`、`outputs/` 中的资源描述，以及 `upstream/dm` 中的生成文件和着色器锁文件；完成一致性校验后生成：
-
-```text
-outputs/D2RMobile-Prepared.zip
-outputs/Prepared-SHA256SUMS.txt
-```
-
-Upload these two files to your storage and use their links in `PREPARED_INPUT`. Resource download locations can be adjusted in the descriptors before exporting; the exporter validates their identities and file checksums.
-
-将这两个文件存到自己的存储空间，把链接填入 `PREPARED_INPUT`。导出前可在描述文件中调整资源下载地址；导出工具会校验资源身份和文件校验信息。
-
-## Compatibility / 兼容性
-
-The package records the game program checksums, resource identities, game product, shader chain, and generation dependencies. Runtime-only changes can reuse it. A change to a tracked generation rule requires a newly generated package. App version, source commit, build number, and Release names are resolved afresh by the consuming workflow.
-
-预处理包记录游戏程序校验值、资源身份、游戏产品标识、着色器链和生成依赖。只改运行时代码时可继续复用；被跟踪的生成规则发生变化时需更新包。App 版本、源码提交、构建编号和 Release 名称由使用者当次运行重新确定。
+工作流下载此包，并将所选源码编译成两份 IPA。Data 和 Legacy Device Pack 从资源提供者的网盘另行下载，导入方式见[安装说明](../README.zh-CN.md#下载和使用)。

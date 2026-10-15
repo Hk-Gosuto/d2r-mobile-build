@@ -28,7 +28,7 @@ Open **Actions → Build IPA → Run workflow**:
 - To test development code, set `source_ref` to `main`, another branch, a tag, or a commit.
 - To test your changes, set `source_repository` to your fork and `source_ref` to its branch. For private source repositories, add a **`SOURCE_TOKEN`** Secret with Contents read access to that repository.
 
-The workflow downloads and verifies the prepared package, checks source compatibility, then compiles and packages both IPAs. Completed downloads are cached for reuse after failures and app updates. Native compiler modules are cached by Xcode, SDK, architecture, and minimum iOS version; each run compiles the selected source afresh. Optional caches are saved only when space is available. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
+The workflow downloads and verifies the prepared package, checks source compatibility, then compiles and packages both IPAs. Completed downloads and native compiler modules are cached for later builds. Repeated builds and reruns of the same upstream version each receive independent Release and file names.
 
 ## Download and use
 

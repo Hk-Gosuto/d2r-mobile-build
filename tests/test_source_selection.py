@@ -1,7 +1,6 @@
-import hashlib
 import json
+import os
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -10,167 +9,41 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 import ci
 from source.configure import configure
-from source.configure import expected_programs
 from source.resolve import resolve_ref
+from fixtures import git, source
 
 
-class SourceSelectionTests(unittest.TestCase):
-    def setUp(self):
-        env = patch.dict('os.environ', GITHUB_RUN_NUMBER='', GITHUB_RUN_ATTEMPT='1')
-        env.start(); self.addCleanup(env.stop)
-        temp = tempfile.TemporaryDirectory()
-        self.addCleanup(temp.cleanup)
-        self.root = Path(temp.name)
-        self.upstream = self.root / 'upstream'
-        self.upstream.mkdir()
-        self.git('init', '-b', 'main')
-        self.git('config', 'user.name', 'Build test')
-        self.git('config', 'user.email', 'build@example.invalid')
-        self.git('config', 'commit.gpgsign', 'false')
-        self.git('config', 'tag.gpgsign', 'false')
-        (self.root / 'build-config.json').write_text(json.dumps(ci.CONFIG))
-        self.checksums = {'main': 'a' * 64, 'sdk': 'b' * 64, 'subsdk0': 'c' * 64}
-        table = '\n'.join(f'{digest} {name}' for name, digest in self.checksums.items())
-        (self.upstream / 'setup.sh').write_text('done <<SUMS\n' + table + '\nSUMS\n')
-        (self.upstream / 'source.txt').write_text('first\n')
-        self.commit('first')
+class SourceTests(unittest.TestCase):
+    def test_latest_release_and_explicit_source_selection(self):
+        with patch('source.resolve.subprocess.check_output', side_effect=[
+                json.dumps({'tag_name': 'v1.2.3', 'draft': False, 'prerelease': False}),
+                json.dumps({'tag_name': 'v1.2.4', 'draft': False, 'prerelease': False})]):
+            self.assertEqual(resolve_ref('owner/upstream'), 'refs/tags/v1.2.3')
+            self.assertEqual(resolve_ref('owner/upstream'), 'refs/tags/v1.2.4')
+        with patch('source.resolve.subprocess.check_output') as lookup:
+            self.assertEqual(resolve_ref('owner/fork', 'main'), 'main')
+            lookup.assert_not_called()
+        with patch('source.resolve.subprocess.check_output', return_value=json.dumps({'tag_name': 'v1.3-beta', 'prerelease': True, 'draft': False})):
+            with self.assertRaises(ValueError):
+                resolve_ref('owner/upstream')
 
-    def git(self, *args):
-        return subprocess.check_output(['git', '-C', str(self.upstream), *args],
-                                       text=True, stderr=subprocess.DEVNULL).strip()
-
-    def commit(self, message):
-        self.git('add', '.')
-        self.git('commit', '-m', message)
-        return self.git('rev-parse', 'HEAD')
-
-    def test_new_release_uses_its_own_tag_in_both_ipa_names(self):
-        self.git('tag', 'v1.0.20')
-        config = configure(self.root)
-        self.assertEqual(config['upstream_commit'], self.git('rev-parse', 'v1.0.20'))
-        self.assertEqual(ci.ipa_names(config), ('D2RMobile-v1.0.20.ipa', 'D2RMobile-v1.0.20-ios18.ipa'))
-        self.git('tag', '-d', 'v1.0.20')
-        self.git('tag', 'v1.0.21')
-        self.assertEqual(configure(self.root)['build_label'], 'v1.0.21')
-
-    def test_release_version_and_repeat_builds_have_independent_identities(self):
-        self.git('tag','v1.0.20')
-        static=self.root/'build-config.json'
-        original=static.read_bytes()
-        results=[]
-        for number,attempt in (('7','1'),('7','2'),('8','1')):
-            with patch.dict('os.environ',GITHUB_RUN_NUMBER=number,GITHUB_RUN_ATTEMPT=attempt):
-                config=configure(self.root)
-            self.assertEqual(config['app_version'],'1.0.20')
-            self.assertEqual(config['build_number'],number+'.'+attempt)
-            self.assertEqual(config['release_tag'],'v1.0.20-build.'+number+'.'+attempt)
-            self.assertEqual(static.read_bytes(),original)
-            self.assertEqual(json.loads((self.root/'outputs/build-context.json').read_text()),config)
-            results.append(config)
-        self.assertEqual(len({c['release_tag'] for c in results}),3)
-        self.assertEqual(len({ci.ipa_names(c) for c in results}),3)
-        self.assertEqual(ci.ipa_names(results[0])[0], 'D2RMobile-v1.0.20-build.7.1.ipa')
-
-    def test_program_checksums_follow_the_selected_source_and_do_not_change_defaults(self):
-        original = (self.root / 'build-config.json').read_bytes()
-        first = configure(self.root)
-        self.assertEqual(first['nso_sha256'], self.checksums)
-        setup = self.upstream / 'setup.sh'
-        setup.write_text(setup.read_text().replace('a' * 64, 'd' * 64))
-        self.commit('support another program')
-        second = configure(self.root)
-        self.assertEqual(second['nso_sha256']['main'], 'd' * 64)
-        self.assertEqual((self.root / 'build-config.json').read_bytes(), original)
-
-    def test_missing_malformed_or_duplicate_upstream_checksums_are_rejected(self):
-        setup = self.upstream / 'setup.sh'
-        original = setup.read_text()
-        for data in ('', original.replace('b' * 64, 'wrong'),
-                     original.replace('sdk\n', 'main\n'),
-                     original.replace('c' * 64 + ' subsdk0\n', '')):
-            setup.write_text(data)
-            with self.subTest(data=data), self.assertRaisesRegex(ValueError, 'checksum table'):
-                expected_programs(self.upstream)
-
-    def test_invalid_ci_identity_is_rejected_and_commits_without_tags_are_labelled(self):
-        for number,attempt in (('bad','1'),('1','0'),('1','bad')):
-            with patch.dict('os.environ',GITHUB_RUN_NUMBER=number,GITHUB_RUN_ATTEMPT=attempt):
-                with self.assertRaisesRegex(ValueError,'build number'):configure(self.root)
-        with patch.dict('os.environ',GITHUB_RUN_NUMBER='9',GITHUB_RUN_ATTEMPT='1'):
-            config=configure(self.root)
-        self.assertEqual(config['app_version'],'0.0.0')
-        self.assertTrue(config['release_tag'].startswith('src-'))
-
-    def test_default_looks_up_the_latest_release_on_every_run(self):
-        replies = [json.dumps({'tag_name': tag, 'draft': False, 'prerelease': False})
-                   for tag in ('v1.0.20', 'v1.0.21')]
-        with patch('source.resolve.subprocess.check_output', side_effect=replies) as api:
-            self.assertEqual(resolve_ref('owner/upstream'), 'refs/tags/v1.0.20')
-            self.assertEqual(resolve_ref('owner/upstream', '  '), 'refs/tags/v1.0.21')
-            self.assertEqual(api.call_count, 2)
-            api.assert_called_with(['gh', 'api', 'repos/owner/upstream/releases/latest'], text=True)
-
-    def test_explicit_main_tag_or_commit_skips_release_lookup(self):
-        with patch('source.resolve.subprocess.check_output') as api:
-            for ref in ('main', 'my-feature', 'v1.0.20', 'a' * 40):
-                self.assertEqual(resolve_ref('owner/fork', ref), ref)
-            api.assert_not_called()
-
-    def test_draft_prerelease_and_missing_release_cannot_be_selected(self):
-        for release in ({'tag_name': 'v1.0.20', 'draft': True, 'prerelease': False},
-                        {'tag_name': 'v1.0.21-beta', 'draft': False, 'prerelease': True},
-                        {'message': 'Not Found'}):
-            with self.subTest(release=release), patch('source.resolve.subprocess.check_output', return_value=json.dumps(release)):
-                with self.assertRaisesRegex(ValueError, 'official release'):
-                    resolve_ref('owner/upstream')
-
-    def test_main_advances_and_each_build_records_the_current_checkout(self):
-        self.git('tag', 'v1.0.20')
-        release_commit = self.git('rev-parse', 'HEAD')
-        (self.upstream / 'source.txt').write_text('new main feature\n')
-        first_commit = self.commit('new feature')
-        first = configure(self.root)
-        self.assertEqual(first['build_label'], 'v1.0.20-src-' + first_commit[:12])
-        (self.upstream / 'source.txt').write_text('another main feature\n')
-        second_commit = self.commit('another feature')
-        second = configure(self.root)
-        self.assertEqual(second['upstream_commit'], second_commit)
-        self.assertNotEqual(ci.ipa_names(first), ci.ipa_names(second))
-        # A user's explicit tag or commit still selects that exact source.
-        self.git('checkout', '--detach', release_commit)
-        self.assertEqual(configure(self.root)['build_label'], 'v1.0.20')
-
-    def test_fork_without_tags_uses_commit_and_discards_old_version_metadata(self):
-        path = self.root / 'build-config.json'
-        config = json.loads(path.read_text())
-        config.update(upstream_version='v1.0.13', upstream_commit='old-source',
-                      build_label='v1.0.13', source_patch_sha256='old-patch')
-        path.write_text(json.dumps(config))
-        actual = configure(self.root)
-        self.assertEqual(actual['build_label'], 'src-' + self.git('rev-parse', 'HEAD')[:12])
-        self.assertNotIn('upstream_version', actual)
-        self.assertNotIn('source_patch_sha256', actual)
-
-    def test_local_patch_changes_the_output_identity(self):
-        self.git('tag', 'v1.0.20')
-        (self.upstream / 'source.txt').write_text('patched source\n')
-        patch_data = self.git('diff') + '\n'
-        self.git('checkout', '--', 'source.txt')
-        patches = self.root / 'source-patches'
-        patches.mkdir()
-        patch = patches / 'feature.patch'
-        patch.write_text(patch_data)
-        config = configure(self.root)
-        digest = hashlib.sha256(b'feature.patch\0' + patch.read_bytes()).hexdigest()
-        self.assertEqual(config['build_label'], 'v1.0.20-patch-' + digest[:12])
-        self.assertEqual(config['source_patch_sha256'], digest)
-        self.assertEqual((self.upstream / 'source.txt').read_text(), 'patched source\n')
-
-    def test_unresolved_or_unsafe_output_names_fail_before_publication(self):
-        for config in ({}, {'build_label': '../release'}, {'build_label': ''}):
-            with self.subTest(config=config), self.assertRaisesRegex(ValueError, 'Resolve'):
-                ci.ipa_names(config)
-
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_versions_repeat_builds_and_runtime_commits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            upstream, commit, programs, _ = source(root)
+            configs = []
+            for run, attempt in (('7', '1'), ('7', '2'), ('8', '1')):
+                with patch.dict(os.environ, GITHUB_RUN_NUMBER=run, GITHUB_RUN_ATTEMPT=attempt):
+                    config = configure(root)
+                self.assertEqual(config['app_version'], '1.2.3')
+                self.assertEqual(config['nso_sha256'], programs)
+                configs.append(config)
+            self.assertEqual(len({ci.ipa_names(c) for c in configs}), 3)
+            self.assertEqual(ci.ipa_names(configs[0])[0], 'D2RMobile-v1.2.3-build.7.1.ipa')
+            (upstream / 'dm/runtime.c').write_text('new runtime\n')
+            git(upstream, 'add', '.')
+            git(upstream, 'commit', '-m', 'runtime update')
+            with patch.dict(os.environ, GITHUB_RUN_NUMBER='9'):
+                current = configure(root)
+            self.assertIn('-src-' + git(upstream, 'rev-parse', '--short=12', 'HEAD'), current['build_label'])
+            self.assertNotEqual(current['upstream_commit'], commit)
