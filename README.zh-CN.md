@@ -79,6 +79,11 @@
 | `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos15.zip` | macOS 15–25 的 Apple 芯片 Mac |
 | `Mac-SHA256SUMS.txt`、`macos-build-report.json` | 校验值与构建详情 |
 
-解压 ZIP，将应用移到“应用程序”。首次启动选择包含 `data/build_manifest.psv` 的游戏 `RomFS` 文件夹，应用会记住这个位置。更新应用时保持游戏资源的位置不变即可。macOS 15 版使用独立存档目录，可与 macOS 26 版并存。
+解压 ZIP，将应用移到“应用程序”。游戏资源可复用上方下载的 Data：
+
+1. 在 Finder 按 **⌘⇧.** 显示隐藏文件，将 ZIP 附带的 `Mac Resource Metadata/data` 中的 `build_manifest.psv` 和 `.build.config` 复制到 `D2R Mobile Resources/data`。
+2. 首次启动应用，选择 `D2R Mobile Resources` 文件夹；应用会记住这个位置。
+
+更新应用时保持资源位置不变即可。macOS 15 版使用独立存档目录，可与 macOS 26 版并存。
 
 应用使用本机临时签名。首次打开若被系统拦截，按 Apple 的[打开可信应用说明](https://support.apple.com/102445)操作。

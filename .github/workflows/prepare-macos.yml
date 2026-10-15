@@ -90,13 +90,13 @@ jobs:
         run: python scripts/macos.py verify
       - name: Restore the original game archive
         id: archive
-        if: steps.prepared.outputs.reused != 'true'
+        if: steps.prepared.outputs.reused != 'true' || steps.prepared.outputs.metadata_missing == 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .game-downloads
           key: input-archive-v1-${{ steps.plan.outputs.input_revision }}
       - name: Verify the original archive or download it
-        if: steps.prepared.outputs.reused != 'true'
+        if: steps.prepared.outputs.reused != 'true' || steps.prepared.outputs.metadata_missing == 'true'
         env:
           GAME_ARCHIVE: ${{ secrets.GAME_ARCHIVE }}
           INPUT_REVISION: ${{ steps.plan.outputs.input_revision }}

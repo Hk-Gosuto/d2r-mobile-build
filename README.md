@@ -79,6 +79,11 @@ Download from your repository’s **Releases**:
 | `D2RMobile-<version>-build.<run>.<attempt>-macos15.zip` | Apple silicon Macs running macOS 15–25 |
 | `Mac-SHA256SUMS.txt`, `macos-build-report.json` | Checksums and build details |
 
-Extract the ZIP and move the app to **Applications**. On first launch, choose your game’s `RomFS` folder containing `data/build_manifest.psv`; the app remembers this location. Keep the game resources in that location when updating the app. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
+Extract the ZIP and move the app to **Applications**. Reuse the Data downloaded above:
+
+1. In Finder, press **⌘⇧.** to show hidden files. Copy `build_manifest.psv` and `.build.config` from the included `Mac Resource Metadata/data` into `D2R Mobile Resources/data`.
+2. On first launch, select the `D2R Mobile Resources` folder. The app remembers this location.
+
+Keep the resources in that location when updating the app. The macOS 15 app uses its own save directory and can coexist with the macOS 26 app.
 
 The apps are signed ad hoc. If macOS blocks the first launch, follow Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).

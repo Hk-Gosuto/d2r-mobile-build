@@ -9,6 +9,9 @@ manifest.json
 product/
 msl/b-<着色器链版本>/
 romfs_overlay/
+resources/data/
+  build_manifest.psv
+  .build.config
 generated/
   dm_vault_tab.h
   dm_hud_exp.h
@@ -23,6 +26,7 @@ c1_full.tsv
 | `product/` | 上游改写后的 `touch` 游戏程序与装载表 |
 | `msl/` | 最低面向 macOS 15.0 的 Metal 着色器库与反射元数据，两份 Mac 应用共用 |
 | `romfs_overlay/` | 包含键盘键帽的 Mac 界面资源 |
+| `resources/data/` | Mac 资源选择器需要的小型元数据，可配合现有 Data 使用 |
 | `generated/` | 编译当前原生源码所需的生成头文件 |
 | `shader-chain.lock`、`c1_full.tsv` | 配套着色器工具指纹与下标清单 |
 

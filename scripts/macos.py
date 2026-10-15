@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tarfile
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -124,7 +125,31 @@ def verify():
         reused = False
     with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
         stream.write('reused=' + str(reused).lower() + '\n')
+        metadata_missing = not (ci.ROOT / '.macos-prepared/resources/data/build_manifest.psv').is_file()
+        stream.write('metadata_missing=' + str(metadata_missing).lower() + '\n')
     print('Reused verified Mac inputs:', reused, flush=True)
+
+
+def copy_resource_metadata(archive, target):
+    target.mkdir(parents=True, exist_ok=True)
+    if zipfile.is_zipfile(archive):
+        package = zipfile.ZipFile(archive)
+        names = package.namelist()
+        read = package.open
+    else:
+        package = tarfile.open(archive)
+        names = package.getnames()
+        read = package.extractfile
+    with package:
+        for name in ('build_manifest.psv', '.build.config'):
+            candidates = [n for n in names if n.endswith('/RomFS/data/' + name) or n == 'RomFS/data/' + name]
+            if len(candidates) != 1:
+                raise ValueError('Cannot identify Mac resource metadata: ' + name)
+            with read(candidates[0]) as source:
+                body = source.read(64 * 1024**2 + 1)
+            if not body or len(body) > 64 * 1024**2:
+                raise ValueError('Invalid Mac resource metadata size')
+            (target / name).write_bytes(body)
 
 def prepare():
     root = ci.ROOT
@@ -153,6 +178,10 @@ def prepare():
     stage = root / '.macos-prepared.partial'
     shutil.rmtree(stage, ignore_errors=True)
     stage.mkdir()
+    metadata = stage / 'resources/data'
+    metadata.mkdir(parents=True)
+    for name in ('build_manifest.psv', '.build.config'):
+        shutil.copy2(game / 'RomFS/data' / name, metadata / name)
     product = (dm / 'PRODUCT').read_text().strip()
     shutil.copytree(workspace / 'build/cache/dm/out' / (product + '-touch'), stage / 'product',
                     ignore=shutil.ignore_patterns('*.log'))
@@ -218,6 +247,10 @@ def export_prepared():
     root = ci.ROOT
     cache = root / '.macos-prepared'
     info = load_prepared()
+    if not (cache / 'resources/data/build_manifest.psv').is_file():
+        copy_resource_metadata(root / '.game-downloads/game-input.archive', cache / 'resources/data')
+        info['files'] = {p.relative_to(cache).as_posix(): ci.sha256(p)
+                         for p in sorted(cache.rglob('*')) if p.is_file() and p.name != 'manifest.json'}
     info.update(format='d2r-mobile-macos-prepared', schema_version=1,
                 toolchain=os.environ['MACOS_TOOLCHAIN'], nso_sha256=ci.CONFIG['nso_sha256'])
     write(cache / 'manifest.json', info)
@@ -283,6 +316,9 @@ def build():
         name = f'D2RMobile-{ci.release_tag()}-macos{minimum.split(".")[0]}.zip'
         path = out / name
         subprocess.run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', str(app), str(path)], check=True)
+        with zipfile.ZipFile(path, 'a', zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+            for metadata in sorted((cache / 'resources/data').iterdir()):
+                archive.write(metadata, 'Mac Resource Metadata/data/' + metadata.name)
         packages.append({'name': name, 'sha256': ci.sha256(path), 'bytes': path.stat().st_size,
                          'app_name': app_name, 'minimum_os': minimum,
                          'native_minimum_os': '.'.join(map(str, version)),
@@ -326,13 +362,13 @@ def publish():
                     f'Source: `{report["source_commit"]}`.\n\n'
                     '- `macos26.zip`: macOS 26 and later.\n- `macos15.zip`: macOS 15–25.\n\n'
                     'Extract the ZIP and move the app to Applications. On first launch, choose your game’s '
-                    'RomFS folder containing `data/build_manifest.psv`. Metal libraries are precompiled. '
+                    'D2R Mobile Resources folder after merging the included Mac Resource Metadata files into it. Metal libraries are precompiled. '
                     'This build has not been tested on a physical device. '
                     '[Usage](https://github.com/jiayx/d2r-mobile-build/blob/main/README.md#build-for-macos).\n\n'
                     '## 简体中文\n\n'
                     f'源码：`{report["source_commit"]}`。\n\n'
                     '- `macos26.zip`：macOS 26 及以上。\n- `macos15.zip`：macOS 15–25。\n\n'
-                    '解压 ZIP，将应用移到“应用程序”。首次启动选择包含 `data/build_manifest.psv` 的游戏 RomFS 文件夹。'
+                    '解压 ZIP，将应用移到“应用程序”。将附带的 Mac Resource Metadata 合并到 Data 文件夹，首次启动选择 D2R Mobile Resources。'
                     'Metal 着色器已预编译，未做真机测试。'
                     '[使用说明](https://github.com/jiayx/d2r-mobile-build/blob/main/README.zh-CN.md#构建-macos)。\n')
     return publish_assets(repo, report['release_tag'],

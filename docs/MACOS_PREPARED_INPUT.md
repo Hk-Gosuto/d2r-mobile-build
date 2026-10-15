@@ -9,6 +9,9 @@ manifest.json
 product/
 msl/b-<shader-chain>/
 romfs_overlay/
+resources/data/
+  build_manifest.psv
+  .build.config
 generated/
   dm_vault_tab.h
   dm_hud_exp.h
@@ -23,6 +26,7 @@ c1_full.tsv
 | `product/` | Upstream’s rewritten `touch` game programs and loader tables |
 | `msl/` | macOS Metal libraries targeting macOS 15.0, and their reflection metadata; shared by both Mac apps |
 | `romfs_overlay/` | Mac interface resources, including keyboard glyphs |
+| `resources/data/` | Small metadata files needed by the Mac resource picker; used alongside existing Data |
 | `generated/` | Generated headers used to compile the current native source |
 | `shader-chain.lock`, `c1_full.tsv` | Matching shader tool fingerprints and index metadata |
 

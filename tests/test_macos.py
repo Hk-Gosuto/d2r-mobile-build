@@ -86,6 +86,19 @@ class MacBuildTests(unittest.TestCase):
                     macos.import_prepared()
             self.assertEqual(archive.read_bytes(), before)
 
+    def test_resource_metadata_is_read_without_extracting_the_game(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / 'game.zip'
+            with zipfile.ZipFile(archive, 'w') as z:
+                z.writestr('game/RomFS/data/build_manifest.psv', b'manifest')
+                z.writestr('game/RomFS/data/.build.config', b'config')
+                z.writestr('game/RomFS/data/00-00000001.data', b'archive bytes')
+            macos.copy_resource_metadata(archive, root / 'metadata')
+            self.assertEqual({p.name for p in (root / 'metadata').iterdir()}, {'build_manifest.psv', '.build.config'})
+            self.assertEqual((root / 'metadata/.build.config').read_bytes(), b'config')
+            self.assertTrue(archive.is_file())
+
     def test_mac_release_checks_both_packages_before_publishing(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
