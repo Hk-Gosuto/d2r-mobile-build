@@ -13,7 +13,7 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    ```json
    {
-     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+     "url": "https://ipfs.filebase.io/ipfs/QmW43UFiP8g3tQv5kyahPoGgmVFTQbkfKpFKRCyMzZGp4L?filename=D2RMobile-Prepared.zip",
      "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
    }
    ```
@@ -22,12 +22,14 @@ Build iOS and macOS apps from [d2r-mobile](https://github.com/jhaizhou-ops/d2r-m
 
    ```json
    {
-     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+     "url": "https://ipfs.filebase.io/ipfs/QmeM63VQnVGP2HMmiYCL39UHFJcnGBb4qqXqdaPvAY1U4b?filename=D2RMobile-MacPrepared.zip",
      "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
    }
    ```
 
    The prepared packages in this configuration are provided by community contributors.
+
+   Google Drive mirrors: [iOS](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view) · [macOS](https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view). To use a mirror, replace only `url`; the checksum stays the same.
 
 3. Click **Run workflow** to start the build. Building and publishing typically takes **2–3 minutes**.
 

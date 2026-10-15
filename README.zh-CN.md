@@ -13,7 +13,7 @@
 
    ```json
    {
-     "url": "https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view",
+     "url": "https://ipfs.filebase.io/ipfs/QmW43UFiP8g3tQv5kyahPoGgmVFTQbkfKpFKRCyMzZGp4L?filename=D2RMobile-Prepared.zip",
      "sha256": "c3f45f4880a5738a69b09ee91881e5efc68cdc0cd2bc510be1147904834c2f38"
    }
    ```
@@ -22,12 +22,14 @@
 
    ```json
    {
-     "url": "https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view",
+     "url": "https://ipfs.filebase.io/ipfs/QmeM63VQnVGP2HMmiYCL39UHFJcnGBb4qqXqdaPvAY1U4b?filename=D2RMobile-MacPrepared.zip",
      "sha256": "d961071ea06bffb12be37f4e79b2933186e59d2f1ead884e74b2ec9471b7a67f"
    }
    ```
 
    配置中的预处理包由热心网友提供。
+
+   Google Drive 备用地址：[iOS](https://drive.google.com/file/d/1bjroriGTb2UwD48Pz1bGWZEJ5QDpAqbd/view) · [macOS](https://drive.google.com/file/d/1t7u-eYg876z6681pqgHP5n0JDbwypzs7/view)。使用备用地址时只需替换 `url`，校验值不变。
 
 3. 点击 **Run workflow** 开始构建。预计 **2–3 分钟**完成打包并发布。
 
