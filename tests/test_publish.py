@@ -65,7 +65,7 @@ class PublishTests(unittest.TestCase):
             root = Path(temporary)
             out, config = reports(root)
             store = ReleaseStore()
-            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch.object(publish, 'require_private', return_value='owner/repo'), patch.object(publish, 'release_info', side_effect=lambda *a: store.release), patch.object(publish, 'gh', side_effect=store.gh), patch.dict(os.environ, GITHUB_SHA='b' * 40, GITHUB_STEP_SUMMARY=''):
+            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch.object(publish, 'release_info', side_effect=lambda *a: store.release), patch.object(publish, 'gh', side_effect=store.gh), patch.dict(os.environ, GITHUB_REPOSITORY='owner/repo', GITHUB_SHA='b' * 40, GITHUB_STEP_SUMMARY=''):
                 release = publish.main()
                 self.assertFalse(release['draft'])
                 self.assertEqual({a['name'] for a in release['assets']}, {*ci.ipa_names(config), 'SHA256SUMS.txt', 'build-report.json'})
@@ -79,7 +79,7 @@ class PublishTests(unittest.TestCase):
             root = Path(temporary)
             out, config = reports(root)
             store = ReleaseStore()
-            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch.object(publish, 'require_private', return_value='owner/repo'), patch.object(publish, 'release_info', side_effect=lambda *a: store.release), patch.object(publish, 'gh', side_effect=store.gh), patch.dict(os.environ, GITHUB_SHA='b' * 40):
+            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch.object(publish, 'release_info', side_effect=lambda *a: store.release), patch.object(publish, 'gh', side_effect=store.gh), patch.dict(os.environ, GITHUB_REPOSITORY='owner/repo', GITHUB_SHA='b' * 40):
                 path = out / 'source-ios18-report.json'
                 original = path.read_text()
                 changed = json.loads(original)

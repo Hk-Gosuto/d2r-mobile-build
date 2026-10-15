@@ -17,21 +17,6 @@ from fixtures import source
 
 
 class MacBuildTests(unittest.TestCase):
-    def test_public_validation_cannot_publish_or_prepare_raw_game_inputs(self):
-        with patch.dict(os.environ, MACOS_BUILD_VALIDATION='true'), patch.object(macos, 'require_private', side_effect=ValueError('Private repository required')) as gate, patch.object(macos, 'build') as build, patch.object(macos, 'publish') as publish, patch.object(macos, 'prepare') as prepare:
-            macos.main('build')
-            build.assert_called_once()
-            gate.assert_not_called()
-            for command in ('publish', 'export', 'prepare', 'download'):
-                with self.assertRaisesRegex(ValueError, 'Private repository required'):
-                    macos.main(command)
-            publish.assert_not_called()
-            prepare.assert_not_called()
-        with patch.dict(os.environ, MACOS_BUILD_VALIDATION='false'), patch.object(macos, 'require_private', side_effect=ValueError('Private repository required')), patch.object(macos, 'build') as build:
-            with self.assertRaisesRegex(ValueError, 'Private repository required'):
-                macos.main('build')
-            build.assert_not_called()
-
     def test_native_changes_reuse_generation_but_changed_generators_do_not(self):
         with tempfile.TemporaryDirectory() as temporary:
             upstream, _, _, _ = source(Path(temporary))
@@ -120,7 +105,7 @@ class MacBuildTests(unittest.TestCase):
                                            'sha256': hashlib.sha256(body).hexdigest(), 'bytes': len(body)})
             (out / 'macos-build-report.json').write_text(json.dumps(report))
             (out / 'Mac-SHA256SUMS.txt').write_text('fixture')
-            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch.object(macos, 'require_private', return_value='owner/private'), patch.object(macos, 'publish_assets') as publish:
+            with patch.object(ci, 'ROOT', root), patch.object(ci, 'CONFIG', config), patch.dict(os.environ, GITHUB_REPOSITORY='owner/private'), patch.object(macos, 'publish_assets') as publish:
                 macos.publish()
                 self.assertEqual(len(publish.call_args.args[-1]), 4)
                 self.assertIn('## 简体中文', (out / 'MAC-RELEASE.md').read_text())

@@ -35,7 +35,7 @@ jobs:
       PYTHONUTF8: '1'
       J: '3'
     steps:
-      - name: Check destination and resolve the tools revision
+      - name: Resolve the tools revision
         id: tools
         uses: jiayx/d2r-mobile-build/.github/actions/resolve-tools@main
         with:
@@ -141,7 +141,7 @@ jobs:
         with:
           path: .macos-prepared
           key: ${{ steps.cache.outputs.cache-primary-key }}
-      - name: Export the Mac prepared package to your private Releases
+      - name: Export the Mac prepared package to your Releases
         env:
           MACOS_PREPARED_KEY: ${{ steps.plan.outputs.prepared_key }}
         run: python scripts/macos.py export

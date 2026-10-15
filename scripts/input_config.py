@@ -49,7 +49,7 @@ def download_file(url, destination, expected=None, max_bytes=None):
                                          '-H', 'Accept: application/octet-stream'], stdout=output,
                                         stderr=subprocess.DEVNULL)
             if result.returncode or not partial.stat().st_size:
-                raise RuntimeError('Private input asset download failed')
+                raise RuntimeError('Input asset download failed')
             if max_bytes and partial.stat().st_size > max_bytes:
                 raise ValueError('Download exceeds the supported size')
             if expected and ci.sha256(partial) != expected:

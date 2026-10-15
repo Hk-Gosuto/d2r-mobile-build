@@ -31,7 +31,7 @@ jobs:
       SOURCE_REPOSITORY: ${{ inputs.source_repository }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Check destination and resolve the tools revision
+      - name: Resolve the tools revision
         id: tools
         uses: jiayx/d2r-mobile-build/.github/actions/resolve-tools@main
         with:
@@ -192,7 +192,7 @@ jobs:
           pattern: IPA-ios*
           merge-multiple: true
           path: outputs
-      - name: Publish to your private Releases
+      - name: Publish to your Releases
         run: |
           python3 scripts/source/publish.py
       - name: Delete intermediate inputs after a successful build

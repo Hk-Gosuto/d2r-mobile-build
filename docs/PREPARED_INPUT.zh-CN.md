@@ -22,9 +22,9 @@ generated/
 | `source-payload.zip` | `Payload/DmIOS.app/` 下已生成的游戏程序、界面素材、覆盖层和二进制 iOS Metal 着色器。 |
 | `shader-chain.lock` | 着色器工具链指纹。 |
 | `resource-manifest.json` | 该游戏资源版本共用的 18 个 Data 文件的名称、大小和校验值；iOS 与 macOS 共用。 |
-| `generated/` | 原生编译所需的头文件和界面素材源码。 |
+| `generated/` | 从游戏资源生成的数据表头文件和技能图集索引 C 源文件，供上游 iOS 应用的界面及运行时代码编译使用。 |
 
-构建会检查包完整性、游戏程序、资源元数据和着色器的一致性，并在所选源码仓库中对照 `producer.source_commit` 检查生成依赖。原生运行时代码修改可复用此包；生成规则变化时需使用配套的新包。
+构建会检查包完整性、游戏程序、资源元数据和着色器的一致性，并在所选源码仓库中对照 `producer.source_commit` 检查生成依赖。只修改上游 iOS 应用的界面、输入处理或运行时等 C/Objective-C 代码，且不涉及生成依赖时，可复用此包；生成规则变化时需使用配套的新包。
 
 工作流下载此包，并将所选源码编译成两份 IPA。Data 和 Legacy Device Pack 从资源提供者的网盘另行下载，导入方式见[安装说明](../README.zh-CN.md#ios-下载和使用)。
 

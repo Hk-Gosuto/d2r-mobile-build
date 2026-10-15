@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ci
 from archive_input import extract
 from input_config import download_file, input_identity, settings
-from repository_access import require_private
 from source.compatibility import generation_paths
 from source.game_input import download, unpack
 from source.prepared import FORMAT, GENERATED, verify_directory, verify_source, write
@@ -206,11 +205,10 @@ def export():
                     f'Source / 源码：`{info["producer"]["source_commit"]}`\n\n'
                     'Set this ZIP’s URL and SHA-256 in PREPARED_INPUT.ios. / '
                     '将此 ZIP 的地址和校验值填入 PREPARED_INPUT 的 ios 配置。\n')
-    publish_assets(require_private(), info['prepare_key'], 'iOS prepared input', body, [package, checksum])
+    publish_assets(os.environ['GITHUB_REPOSITORY'], info['prepare_key'], 'iOS prepared input', body, [package, checksum])
 
 
 if __name__ == '__main__':
-    require_private()
     try:
         {'plan': plan, 'verify': verify, 'download': download,
          'prepare': prepare, 'export': export}[sys.argv[1]]()

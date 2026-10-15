@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ci
 from archive_input import extract, MAX_EXPANDED_BYTES as MAX_PACKAGE_BYTES
 from input_config import download_file, input_identity, settings
-from repository_access import require_private
 from source.metal import verify_payload
 from source.compatibility import verify_generation
 
@@ -165,7 +164,6 @@ def prepare(root=ci.ROOT):
 
 
 if __name__ == '__main__':
-    require_private()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=('resolve', 'download', 'prepare'))
     args = parser.parse_args()

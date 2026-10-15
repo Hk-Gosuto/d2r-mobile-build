@@ -9,7 +9,6 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ci
-from repository_access import require_private
 
 INSTALLERS = (('Sideloadly', 'https://sideloadly.io/'), ('iloader', 'https://iloader.app/'),
               ('AltStore Classic', 'https://faq.altstore.io/altstore-classic/your-altstore'),
@@ -133,7 +132,7 @@ def publish_assets(repo, tag, title, body, paths):
 
 
 def main():
-    repo = require_private()
+    repo = os.environ['GITHUB_REPOSITORY']
     out = ci.ROOT / 'outputs'
     paths = collect_packages(out)
     body = out / 'RELEASE.md'

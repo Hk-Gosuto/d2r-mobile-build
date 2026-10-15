@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci
 from archive_input import extract
 from input_config import input_identity, settings
-from repository_access import require_private
 from source.compatibility import generation_paths
 from source.game_input import download, unpack
 from source.publish import publish_assets
@@ -179,7 +178,7 @@ def export_prepared():
                     f'Source / 源码：`{info["source_commit"]}`\n\n'
                     'Set its URL and SHA-256 in PREPARED_INPUT.macos. / '
                     '将此 ZIP 的地址和校验值填入 PREPARED_INPUT 的 macos 配置。\n')
-    publish_assets(require_private(), info['key'], 'macOS prepared input', body, [package, sums])
+    publish_assets(os.environ['GITHUB_REPOSITORY'], info['key'], 'macOS prepared input', body, [package, sums])
     print('Mac prepared archive SHA256:', digest, flush=True)
 
 
@@ -253,7 +252,7 @@ def build():
 
 
 def publish():
-    repo = require_private()
+    repo = os.environ['GITHUB_REPOSITORY']
     out = ci.ROOT / 'outputs'
     report = json.loads((out / 'macos-build-report.json').read_text())
     if (report['source_commit'] != ci.CONFIG['upstream_commit'] or not report['portable']
@@ -287,9 +286,6 @@ def publish():
 
 
 def main(command):
-    validation = os.environ.get('MACOS_BUILD_VALIDATION') == 'true'
-    if not (validation and command in ('plan-prepared', 'download-prepared', 'import', 'build')):
-        require_private()
     {'plan': plan, 'download': download, 'prepare': prepare,
      'verify': verify, 'build': build, 'publish': publish,
      'plan-prepared': plan_prepared, 'import': import_prepared, 'export': export_prepared,

@@ -29,12 +29,11 @@ jobs:
     timeout-minutes: 30
     env:
       SOURCE_REPOSITORY: ${{ inputs.source_repository }}
-      MACOS_BUILD_VALIDATION: ${{ !inputs.publish }}
       GH_TOKEN: ${{ github.token }}
       PIP_DISABLE_PIP_VERSION_CHECK: '1'
       PYTHONUTF8: '1'
     steps:
-      - name: Check destination and resolve the tools revision
+      - name: Resolve the tools revision
         id: tools
         uses: jiayx/d2r-mobile-build/.github/actions/resolve-tools@main
         with:

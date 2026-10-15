@@ -37,7 +37,7 @@ jobs:
       PYTHONUTF8: '1'
       J: '3'
     steps:
-      - name: Check destination and resolve the tools revision
+      - name: Resolve the tools revision
         id: tools
         uses: jiayx/d2r-mobile-build/.github/actions/resolve-tools@main
         with:
@@ -147,7 +147,7 @@ jobs:
         with:
           path: .ios-prepared
           key: ${{ steps.cache.outputs.cache-primary-key }}
-      - name: Export the iOS prepared package to your private Releases
+      - name: Export the iOS prepared package to your Releases
         env:
           IOS_PREPARED_KEY: ${{ steps.plan.outputs.prepared_key }}
         run: python scripts/source/prepare_ios.py export

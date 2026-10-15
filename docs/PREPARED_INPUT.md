@@ -22,9 +22,9 @@ generated/
 | `source-payload.zip` | Generated game program, interface resources, overlays and binary iOS Metal libraries under `Payload/DmIOS.app/`. |
 | `shader-chain.lock` | Shader toolchain fingerprints. |
 | `resource-manifest.json` | Names, sizes and checksums of the 18 Data files for this game resource version, shared by iOS and macOS. |
-| `generated/` | Headers and native artwork source required for compilation. |
+| `generated/` | Data-table headers and a skill-atlas index C source file generated from game resources, used to compile the upstream iOS app's interface and runtime code. |
 
-The build checks package integrity, game programs, resource metadata, and shader consistency. It compares generation dependencies with `producer.source_commit` in the selected source repository. Native runtime changes can reuse the package; changes to generation rules require a matching updated package.
+The build checks package integrity, game programs, resource metadata, and shader consistency. It compares generation dependencies with `producer.source_commit` in the selected source repository. Changes to the upstream iOS app's C/Objective-C interface, input handling, or runtime code can reuse the package when generation dependencies are unchanged; changes to generation rules require a matching updated package.
 
 The workflow downloads this package and compiles the selected source into two IPAs. Download Data and the Legacy Device Pack separately from your resource provider, then follow the [installation instructions](../README.md#download-and-use-on-ios).
 

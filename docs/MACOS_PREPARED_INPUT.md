@@ -27,10 +27,10 @@ c1_full.tsv
 | `msl/` | macOS Metal libraries targeting macOS 15.0, and their reflection metadata; shared by both Mac apps |
 | `romfs_overlay/` | Mac interface resources, including keyboard glyphs |
 | `resources/data/` | Small metadata files needed by the Mac resource picker; used alongside existing Data |
-| `generated/` | Generated headers used to compile the current native source |
+| `generated/` | Data-table headers generated from game resources, used to compile the upstream macOS app's interface and runtime code |
 | `shader-chain.lock`, `c1_full.tsv` | Matching shader tool fingerprints and index metadata |
 
-Native code changes can reuse this package. The build compares game programs and generation dependencies with the selected source and verifies every file before compiling.
+Changes to the upstream macOS app's C/Objective-C interface, input handling, or runtime code can reuse this package when generation dependencies are unchanged. The build compares game programs and generation dependencies with the selected source and verifies every file before compiling.
 
 ## Prepare your own input
 
