@@ -3,7 +3,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 import sys
 import tarfile
 import tempfile
@@ -96,7 +95,7 @@ class PreparedTests(unittest.TestCase):
                     self.assertEqual(prepared.read(root / 'outputs/build-context.json')['build_number'], number)
                     with tarfile.open(root / 'outputs/native-inputs.tar.gz') as tf:
                         self.assertEqual(tf.extractfile('upstream/dm/runtime.c').read().decode(), 'latest runtime ' + number)
-                self.assertFalse(ci.GAME.exists())
+                self.assertFalse((root / '.dm-work/data/switch').exists())
 
     def test_generator_changes_require_a_new_package_and_never_silently_use_old_art(self):
         with tempfile.TemporaryDirectory() as temporary:
