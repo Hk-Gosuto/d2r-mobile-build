@@ -23,7 +23,6 @@ from source.romfs_input import create
 
 HEADERS = ('dm_vault_tab.h', 'dm_hud_exp.h', 'dm_bright_levels.inc')
 PREPARED_FILES = {'romfs-inputs.zip', 'shader-chain.lock', 'c1_full.tsv',
-                  'resources/data/build_manifest.psv', 'resources/data/.build.config',
                   *('generated/' + n for n in HEADERS),
                   *(f'product/{module}.{suffix}' for module in ('main', 'sdk', 'subsdk0')
                     for suffix in ('patched.bin', 'fixups.tsv', 'gates.tsv'))}
@@ -165,10 +164,6 @@ def prepare():
     stage = root / '.macos-prepared.partial'
     shutil.rmtree(stage, ignore_errors=True)
     stage.mkdir()
-    metadata = stage / 'resources/data'
-    metadata.mkdir(parents=True)
-    for name in ('build_manifest.psv', '.build.config'):
-        shutil.copy2(game / 'RomFS/data' / name, metadata / name)
     product = (dm / 'PRODUCT').read_text().strip()
     shutil.copytree(workspace / 'build/cache/dm/out' / (product + '-touch'), stage / 'product',
                     ignore=shutil.ignore_patterns('*.log'))
@@ -290,9 +285,6 @@ def build():
         name = f'D2RMobile-{ci.release_tag()}-macos{minimum.split(".")[0]}.zip'
         path = out / name
         subprocess.run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', str(app), str(path)], check=True)
-        with zipfile.ZipFile(path, 'a', zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
-            for metadata in sorted((cache / 'resources/data').iterdir()):
-                archive.write(metadata, 'Mac Resource Metadata/data/' + metadata.name)
         with zipfile.ZipFile(path) as archive:
             for resource_name, digest in runtime_files.items():
                 member = app_name + '/Contents/Resources/' + resource_name

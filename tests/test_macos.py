@@ -25,8 +25,7 @@ def runtime_files(cache):
         for suffix in ('patched.bin', 'fixups.tsv', 'gates.tsv'):
             path = cache / 'product' / (module + '.' + suffix)
             path.parent.mkdir(exist_ok=True); path.write_bytes(b'fixture program')
-    for name in ('resources/data/build_manifest.psv', 'resources/data/.build.config', 'shader-chain.lock'):
-        path = cache / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('fixture metadata')
+    (cache / 'shader-chain.lock').write_text('fixture metadata')
     (cache / 'c1_full.tsv').write_text('# chain b-' + CHAIN + ' fixture\n')
     shaders = cache / 'msl' / ('b-' + CHAIN)
     shaders.mkdir(parents=True)

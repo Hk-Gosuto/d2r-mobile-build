@@ -84,8 +84,6 @@ Run **Build macOS** with the macOS JSON configuration above. After the build, do
 3. Open the app from **Applications**. If macOS blocks it because the developer cannot be verified, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).
 4. When the app asks for resources, select the entire **`D2R Mobile Resources`** folder containing `data`. The app remembers this location. Metal shaders are included precompiled.
 
-The resource archive includes `build_manifest.psv`, which the Mac app uses to recognize the folder. When reusing existing Data, if the app reports this file missing, copy it once from `Mac Resource Metadata/data` in the app ZIP into `D2R Mobile Resources/data`.
-
 ## Update the macOS app
 
 Run **Build macOS** again with the macOS JSON configuration to build the latest official upstream Release. Quit the app and back up saves, then download and extract the ZIP for the same macOS 26 or macOS 15 app variant. Replace the existing `.app` in **Applications** with the new one.

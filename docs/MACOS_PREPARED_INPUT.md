@@ -9,9 +9,6 @@ manifest.json
 product/
 msl/b-<shader-chain>/
 romfs-inputs.zip
-resources/data/
-  build_manifest.psv
-  .build.config
 generated/
   dm_vault_tab.h
   dm_hud_exp.h
@@ -26,7 +23,6 @@ c1_full.tsv
 | `product/` | Upstream’s rewritten `touch` game programs and loader tables |
 | `msl/` | macOS Metal libraries targeting macOS 15.0; each `_b.metallib` has a matching `_b.json` reflection file. Shared by both Mac apps |
 | `romfs-inputs.zip` | Selected original inputs for generating Mac layouts, strings, images, fonts, data tables and overlays |
-| `resources/data/` | Small metadata files needed by the Mac resource picker; used alongside existing Data |
 | `generated/` | Game-table headers, reused when their generator scripts are unchanged |
 | `shader-chain.lock`, `c1_full.tsv` | Matching shader tool fingerprints and index metadata |
 

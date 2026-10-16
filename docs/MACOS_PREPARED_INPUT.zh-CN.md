@@ -9,9 +9,6 @@ manifest.json
 product/
 msl/b-<着色器链版本>/
 romfs-inputs.zip
-resources/data/
-  build_manifest.psv
-  .build.config
 generated/
   dm_vault_tab.h
   dm_hud_exp.h
@@ -26,7 +23,6 @@ c1_full.tsv
 | `product/` | 上游改写后的 `touch` 游戏程序与装载表 |
 | `msl/` | 最低面向 macOS 15.0 的 Metal 着色器库，每份 `_b.metallib` 配有对应的 `_b.json` 反射文件；两份 Mac 应用共用 |
 | `romfs-inputs.zip` | 生成 Mac 布局、文案、图片、字体、数据表和覆盖层需要的原始输入子集 |
-| `resources/data/` | Mac 资源选择器需要的小型元数据，可配合现有 Data 使用 |
 | `generated/` | 游戏数据表头文件，生成脚本未变时直接复用 |
 | `shader-chain.lock`、`c1_full.tsv` | 配套着色器工具指纹与下标清单 |
 

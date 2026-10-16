@@ -84,8 +84,6 @@
 3. 从“应用程序”打开 App。若系统提示无法验证开发者，进入 **系统设置 → 隐私与安全性 → 仍要打开**，再确认“打开”。详见 Apple 的[打开可信应用说明](https://support.apple.com/zh-cn/102445)。
 4. 应用提示选择资源时，选择包含 `data` 的整个 **`D2R Mobile Resources`** 文件夹。应用会记住这个位置，包内已包含预编译 Metal 着色器。
 
-资源包已包含 Mac 识别目录所需的 `build_manifest.psv`。复用已有 Data 时，若应用提示缺少这个文件，从应用 ZIP 的 `Mac Resource Metadata/data` 中将它补入 `D2R Mobile Resources/data` 一次即可。
-
 ## 更新 macOS 应用
 
 再次运行 **Build macOS**，填写 macOS 的 JSON 配置，即可构建上游最新正式 Release。退出应用并备份存档。按原先使用的 macOS 26 版或 macOS 15 版下载对应 ZIP，解压后用新 `.app` 替换“应用程序”中的原应用。
