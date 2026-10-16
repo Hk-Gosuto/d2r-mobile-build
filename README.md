@@ -59,6 +59,15 @@ Download the community-provided [game resources (Data and Legacy)](https://drive
 1. Sign and install the IPA with [Sideloadly](https://sideloadly.io/), [iloader](https://iloader.app/), [AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore), or [SideStore](https://sidestore.io/), then open the app once.
 2. Download matching Data from the link above. For split archives, download all `.001`, `.002`, and `.003` parts and open `.001` with an extractor supporting split archives. Copy the entire extracted `D2R Mobile Resources` folder to **Files → On My iPhone → D2R Mobile**. Alternatively, connect to a Mac and drag the folder into the app under **Finder → your iPhone → Files**.
 3. A14–A16 devices also need `Legacy-Device-Pack.zip` from the same link. Extract it and import the entire `Legacy Device Pack` folder beside the resource folder. A17 Pro and newer devices and M-series iPads use the standard Data.
+
+   Under **Files → On My iPhone → D2R Mobile**, the two folders should be at the same level:
+
+   ```text
+   D2R Mobile/
+   ├── D2R Mobile Resources/
+   └── Legacy Device Pack/
+   ```
+
 4. Return to the app after copying. If the resource prompt is still shown, tap **Retry**; the app automatically detects and loads the resources. The IPA includes precompiled Metal shaders.
 
 Device requirements: A14 / M1 or newer, with at least 6 GB of memory.

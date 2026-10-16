@@ -59,6 +59,15 @@
 1. 使用 [Sideloadly](https://sideloadly.io/)、[iloader](https://iloader.app/)、[AltStore Classic](https://faq.altstore.io/altstore-classic/your-altstore) 或 [SideStore](https://sidestore.io/) 签名安装 IPA，安装后先打开一次应用。
 2. 从上方链接下载配套 Data。分卷形式需下载全部 `.001`、`.002`、`.003`，用支持分卷的解压工具打开 `.001`，将解压得到的整个 `D2R Mobile Resources` 文件夹拷到“文件”App →“我的 iPhone”→“D2R Mobile”；也可连接 Mac，在 Finder → 手机 →“文件”中拖入该应用。
 3. A14–A16 设备另从同一链接下载 `Legacy-Device-Pack.zip`，解压后将整个 `Legacy Device Pack` 文件夹与资源文件夹并排导入。A17 Pro 及更新芯片、M 系列 iPad 使用标准 Data。
+
+   在“文件”App →“我的 iPhone”→“D2R Mobile”中，两个文件夹应处于同一级：
+
+   ```text
+   D2R Mobile/
+   ├── D2R Mobile Resources/
+   └── Legacy Device Pack/
+   ```
+
 4. 拷贝完成后回到应用，若停在资源提示页，点击“重试”，应用会自动检测并加载资源。IPA 已包含预编译 Metal 着色器。
 
 设备要求：A14 / M1 及更新芯片，至少 6 GB 内存。
