@@ -79,11 +79,12 @@
 | `D2RMobile-<版本>-build.<运行编号>.<尝试次数>-macos15.zip` | macOS 15–25 的 Apple 芯片 Mac，内含 `D2R Mobile M3.app` |
 | `Mac-SHA256SUMS.txt`、`macos-build-report.json` | 校验值与构建详情 |
 
-1. 解压 ZIP，将 `.app` 拖入“应用程序”，保留一起解压出来的 `Mac Resource Metadata` 文件夹。
+1. 解压 ZIP，将 `.app` 拖入“应用程序”。
 2. 从[游戏资源目录](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA)下载 Data，下载全部三个分卷后打开 `.001`，解压得到整个 `D2R Mobile Resources` 文件夹，放在固定位置，例如自己的“游戏”文件夹。已有的 iOS Data 可以直接复用。
-3. 在 Finder 按 **⌘⇧.** 显示隐藏文件，将 `Mac Resource Metadata/data` 中的 `build_manifest.psv` 和 `.build.config` 复制到 `D2R Mobile Resources/data`，与 18 个 `.data` 文件放在一起。
-4. 从“应用程序”打开 App。若系统提示无法验证开发者，进入 **系统设置 → 隐私与安全性 → 仍要打开**，再确认“打开”。详见 Apple 的[打开可信应用说明](https://support.apple.com/zh-cn/102445)。
-5. 应用提示选择资源时，选择包含 `data` 的整个 **`D2R Mobile Resources`** 文件夹。应用会记住这个位置，包内已包含预编译 Metal 着色器。
+3. 从“应用程序”打开 App。若系统提示无法验证开发者，进入 **系统设置 → 隐私与安全性 → 仍要打开**，再确认“打开”。详见 Apple 的[打开可信应用说明](https://support.apple.com/zh-cn/102445)。
+4. 应用提示选择资源时，选择包含 `data` 的整个 **`D2R Mobile Resources`** 文件夹。应用会记住这个位置，包内已包含预编译 Metal 着色器。
+
+资源包已包含 Mac 识别目录所需的 `build_manifest.psv`。复用已有 Data 时，若应用提示缺少这个文件，从应用 ZIP 的 `Mac Resource Metadata/data` 中将它补入 `D2R Mobile Resources/data` 一次即可。
 
 ## 更新 macOS 应用
 

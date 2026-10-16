@@ -79,11 +79,12 @@ Run **Build macOS** with the macOS JSON configuration above. After the build, do
 | `D2RMobile-<version>-build.<run>.<attempt>-macos15.zip` | Apple silicon Macs running macOS 15–25; contains `D2R Mobile M3.app` |
 | `Mac-SHA256SUMS.txt`, `macos-build-report.json` | Checksums and build details |
 
-1. Extract the ZIP and drag the `.app` into **Applications**. Keep the accompanying `Mac Resource Metadata` folder for the next steps.
+1. Extract the ZIP and drag the `.app` into **Applications**.
 2. Download Data from the [game resource folder](https://drive.google.com/drive/folders/1lfjUghi54ohyDxYEtNuEjtGUZyGovaIA). Download all three split parts and open `.001` to extract the entire `D2R Mobile Resources` folder. Keep it in a stable location, such as your Games folder. Existing iOS Data can be reused here.
-3. In Finder, press **⌘⇧.** to show hidden files. Copy `build_manifest.psv` and `.build.config` from `Mac Resource Metadata/data` into `D2R Mobile Resources/data`, alongside the 18 `.data` files.
-4. Open the app from **Applications**. If macOS blocks it because the developer cannot be verified, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).
-5. When the app asks for resources, select the entire **`D2R Mobile Resources`** folder containing `data`. The app remembers this location. Metal shaders are included precompiled.
+3. Open the app from **Applications**. If macOS blocks it because the developer cannot be verified, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See Apple’s [instructions for opening an app you trust](https://support.apple.com/102445).
+4. When the app asks for resources, select the entire **`D2R Mobile Resources`** folder containing `data`. The app remembers this location. Metal shaders are included precompiled.
+
+The resource archive includes `build_manifest.psv`, which the Mac app uses to recognize the folder. When reusing existing Data, if the app reports this file missing, copy it once from `Mac Resource Metadata/data` in the app ZIP into `D2R Mobile Resources/data`.
 
 ## Update the macOS app
 
